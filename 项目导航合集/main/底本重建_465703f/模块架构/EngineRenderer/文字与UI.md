@@ -1,10 +1,10 @@
 # 文字与UI模块
 
-> 依据版次：EngineRenderer fb26686 ｜ 依据：冻结快照 465703f ｜ 更新：2026-11-08
+> 依据版次：EngineRenderer 672a4bf ｜ 依据：当前工作区源码（含未提交改动） ｜ 更新：2026-11-08
 
 ## 一、文件内目录
 
-本模块覆盖 `Engine/EngineRenderer/src/render/` 下两个并列子目录，共 13 个文件。快照内 `Application/Game/星屑弹幕/external/silver_era/include/...` 下的同名头是外部使用方的随包拷贝，不属于本模块源码，不重复登记。
+本模块覆盖 `Engine/EngineRenderer/src/render/` 下两个并列子目录，共 15 个文件。快照内 `Application/Game/星屑弹幕/external/silver_era/include/...` 下的同名头是外部使用方的随包拷贝，不属于本模块源码，不重复登记。本版次新增 `UI/UI事件桥.h` 与 `UI/core/UI事件桥.cpp`（系统输入 / 焦点 / 命令 / 文本的事件接入），并新增 UI 纯色与 UI 文字两对着色器。
 
 | 相对工作区根路径 | 一句话职责 |
 | --- | --- |
@@ -20,6 +20,8 @@
 | `Engine/EngineRenderer/src/render/UI/局部命名空间使用.h` | UI 子目录的私有 `using` 头：引入 `用户界面.h`，并声明 `std::string` / `std::vector` 别名。 |
 | `Engine/EngineRenderer/src/render/UI/core/控件树.cpp` | `Ui_Context` 的创建/销毁/属性读写实现：槽位复用、句柄索引、后代级联释放。 |
 | `Engine/EngineRenderer/src/render/UI/core/交互.cpp` | 每帧交互：命中测试、悬停/按下/点击、焦点切换、文本框 UTF-8 编辑（含 SDL 扫描码）。 |
+| `Engine/EngineRenderer/src/render/UI/UI事件桥.h` | 定义 `Ui_Event_Bridge`：渲染层/UI 与 EngineSystem 输入体系之间的事件接触面（出站 Raw/MouseFocus/ModalPush/ModalPop/TextSession，入站 FocusChanged/TextMode/Command/Text）。 |
+| `Engine/EngineRenderer/src/render/UI/core/UI事件桥.cpp` | 事件桥实现：接入/退出中转站、订阅登记、帧前文本路由、帧内事件发布与回写、命令/文本队列。 |
 | `Engine/EngineRenderer/src/render/UI/core/UI渲染器.cpp` | `Ui_Renderer` 的实现：控件树遍历、纯色四边形与文字几何追加、帧槽缓冲扩容与持久映射、管线切换、描述符与推送常量下发、索引绘制。 |
 
 本文件内跳转索引：
@@ -40,7 +42,7 @@
 
 **文字职责边界**。负责：字体文件字节读取（原样 `std::ifstream` 打开）、ASCII 可打印字符预烘、非 ASCII 码点惰性补烘、字形图集（RGBA8，RGB 恒白、A 为覆盖率）的创建/扩容/重建、字形度量（uv、像素矩形、笔位推进）、UTF-8 解码、单行度量、按布局切行/对齐/行距/缩进/字距的几何生成、按（字体句柄, 文本, 布局六项）缓存网格、LRU 淘汰与延迟归还、文字颜色钳制、文字管线句柄的记录与回填、像素坐标到 NDC 的仿射矩阵与绘制项登记。不负责：文字管线与着色器的创建（由门面惰性登记后回填句柄）、描述符集写装（由门面在纹理绑定路径完成）、场景合批与阴影（文字绘制项被显式排除在阴影投影与静态合批之外）。
 
-**UI 职责边界**。负责：控件节点的创建/销毁/属主关系、句柄分配与槽位复用、可见/可用/悬停/按下/焦点/单击的每帧状态机、逆序命中测试、焦点唯一性、文本框的 UTF-8 光标移动与增删、控件树到顶点/索引的转换、每帧槽缓冲的扩容与持久映射、两条 UI 管线的切换、UI 专用采样描述符集的按需改写、推送常量（矩阵 + 颜色）下发与 `vkCmdDrawIndexed` 提交。不负责：窗口事件采集（由平台事件泵 → 输入聚合器喂入）、平台文本输入启停的具体实现（只通过 `text_focus_active()` 表达意愿）、外部 ImGui 类 UI（由门面 `ui_channel` 另行回调，且绘制在原生 UI 之后覆盖其上）、裁剪/滚动/拖拽/右键菜单/模态层（本模块没有这些能力）。
+**UI 职责边界**。负责：控件节点的创建/销毁/属主关系、句柄分配与槽位复用、可见/可用/悬停/按下/焦点/单击的每帧状态机、逆序命中测试、焦点唯一性、文本框的 UTF-8 光标移动与增删、控件树到顶点/索引的转换、每帧槽缓冲的扩容与持久映射、两条 UI 管线的切换、UI 专用采样描述符集的按需改写、推送常量（矩阵 + 颜色）下发与 `vkCmdDrawIndexed` 提交；`Ui_Event_Bridge` 另外承担与系统输入体系的双向事件对接（焦点/文本模式/命令/文本语义）。不负责：窗口事件采集（由平台事件泵 → 输入聚合器喂入）、平台文本输入启停的具体实现（只通过 `text_focus_active()` 表达意愿）、外部 ImGui 类 UI（由门面 `ui_channel` 另行回调，且绘制在原生 UI 之后覆盖其上）、裁剪/滚动/拖拽/右键菜单/模态层（本模块没有这些能力）。
 
 **依赖边界**。`文字布局数据.h`、`字体.h`、`用户界面.h` 三个对外头保持 Vulkan-free 与 SDL-free，只依赖前置头与 `Mesh_Data`、`Input_Frame`；`UI渲染器.h` 是渲染层“实现细节”头，直接包含 `vulkan/vulkan.h`、`vk_mem_alloc.h` 与内存/管线/纹理/字体模块头，只允许本层 `.cpp` 与层内模块头包含，不进公共头。`UI渲染器.cpp` 不直接用 SDK 之外的平台接口；`交互.cpp` 私有包含 `<SDL3/SDL.h>` 以取扫描码常量（渲染层允许层内私有包含）。
 
@@ -465,6 +467,46 @@ UI 交互的唯一输入是 `Engine/EngineRenderer/src/render/Input/输入快照
 
 ---
 
+### 3.13 `Ui_Event_Bridge`（系统输入 / UI 事件桥）
+
+定义于 `Engine/EngineRenderer/src/render/UI/UI事件桥.h`，实现于 `core/UI事件桥.cpp`；属层内实现细节（含系统层头与 nlohmann JSON），不进公共主头。
+
+```cpp
+class Ui_Event_Bridge
+{
+public:
+    Event_Terminal event_terminal;                    // 供应用层绑定 Broker_Attacher / Evt_Sender
+    Ui_Event_Bridge(void);
+    bool attach(const std::string& subscriber = "Renderer_UI");
+    void detach(void);
+    bool attached(void) const;
+    const std::string& subscriber_name_get(void) const;
+    void text_route_prepare(Ui_Context& ui);
+    void frame_publish(const Input_Frame& frame, Ui_Context& ui);
+    void frame_apply(Ui_Context& ui);
+    bool system_text_mode(void) const;
+    void focus_state_get(std::string& main, std::string& child,
+        std::string& modal, bool& text) const;
+    bool command_pop(std::string& command);
+    bool text_pop(std::string& text);
+};
+```
+
+| 接口 | 语义 / 失败行为 |
+| --- | --- |
+| 构造 | 把 `event_terminal` 的 `Evt_Receiver` 端口绑定到本桥的 `event_process` |
+| `attach(subscriber)` | 已接入则幂等返回 `true`；首次生成密钥（`terminal.key()`，失败记 `logger.error` 返回假）；登记订阅者（中转站接入端口未绑定则 warn 返回假）；向 `Subscribed_Events/Add` 写入订阅清单（`FocusChanged` / `TextMode` / `Command` / `Text`）；`Evt_Sender` 端口未绑定则 error 返回假 |
+| `detach()` | 未接入直接返回；已接入则发送订阅者退出事件并复位 |
+| `text_route_prepare(ui)` | 在 `Ui_Context::frame_begin` 之前按上一帧焦点状态决定文本拼接/回传落文本，并决定控件键盘交互总闸 |
+| `frame_publish(frame, ui)` | 在 `frame_begin` 之后发布本帧 `Input/Raw`、`MouseFocus`、`ModalPush/ModalPop`（按模态根变化）、`TextSession`（按预编辑变化），并上报控件焦点名 |
+| `frame_apply(ui)` | 在 `frame_publish` 之后把已收到的系统事件写入控件树，使同帧事件即时生效 |
+| `system_text_mode()` / `focus_state_get(...)` | 返回最近一次 `TextMode` / `FocusChanged` 缓存 |
+| `command_pop` / `text_pop` | 取一条未被 UI 消费的语义命令 / 文本（队首出队；空则假） |
+
+- 出站事件分类与载荷字段复用 `EngineSystem/src/input/common/输入事件.h` 的词汇，原始输入载荷由 `input_bridge::raw_build` 生成。
+- 入站事件在 `event_process` 中缓存焦点（main / child / modal / text）、把 `Command` 优先派发给绑定该命令的控件、`Text` 优先交给焦点文本框。
+- `pending_focus` / `pending_age` 用于抑制「上报焦点后一帧内被系统旧状态顶回」的抖动，超时后跟随系统回写。
+
 ## 四、模块私有方法
 
 ### 4.1 `Text/core/字体加载.cpp`
@@ -597,6 +639,22 @@ void Ui_Renderer::text_atlas_mark(uint64_t font_handle);   // 仅有声明，快
 | `text_append` | 字体句柄为 0 / 字体模块空 / 文本空 / 记录无效 → 返回假；否则 `glyphs_ensure`（返回值**未检查**）→ 清空复用 `text_scratch` → `text_geometry_build`（单行）→ `text_measure` 取宽高 → 若 `center_area_width > 0` 则按 `(center_area_width − width) × 0.5` 平移 → 顶点逐个加 `offset_x/pixel_y` 并置 z=0，索引整体加 `base` → 登记 `Draw_Record{ text = true, color = 控件文本色 }` → 记录 `text_atlas = record->atlas_texture`。 |
 | `text_atlas_mark` | 头文件声明为“结束一笔文本绘制（记录当前字形图集句柄）”，但**快照内没有定义**，也没有任何调用点；实际“记录图集”是在 `text_append` 末尾直接赋值 `text_atlas`。【待确认：3】 |
 | `Ui_Renderer::draw` | 见 §七 7.3 与 §六 6.8；要点：按槽位顺序遍历、按类型分发、纯色与文字分记录、槽缓冲一次上传、矩阵与颜色各推一次、按记录切换管线。 |
+
+---
+
+### 4.7 `UI/core/UI事件桥.cpp`
+
+文件内为 `Ui_Event_Bridge` 的成员实现，无自由函数。
+
+| 方法 | 职责与实现口径 |
+| --- | --- |
+| 构造 | `event_terminal->bind(Port_ID::Evt_Receiver, [this](std::shared_ptr<Event> evt){ event_process(std::move(evt)); })` |
+| `attach` | 幂等；首次 `terminal.key()` 取密钥并缓存（`acl_key == 0` 才重新取）；`terminal.attach(subscriber, acl_key)` 登记订阅者；构造 `Subscribed_Events/Add` 事件写入 `object` / `acl_key` / `subscribed_events` 三项并通过 `terminal.send` 发送；任一步失败均返回假并记日志 |
+| `detach` | 未接入直接返回；已接入则发送订阅者退出事件（`Detach`）并复位 `attached_flag` / 清缓存 |
+| `frame_publish` | 以 `input_bridge::raw_build` 生成 `Input/Raw` 并发送；按控件命中/点击外部发送 `MouseFocus`；按模态根变化发送 `ModalPush` / `ModalPop`；按预编辑串变化发送 `TextSession`；把控件焦点名上报系统 |
+| `frame_apply` | 把入站缓存（焦点 / 文本模式 / 命令 / 文本）写入 `Ui_Context`：`system_focus_apply`、`system_text_apply`、`command_dispatch` |
+| `event_process` | 按 `Event_Identity` 分派四类入站事件：`FocusChanged` 更新缓存与控件焦点；`TextMode` 更新文本模式；`Command` 先尝试绑定控件激活，未消费入队；`Text` 先交给焦点文本框，未消费入队 |
+| `event_send` | 装载 `tag` / `config` / `receiver` 后经终端发送，失败只 `logger.warn` |
 
 ---
 
@@ -1024,3 +1082,9 @@ push.transform[15] =  1
 - `Renderer::mesh_draw_range`（门面）在 `impl->cull_enabled`（默认 true）且网格有包围盒时执行 `frustum_cull_aabb(view_proj, model, bounds)`，其中 `mvp = view_proj × model`。
 - 文字网格的顶点是“像素坐标”，传入的 `model` 已经是“像素→NDC”的仿射矩阵；再乘相机 `view_proj` 相当于把 NDC 坐标又当作世界坐标变换一次，包围盒极可能被判为完全在视锥外。
 - `mesh_draw_range` 没有针对 `in_text_draw` 的剔除豁免；`cast_shadow` 有豁免，剔除没有。若实机文字正常显示，说明该测试恰好通过（或包围盒/矩阵使其未被判外）；若文字偶发消失，这是首要怀疑点。UI 不受影响（UI 不经过 `mesh_draw`）。
+
+【待确认：8】`Ui_Event_Bridge::frame_apply` 以「同帧事件即时生效」为前提（发布后立即回写控件树）；若中转站改为异步投递，该顺序语义不成立，事件会延迟一帧生效。头注释未声明该同步前提。
+
+【待确认：9】`Ui_Event_Bridge` 的 `pending_focus` / `pending_age` 只在焦点上报未被系统确认期间抑制本地导航；超时阈值与「视为系统已拒绝」的判定写入实现，头文件与注释未约定具体帧数，调用方无法预期。
+
+【待确认：10】`attach` 的订阅者名默认 `Renderer_UI` 且仅在 `acl_key == 0` 时重新取密钥；同一进程若创建两个事件桥实例并使用同名订阅者，中转站侧的订阅登记会互相覆盖，本模块无冲突检测。

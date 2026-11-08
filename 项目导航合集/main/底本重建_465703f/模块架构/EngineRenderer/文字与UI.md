@@ -709,7 +709,14 @@ static std::size_t utf8_next(const std::string& text, std::size_t pos);   // 下
 // Ui_Context 私有成员
 Ui_Handle hit_test(float px, float py) const;
 void      focus_set(Ui_Handle handle);
+static bool node_focusable(const Ui_Node& node);
+void      focus_navigate(bool forward);
+bool      slider_value_apply(Ui_Node& node, float pointer_x);
 void      text_edit(Ui_Node& node, const Input_Frame& input);
+bool      command_dispatch(const std::string& command);
+void      system_focus_apply(const std::string& main, const std::string& child,
+    const std::string& modal, bool text);
+bool      system_text_apply(const std::string& text);
 ```
 
 | 方法 | 职责与实现口径 |
@@ -720,6 +727,12 @@ void      text_edit(Ui_Node& node, const Input_Frame& input);
 | `utf8_prev` | `pos == 0` 返回 0；否则从 `pos − 1` 向前跳过 `10xxxxxx` 续字节，停在首字节位置。不校验首字节合法性。 |
 | `utf8_next` | `pos >= size` 返回 `size`；否则从 `pos + 1` 向后跳过续字节。 |
 | `frame_begin` | 见 §七 7.3；顺序固定：根矩形 → 清点击 → 校验焦点 → 命中刷新悬停 → 按下沿 → 抬起沿 → 按下态 → 文本编辑。 |
+| `node_focusable` | 静态判定：仅 `Button` / `Text_Box` / `Checkbox` / `Slider` 可聚焦；`Root` / `Panel` / `Label` 不可。 |
+| `focus_navigate` | 收集「存活 + 可见 + 可用 + 可聚焦」控件（按创建序）；集合为空则清焦点；当前焦点不在集合 → 向前取首个、向后取末个；否则按方向循环移动；切换前终止滑动条拖拽。 |
+| `slider_value_apply` | 按 `(pointer_x − rect.x) / rect.w` 归一化（宽 0 按 0），钳 0..1；与当前值相同返回假；否则写值并调 `on_value(handle, value, user)`，返回真。 |
+| `command_dispatch` | 查命令绑定 → 控件须存活 / 可见 / 可用；`Button` 置 `clicked` 并调 `on_click`，`Checkbox` 切换并调 `on_toggle`，其余类型返回假。 |
+| `system_focus_apply` | 先清全部 `system_focused`；`target = child 非空 ? child : main`；把 `input_name == target` 或 `input_name == modal` 的存活控件置位；`text` 参数未使用。 |
+| `system_text_apply` | 空文本返回假；焦点须为已绑定 `input_name` 的 `Text_Box`；`caret` 钳到末尾后插入并推进，返回真。 |
 
 ### 4.6 `UI/core/UI渲染器.cpp`
 

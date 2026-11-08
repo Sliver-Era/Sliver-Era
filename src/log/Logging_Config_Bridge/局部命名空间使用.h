@@ -1,5 +1,7 @@
 #pragma once
 #include "日志配置桥接.h"
+#include "Common/日志事件.h"
+#include "Engine/EngineFoundation/src/event/Common/事件协议.h"
 
 // ---------- 容器 ----------
 using std::string;

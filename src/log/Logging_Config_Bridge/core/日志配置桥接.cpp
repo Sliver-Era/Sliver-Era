@@ -1,8 +1,8 @@
-#include "src/core/config/bridge/Logging_Config_Bridge/局部命名空间使用.h"
+#include "../局部命名空间使用.h"
 //获取日志系统
-#include "src/tools/Logging/日志系统运行包.h"
+#include "src/log/日志系统运行包.h"
 //获取 JSON 字段校验工具
-#include "src/tools/Detail/package/数据校验工具.h"
+#include "src/detail/methods/package/数据校验工具.h"
 
 //引擎命名空间
 namespace engine
@@ -22,8 +22,8 @@ namespace engine
 
         //待订阅事件清单（日志配置加载 / 卸载）
         vector<Event> needed_events{
-            Event("", "", "Log", "Load"),
-            Event("", "", "Log", "Unload"),
+            Event("", "", log_event::category, event_protocol::load),
+            Event("", "", log_event::category, event_protocol::unload),
         };
 
         //接入事件中转站（仅登记订阅者身份与接收入口）
@@ -40,13 +40,13 @@ namespace engine
         {
             //单条订阅事件标识
             json subscribed_event;
-            subscribed_event["category"] = needed_event.category;
-            subscribed_event["tag"] = needed_event.tag;
+            subscribed_event[event_protocol::field_category] = needed_event.category;
+            subscribed_event[event_protocol::field_tag] = needed_event.tag;
             subscribed_events.push_back(subscribed_event);
         }
 
         //构造订阅事件（目标对象名与权限密钥经载荷传递）
-        auto attach_evt = event_terminal.build("", "", "Subscribed_Events", "Add");
+        auto attach_evt = event_terminal.build("", "", event_protocol::subscribed_events, event_protocol::add);
         //若事件构造失败
         if (attach_evt == nullptr)
         {
@@ -54,9 +54,9 @@ namespace engine
             return;
         }
         //写入目标对象名、权限密钥与订阅清单
-        attach_evt->config["object"] = "Log_Config_Bridge";
-        attach_evt->config["acl_key"] = static_cast<uint64_t>(acl_key);
-        attach_evt->config["subscribed_events"] = subscribed_events;
+        attach_evt->config[event_protocol::field_object] = "Log_Config_Bridge";
+        attach_evt->config[event_protocol::field_acl_key] = static_cast<uint64_t>(acl_key);
+        attach_evt->config[event_protocol::field_subscribed_events] = subscribed_events;
         //发送订阅事件（登记模块订阅清单）
         if (!event_terminal.send(attach_evt, acl_key))
             logger.error("Log_Config_Bridge::订阅事件发送失败");
@@ -66,16 +66,16 @@ namespace engine
     void Log_Config_Bridge::root_apply(const json& config)
     {
         //若未定义 root 字段
-        if (!config.contains("root"))
+        if (!config.contains(log_event::field_root))
             return;
         //若 root 字段非字符串
-        if (!config["root"].is_string())
+        if (!config[log_event::field_root].is_string())
         {
             logger.error("Log_Config_Bridge::root 字段非字符串\n已驳回");
             return;
         }
         //取根目录字符串（允许空串，表示整个项目）
-        const string root = config["root"].get<string>();
+        const string root = config[log_event::field_root].get<string>();
         //登记日志根目录
         logger.root_set(root);
         //打印根目录登记结果
@@ -87,16 +87,16 @@ namespace engine
     void Log_Config_Bridge::priority_apply(const json& config)
     {
         //若未定义 priority 字段
-        if (!config.contains("priority"))
+        if (!config.contains(log_event::field_priority))
             return;
         //若 priority 字段非字符串
-        if (!config["priority"].is_string())
+        if (!config[log_event::field_priority].is_string())
         {
             logger.error("Log_Config_Bridge::priority 字段非字符串\n已驳回");
             return;
         }
         //取优先级模式文本
-        const string mode = config["priority"].get<string>();
+        const string mode = config[log_event::field_priority].get<string>();
         //归属优先模式
         if (mode == "scope_first")
             logger.priority_set(Rule_Priority::Scope_First);
@@ -112,44 +112,44 @@ namespace engine
     void Log_Config_Bridge::verdict_apply(const json& config)
     {
         //若未定义 verdict_invert 字段
-        if (!config.contains("verdict_invert"))
+        if (!config.contains(log_event::field_verdict_invert))
             return;
         //若字段非布尔
-        if (!config["verdict_invert"].is_boolean())
+        if (!config[log_event::field_verdict_invert].is_boolean())
         {
             logger.error("Log_Config_Bridge::verdict_invert 字段非布尔\n已驳回");
             return;
         }
         //登记全局取反开关（true 取反 / false 按原义）
-        logger.verdict_invert_set(config["verdict_invert"].get<bool>());
+        logger.verdict_invert_set(config[log_event::field_verdict_invert].get<bool>());
     }
 
     //输出流配置应用
     void Log_Config_Bridge::streams_apply(const json& config)
     {
         //若未定义 streams 字段
-        if (!config.contains("streams"))
+        if (!config.contains(log_event::field_streams))
             return;
         //若 streams 字段非数组
-        if (!config["streams"].is_array())
+        if (!config[log_event::field_streams].is_array())
         {
             logger.error("Log_Config_Bridge::streams 字段非数组\n已驳回");
             return;
         }
         //逐条处理输出流条目
-        for (const auto& item : config["streams"])
+        for (const auto& item : config[log_event::field_streams])
         {
             //若条目字段无效
             if (!item.is_object() ||
-                !detail::field_check<string>(item, "path") ||
-                !detail::field_check<string>(item, "file"))
+                !detail::field_check<string>(item, log_event::field_path) ||
+                !detail::field_check<string>(item, log_event::field_file))
             {
                 logger.warn("Log_Config_Bridge::输出流条目字段无效，已略过该条目");
                 continue;
             }
             //取路径键与日志文件名
-            const string path = item["path"].get<string>();
-            const string file = item["file"].get<string>();
+            const string path = item[log_event::field_path].get<string>();
+            const string file = item[log_event::field_file].get<string>();
             //若输出流绑定失败
             if (!logger.stream_bind(path, file))
             {
@@ -165,16 +165,16 @@ namespace engine
     void Log_Config_Bridge::files_apply(const json& config)
     {
         //若未定义 files 字段
-        if (!config.contains("files"))
+        if (!config.contains(log_event::field_files))
             return;
         //若 files 字段非对象
-        if (!config["files"].is_object())
+        if (!config[log_event::field_files].is_object())
         {
             logger.error("Log_Config_Bridge::files 字段非对象\n已驳回");
             return;
         }
         //逐条处理文件许可
-        for (const auto& rule : config["files"].items())
+        for (const auto& rule : config[log_event::field_files].items())
         {
             //若许可值非布尔
             if (!rule.value().is_boolean())
@@ -191,16 +191,16 @@ namespace engine
     void Log_Config_Bridge::dirs_apply(const json& config)
     {
         //若未定义 dirs 字段
-        if (!config.contains("dirs"))
+        if (!config.contains(log_event::field_dirs))
             return;
         //若 dirs 字段非对象
-        if (!config["dirs"].is_object())
+        if (!config[log_event::field_dirs].is_object())
         {
             logger.error("Log_Config_Bridge::dirs 字段非对象\n已驳回");
             return;
         }
         //逐条处理目录许可
-        for (const auto& rule : config["dirs"].items())
+        for (const auto& rule : config[log_event::field_dirs].items())
         {
             //若许可值非布尔
             if (!rule.value().is_boolean())
@@ -217,16 +217,16 @@ namespace engine
     void Log_Config_Bridge::levels_apply(const json& config)
     {
         //若未定义 levels 字段
-        if (!config.contains("levels"))
+        if (!config.contains(log_event::field_levels))
             return;
         //若 levels 字段非对象
-        if (!config["levels"].is_object())
+        if (!config[log_event::field_levels].is_object())
         {
             logger.error("Log_Config_Bridge::levels 字段非对象\n已驳回");
             return;
         }
         //逐条处理级别许可
-        for (const auto& rule : config["levels"].items())
+        for (const auto& rule : config[log_event::field_levels].items())
         {
             //若许可值非布尔
             if (!rule.value().is_boolean())
@@ -266,7 +266,7 @@ namespace engine
     void Log_Config_Bridge::event_process(std::shared_ptr<Event> evt)
     {
         //日志配置加载
-        if (evt->category == "Log" && evt->tag == "Load")
+        if (evt->category == log_event::category && evt->tag == event_protocol::load)
         {
             //应用根目录配置
             root_apply(evt->config);
@@ -286,7 +286,7 @@ namespace engine
         }
 
         //日志配置卸载
-        if (evt->category == "Log" && evt->tag == "Unload")
+        if (evt->category == log_event::category && evt->tag == event_protocol::unload)
             config_unload();
     }
 }

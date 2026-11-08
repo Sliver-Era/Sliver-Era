@@ -1,8 +1,8 @@
 #pragma once
 //预编译头
 #include "Engine/EngineFoundation/common/前置头文件包含.h"
-//获取路径操作工具（路径键规范化）
-#include "Engine/EngineFoundation/src/tools/Detail/package/路径操作工具.h"
+//获取路径键规范化工具（只依赖预编译头与路径字符串转换，避免经路径操作工具反向依赖文件路径获取）
+#include "Engine/EngineFoundation/src/detail/methods/文件路径规范化.h"
 
 namespace engine
 {

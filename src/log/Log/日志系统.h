@@ -6,7 +6,7 @@
 //获取日志规则（根目录作用域与输出许可）
 #include "../Rule/日志规则.h"
 //获取标准库 format 特化集（错误码 / 错误条件 / 文件系统路径）
-#include "Engine/EngineFoundation/src/tools/Detail/标准库format特化.h"
+#include "Engine/EngineFoundation/src/detail/methods/标准库format特化.h"
 
 namespace engine
 {

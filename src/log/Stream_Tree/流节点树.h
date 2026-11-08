@@ -5,9 +5,7 @@
 #include "../Stream_Sink/输出目标.h"
 //获取节点缓存
 #include "../Node_Cache/节点缓存.h"
-//获取路径操作工具（路径键规范化）
-#include "Engine/EngineFoundation/src/tools/Detail/package/路径操作工具.h"
-//获取日志规则（越界截断与选择性输出判定）
+//获取日志规则（越界截断与选择性输出判定；路径键规范化由日志规则所用头提供）
 #include "../Rule/日志规则.h"
 
 namespace engine

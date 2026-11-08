@@ -2,7 +2,7 @@
 //预编译头
 #include "Engine/EngineFoundation/common/前置头文件包含.h"
 //获取事件系统运行包（事件终端与事件类型）
-#include "Engine/EngineFoundation/src/core/event/事件系统运行包.h"
+#include "Engine/EngineFoundation/src/event/事件系统运行包.h"
 
 //游戏引擎命名空间
 namespace engine

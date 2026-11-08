@@ -6,7 +6,7 @@
 //获取四叉树
 #include "../Quadtree/四叉树.h"
 //获取辅助算法
-#include "Engine/EngineFoundation/src/tools/Detail/二分查找.h"
+#include "Engine/EngineFoundation/src/detail/methods/二分查找.h"
 
 //展开命名空间
 namespace engine

@@ -64,7 +64,7 @@ EngineFoundation（EngineFoundation.lib） ──▶ EngineSystem（EngineSystem
 | --- | --- | --- |
 | EngineFoundation | 下游（本层依赖它） | 链接其已构建的 `EngineFoundation.lib`，使用 `Object`、`Object_Pool<T>`、`Event_Terminal`、`Event_Broker`、`detail`（`field_check` / `path_check` / `binary_search` 等）、`Engine_Env`、`logger` 等基础件 |
 | Engine（聚合层） | 上游（消费本层对外面） | 本层 `cmake/对外接口.cmake` 被聚合层 `include`，其 `BYJY_ENGINE_SYSTEM_OUT_*` 被摊平为 `BYJY_ENGINE_*` |
-| EngineRenderer | 上游（依赖本层） | 消费本层的中立场景数据：`关卡数据.h` / `场景数据.h` / `场景清单.h` / `关卡文本.h` / `level_transform_build`；场景装配、粒子宿主、资产缓存已在渲染层内部实现 |
+| EngineRenderer | 上游（依赖本层） | 消费本层的中立场景数据：`关卡数据.h` / `场景数据.h` / `场景清单.h` / `关卡文本.h` / `level_transform_build`；粒子模拟数据与粒子池（`src/effect/Particle/`）亦在本层，场景装配、粒子宿主、资产缓存已在渲染层内部实现 |
 | Application/Game | 上游（依赖本层） | 经 Engine 聚合层接入，取得 `EngineFoundation` + `EngineSystem` 两个库与全部包含路径（当前 `src/` 为空壳） |
 | Application/Test | 横跨 | 经 Engine 聚合层接入，按两个子层快照编译，承载单元测试；当前用例集中于 EngineFoundation，本层用例尚未落位 |
 
@@ -83,6 +83,7 @@ EngineFoundation（EngineFoundation.lib） ──▶ EngineSystem（EngineSystem
 | 实体子系统 | `src/entity/` | `Entity`、`Entity_Manager` | 「游戏对象」的创建、卸载、行为（决策树）驱动；实体是事件参与者与 Lua 行为脚本的宿主 |
 | 属性子系统 | `src/prop/` | `Prop`、`Prop_Distributor` | 实体的数值面板（`unordered_map<string,double>` 属性槽）；把「属性槽集合」按分发密钥安全地借给效应系统 |
 | 效应子系统 | `src/effect/` | `Prop_Effect`、`Effect_Manager` | 「技能/效果」的构建、分组、按执行阶段触发；效应以 Lua 脚本实现，修改实体的属性槽 |
+| 粒子子系统 | `src/effect/Particle/` | `Particle_State`、`Particle_System` | 图形 API-free 的粒子池与 CPU 参考模拟（容量 / 发射 / 力场 / 碰撞 / 生命周期）；与渲染层共用 32 / 40 字节 GPU 布局契约 |
 
 ### 2.2 核心特性
 
@@ -166,7 +167,8 @@ Engine/EngineSystem/
     │   └── Prop_Distributor/         # 属性槽分发器.h + 局部命名空间使用.h + core/属性槽分发器.cpp
     ├── effect/
     │   ├── Effect/                   # 效应.h + 局部命名空间使用.h + core/效应.cpp
-    │   └── Effect_Manager/           # 效应管理器.h + 局部命名空间使用.h + core/效应管理器.cpp
+    │   ├── Effect_Manager/           # 效应管理器.h + 局部命名空间使用.h + core/效应管理器.cpp
+    │   └── Particle/                 # 粒子数据.h + 粒子系统.h + core/{粒子数据,粒子系统}.cpp
     └── gui/
         └── Config_Editor/            # 配置编辑器（含独立 main，未接入静态库构建）
             ├── 配置编辑器.h / 实体配置模型.h / 配置编辑器_内部工具.h
@@ -453,7 +455,40 @@ public:
 
 **涉及文件**：`效应管理器.h`、`core/效应管理器.cpp`、`局部命名空间使用.h`。
 
-### 6.7 配置编辑器 `Config_Editor`（已迁往 `Application/Editor/src/Config_Editor/`）
+### 6.7 粒子系统 `Particle_System`（`src/effect/Particle/粒子系统.h`）
+
+**功能**：图形 API-free 的粒子池与 CPU 参考模拟。容量钳制在 `[1, 1048576]`（默认 8192）；分配走 LIFO 回收栈，回收后立即复用同一索引。`step` 按「重力 → 力场 → 阻尼 → 位置积分 → 碰撞 → 年龄」固定顺序推进，`emit` 用确定性 LCG 按发射形状采样。
+
+**对外接口**（关键签名）：
+
+```cpp
+class Particle_System
+{
+public:
+    void capacity_set(uint32_t capacity);                 //容量钳制与回收栈重建
+    uint32_t capacity_get(void) const;
+    uint32_t active_count_get(void) const;
+    bool spawn(uint32_t& index_out);                      //分配（池满返回假）
+    bool recycle(uint32_t index);                         //回收（越界 / 重复返回假）
+    void clear(void);                                     //清空并复位回收栈
+    uint32_t step(const Particle_Params& params, float dt);   //推进一个固定步
+    uint32_t emit(const Particle_Emitter& emitter, uint32_t budget);  //发射
+    void seed_set(uint32_t seed);
+    Particle_State* data_get(void);                       //状态数组（GPU 上传 / 对照共用）
+    uint8_t* alive_get(void);                             //逐索引活跃标记（GPU 回写目标）
+};
+```
+
+**内部实现要点**：
+
+- 数据契约在同目录 `粒子数据.h`：`Particle_State` 32 字节、`Particle_Force_Field` 40 字节，与 GPU `std430` 布局逐字段一致；`PARTICLE_STRIDE` / `PARTICLE_FORCE_STRIDE` 是跨层契约。
+- `data_get()` / `alive_get()` 暴露底层 `std::vector` 的数据指针，渲染层据此绑定上传并回读（GPU 常驻推进直接覆写活跃标记）。
+- `emit` 的 LCG（`1664525 / 1013904223`）与 GPU 端一致，用于 CPU / GPU 逐粒子对照。
+- 参数校验 `particle_emitter_valid` / `particle_params_valid` 位于 `core/粒子数据.cpp`，越界值一律拒绝并保持既有配置。
+
+**涉及文件**：`粒子数据.h`、`粒子系统.h`、`core/粒子数据.cpp`、`core/粒子系统.cpp`。
+
+### 6.8 配置编辑器 `Config_Editor`（已迁往 `Application/Editor/src/Config_Editor/`）
 
 基于 Dear ImGui + GLFW + OpenGL 的图形化配置编辑器，含独立 `int main(void)`（见第十节）。模块清单与文件规模：
 

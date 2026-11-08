@@ -4,7 +4,7 @@
 //获取预定义事件类型
 #include "../Event/事件.h"
 //获取数据校验工具
-#include "Engine/EngineFoundation/src/tools/Detail/package/数据校验工具.h"
+#include "Engine/EngineFoundation/src/detail/methods/package/数据校验工具.h"
 
 namespace engine
 {

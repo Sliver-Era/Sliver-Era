@@ -1,6 +1,6 @@
-#include "src/core/event/Event_Terminal/局部命名空间使用.h"
+#include "../局部命名空间使用.h"
 //获取日志系统
-#include "src/tools/Logging/日志系统运行包.h"
+#include "src/log/日志系统运行包.h"
 
 namespace engine
 {

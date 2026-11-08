@@ -6,7 +6,7 @@
 //获取终端接口
 #include "终端端口.h"
 //获取随机数生成器(用于权限密钥生成)
-#include "Engine/EngineFoundation/src/tools/Random_Generator/随机数生成器.h"
+#include "Engine/EngineFoundation/src/detail/class/Random_Generator/随机数生成器.h"
 
 //游戏引擎命名空间
 namespace engine

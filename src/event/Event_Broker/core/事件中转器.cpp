@@ -1,5 +1,5 @@
-#include "src/core/event/Event_Broker/局部命名空间使用.h"
-#include "src/tools/Logging/日志系统运行包.h"
+#include "../局部命名空间使用.h"
+#include "src/log/日志系统运行包.h"
 
 //引擎命名空间
 namespace engine
@@ -19,10 +19,10 @@ namespace engine
 
         //中转站保留事件标识（自身处理契约的入口标识）
         vector<Event_Identity> reserved_identities{
-            Event_Identity("Subscriber", "Check"),
-            Event_Identity("Subscriber", "Detach"),
-            Event_Identity("Subscribed_Events", "Add"),
-            Event_Identity("Subscribed_Events", "Remove")
+            Event_Identity(event_protocol::subscriber, event_protocol::check),
+            Event_Identity(event_protocol::subscriber, event_protocol::detach),
+            Event_Identity(event_protocol::subscribed_events, event_protocol::add),
+            Event_Identity(event_protocol::subscribed_events, event_protocol::remove)
         };
         //逐条登记自身订阅权限（否则这些事件会被事件接收直接丢弃）
         for (const auto& identity : reserved_identities)
@@ -75,7 +75,7 @@ namespace engine
             return;
         }
         //若事件标签为已占用字段
-        if(evt->tag == "All")
+        if(evt->tag == event_protocol::all)
         {
             logger.warn("Event_Broker::All标签已占用\n已略过该事件处理");
             return;
@@ -108,7 +108,7 @@ namespace engine
         vector<uint64_t> acl_keys = acl_set[{ evt->category, evt->tag }];
         //获取该事件分类满订阅者列表
         acl_keys.insert(acl_keys.end(),
-            acl_set[{ evt->category, "All" }].begin(), acl_set[{ evt->category, "All" }].end());
+            acl_set[{ evt->category, event_protocol::all }].begin(), acl_set[{ evt->category, event_protocol::all }].end());
 
         //发送事件
         for (int send_time = 0; send_time < acl_keys.size(); send_time++)
@@ -141,35 +141,35 @@ namespace engine
         auto& config = evt->config;
 
         //若目标对象字段无效
-        if (!detail::field_check<string>(config, "object"))
+        if (!detail::field_check<string>(config, event_protocol::field_object))
         {
             logger.warn("Event_Broker::目标对象字段无效\n已略过该事件");
             return;
         }
 
         //若为订阅者分支
-        if (evt->category == "Subscriber")
+        if (evt->category == event_protocol::subscriber)
         {
             //若为订阅者查看分支
-            if(evt->tag == "Check")
+            if(evt->tag == event_protocol::check)
             {
                 //获取待查询对象名
-                string obejct = config["object"];
+                string obejct = config[event_protocol::field_object];
                 //查询目标对象
                 auto it = mapping.find(obejct);
                 //若目标对象不存在
                 if (it == mapping.end())
                     //设置目标对象不存在
-                    config["subscribed"] = false;
+                    config[event_protocol::field_subscribed] = false;
                 else
                     //设置目标对象存在
-                    config["subscribed"] = true;
+                    config[event_protocol::field_subscribed] = true;
             }
             //若为订阅者退出分支
-            else if (evt->tag == "Detach")
+            else if (evt->tag == event_protocol::detach)
             {
                 //获取待退出订阅者名称
-                string object = config["object"];
+                string object = config[event_protocol::field_object];
                 //待退出订阅者权限密钥记录
                 uint64_t suscriber_key;
                 //查找待退出订阅者
@@ -186,13 +186,13 @@ namespace engine
                 }
                 
                 //若目标对象权限密钥字段无效
-                if (!detail::field_check<uint64_t>(config, "acl_key"))
+                if (!detail::field_check<uint64_t>(config, event_protocol::field_acl_key))
                 {
                     logger.warn("Event_Broker::目标对象权限密钥字段无效\n已略过该事件");
                     return;
                 }
                 //检查密钥是否匹配
-                if (suscriber_key == config["acl_key"])
+                if (suscriber_key == config[event_protocol::field_acl_key])
                 {
                     //取消订阅者编号映射
                     mapping.erase(object);
@@ -224,10 +224,10 @@ namespace engine
             }
         }
         //若为订阅事件分支
-        if (evt->category == "Subscribed_Events")
+        if (evt->category == event_protocol::subscribed_events)
         {
             //获取目标订阅者名称
-            string object = config["object"];
+            string object = config[event_protocol::field_object];
             //目标订阅者权限密钥记录
             uint64_t suscriber_key;
             //查找目标订阅者
@@ -244,38 +244,38 @@ namespace engine
             }
 
             //若目标对象权限密钥字段无效
-            if (!detail::field_check<uint64_t>(config, "acl_key"))
+            if (!detail::field_check<uint64_t>(config, event_protocol::field_acl_key))
             {
                 logger.warn("Event_Broker::目标对象权限密钥字段无效\n已略过该事件");
                 return;
             }
             //检查密钥是否匹配
-            if (suscriber_key == config["acl_key"])
+            if (suscriber_key == config[event_protocol::field_acl_key])
             {
                 //若为订阅事件添加分支
-                if (evt->tag == "Add")
+                if (evt->tag == event_protocol::add)
                 {
                     //若订阅事件清单缺失或非数组
-                    if (!detail::field_check<nlohmann::json>(config, "subscribed_events") ||
-                        !config["subscribed_events"].is_array())
+                    if (!detail::field_check<nlohmann::json>(config, event_protocol::field_subscribed_events) ||
+                        !config[event_protocol::field_subscribed_events].is_array())
                     {
                         logger.warn("Event_Broker::订阅事件清单缺失或非数组\n已略过该事件");
                         return;
                     }
 
                     //逐条登记订阅事件
-                    for (const auto& subscribed_event : config["subscribed_events"])
+                    for (const auto& subscribed_event : config[event_protocol::field_subscribed_events])
                     {
                         //若订阅事件标识信息不完整
-                        if (!detail::field_check<string>(subscribed_event, "category") ||
-                            !detail::field_check<string>(subscribed_event, "tag"))
+                        if (!detail::field_check<string>(subscribed_event, event_protocol::field_category) ||
+                            !detail::field_check<string>(subscribed_event, event_protocol::field_tag))
                         {
                             logger.warn("Event_Broker::订阅事件标识信息不完整\n已略过该事件");
                             continue;
                         }
 
                         //获取订阅事件标识
-                        Event_Identity identity(subscribed_event["category"], subscribed_event["tag"]);
+                        Event_Identity identity(subscribed_event[event_protocol::field_category], subscribed_event[event_protocol::field_tag]);
                         //获取该事件标识订阅者列表
                         auto& acl_keys = acl_set[identity];
                         //已授权标记
@@ -299,29 +299,29 @@ namespace engine
                     logger.info("事件中转站订阅事件已登记");
                 }
                 //若为订阅事件移除分支
-                else if (evt->tag == "Remove")
+                else if (evt->tag == event_protocol::remove)
                 {
                     //若订阅事件清单缺失或非数组
-                    if (!detail::field_check<nlohmann::json>(config, "subscribed_events") ||
-                        !config["subscribed_events"].is_array())
+                    if (!detail::field_check<nlohmann::json>(config, event_protocol::field_subscribed_events) ||
+                        !config[event_protocol::field_subscribed_events].is_array())
                     {
                         logger.warn("Event_Broker::订阅事件清单缺失或非数组\n已略过该事件");
                         return;
                     }
 
                     //逐条移除订阅事件
-                    for (const auto& subscribed_event : config["subscribed_events"])
+                    for (const auto& subscribed_event : config[event_protocol::field_subscribed_events])
                     {
                         //若订阅事件标识信息不完整
-                        if (!detail::field_check<string>(subscribed_event, "category") ||
-                            !detail::field_check<string>(subscribed_event, "tag"))
+                        if (!detail::field_check<string>(subscribed_event, event_protocol::field_category) ||
+                            !detail::field_check<string>(subscribed_event, event_protocol::field_tag))
                         {
                             logger.warn("Event_Broker::订阅事件标识信息不完整\n已略过该事件");
                             continue;
                         }
 
                         //获取订阅事件标识
-                        Event_Identity identity(subscribed_event["category"], subscribed_event["tag"]);
+                        Event_Identity identity(subscribed_event[event_protocol::field_category], subscribed_event[event_protocol::field_tag]);
                         //查找该事件标识订阅者列表
                         auto acl_it = acl_set.find(identity);
                         //若该事件标识未登记任何订阅者

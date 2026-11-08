@@ -4,7 +4,7 @@
 //获取 JSON 解析外部库
 #include <nlohmann/json.hpp>
 //获取哈希混合工具
-#include "Engine/EngineFoundation/src/tools/Detail/哈希混合.h"
+#include "Engine/EngineFoundation/src/detail/methods/哈希混合.h"
 
 //游戏引擎命名空间
 namespace engine

@@ -1,5 +1,6 @@
 #pragma once
 #include "事件中转器.h"
+#include "../Common/事件协议.h"
 
 // ---------- 基础类型 ----------
 using std::string;

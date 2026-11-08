@@ -4,9 +4,9 @@
 //获取预定义事件类型
 #include "../Event/事件.h"
 //获取随机数生成器(用于权限密钥生成)
-#include "Engine/EngineFoundation/src/tools/Random_Generator/随机数生成器.h"
+#include "Engine/EngineFoundation/src/detail/class/Random_Generator/随机数生成器.h"
 //获取日志系统
-#include "Engine/EngineFoundation/src/tools/Logging/日志系统运行包.h"
+#include "Engine/EngineFoundation/src/log/日志系统运行包.h"
 
 namespace engine
 {

@@ -7,7 +7,7 @@ namespace engine
     //对象前向声明
     class Object;
     //对象池前向声明
-    template <typename T, typename Projector, typename Key>
+    template <typename T, typename Key>
         requires std::is_base_of_v<Object, T>
     class Object_Pool;
 
@@ -21,15 +21,12 @@ namespace engine
 		bool is_valid = false;
 	public:
         //对象池友元声明
-        template <typename T, typename Projector, typename Key>
+        template <typename T, typename Key>
             requires std::is_base_of_v<Object, T>
         friend class Object_Pool;
     public:
         //默认构造
         Object() = default;
-        //带参构造
-        explicit Object(uint64_t id, bool valid = true) noexcept
-            : object_ID(id), is_valid(valid){}
         //拷贝构造
         Object(const Object&) = default;
         //拷贝赋值
@@ -58,18 +55,13 @@ namespace engine
             }
             return *this;
         }
-        //析构函数
-        virtual ~Object() = default;
+        //析构函数 —— 非虚，禁止经基类指针删除（避免虚表开销）
+        ~Object() = default;
 
 		//ID获取
 		uint64_t ID(void) const
 		{
 			return this->object_ID;
-		}
-		//对象有效性获取
-		bool valid(void) const
-		{
-			return is_valid;
 		}
 	};
 }

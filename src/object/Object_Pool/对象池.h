@@ -4,9 +4,9 @@
 //获取预定义对象类型
 #include "../Object/对象.h"
 //获取数值分配器
-#include "Engine/EngineFoundation/src/tools/Number_Allocator/数值分配器.h"
+#include "Engine/EngineFoundation/src/detail/class/Number_Pool/数值分配器.h"
 //获取二分查找算法
-#include "Engine/EngineFoundation/src/tools/Detail/二分查找.h"
+#include "Engine/EngineFoundation/src/detail/methods/二分查找.h"
 
 namespace engine
 {
@@ -27,30 +27,12 @@ namespace engine
 	};
 
 	//对象池 —— 模板需从对象中派生
-	//Projector为对象定位投影器类型，Key由投影器返回类型自动推导
-	template <typename T, typename Projector = Default_Projector,
-		typename Key = std::invoke_result_t<Projector, const T&>>
+	//Key为对象定位键类型，投影器与比较器均为运行期可替换的调用对象
+	template <typename T, typename Key = uint64_t>
 		requires std::is_base_of_v<Object, T>
 	class Object_Pool
 	{
 	private:
-		//比较器
-		class Comparator
-		{
-			std::variant<std::ranges::less, std::ranges::greater> v;
-		public:
-			Comparator() = default;
-			Comparator(std::ranges::less l) : v(l) {}
-			Comparator(std::ranges::greater g) : v(g) {}
-
-			template <typename A, typename B>
-			bool operator()(A&& a, B&& b) const
-			{
-				return std::visit(
-					[&](auto cmp) { return cmp(std::forward<A>(a), std::forward<B>(b)); },
-					v);
-			}
-		};
 		//对象记录
 		struct Object_Record
 		{
@@ -61,9 +43,9 @@ namespace engine
 		};
 
 		//ID分配器
-		Number_Allocator<uint64_t> ID_allocator;
+		Number_Pool<uint64_t> ID_allocator;
 		//索引分配器
-		Number_Allocator<uint64_t> index_allocator;
+		Number_Pool<uint64_t> index_allocator;
 
 		//ID分配起点
 		uint64_t min_ID = 1;
@@ -72,18 +54,17 @@ namespace engine
 		//对象集合
 		std::vector<T> objects;
 
-		//对象定位投影器(无状态时经空基类优化不占空间)
-		[[no_unique_address]] Projector projector;
+		//对象定位投影器(运行期可替换)
+		std::function<Key(const T&)> projector;
 		//对象定位方式标记
 		bool is_sorted = false;
 		//对象映射
 		std::unordered_map<Key, uint64_t> mapping;
-		//比较方式(默认升序)
-		Comparator compare;
+		//投影键比较方式(默认升序，运行期可替换)
+		std::function<bool(const Key&, const Key&)> compare = std::less<Key>{};
 
-	public:
-		//构造函数
-		Object_Pool()
+		//分配器初始化
+		void pool_init(void)
 		{
 			//设置后进先出机制分配回收ID
 			ID_allocator.set(Allocate_Order::LIFO);
@@ -93,15 +74,32 @@ namespace engine
 			//显示指定起始索引
 			index_allocator.set(0);
 		}
+
+	public:
+		//默认构造函数 —— 仅在键可由对象ID转换时可用（默认按ID定位）
+		Object_Pool()
+			requires std::is_convertible_v<uint64_t, Key>
+		{
+			//初始化分配器
+			pool_init();
+			//默认以对象ID为定位键
+			projector = Default_Projector{};
+		}
+		//带投影器构造函数 —— 自定义键类型或需要外部注入投影器时使用
+		explicit Object_Pool(std::function<Key(const T&)> proj)
+		{
+			//初始化分配器
+			pool_init();
+			//记录外部投影器
+			projector = std::move(proj);
+		}
 		//析构函数
 		~Object_Pool()
 		{}
 
 		//对象排列方式设置
-		template <typename Compare = std::ranges::less>
-			requires std::same_as<Compare, std::ranges::less> ||
-		std::same_as<Compare, std::ranges::greater>
-			void mode_set(Object_Order mode, Compare cmp = {})
+		void mode_set(Object_Order mode,
+			std::function<bool(const Key&, const Key&)> cmp = {})
 		{
 			//若为哈希定位模式设置
 			if (mode == Object_Order::Unorder && is_sorted)
@@ -112,11 +110,11 @@ namespace engine
 				for (uint64_t rebuild_index = 0; rebuild_index < objects.size(); rebuild_index++)
 				{
 					//若对象合法则建立映射
-					if (objects[rebuild_index].valid())
+					if (objects[rebuild_index].is_valid)
 						mapping.insert({ projector(objects[rebuild_index]), rebuild_index });
 				}
 				//重置比较方式
-				compare = std::ranges::less();
+				compare = std::less<Key>{};
 			}
 			//若为排序模式设置
 			else if (mode == Object_Order::Sorted)
@@ -130,8 +128,9 @@ namespace engine
 					mapping.clear();
 				}
 
-				//记录排序方式
-				compare = cmp;
+				//记录排序方式(未指定则按升序)
+				compare = cmp ? std::move(cmp)
+					: std::function<bool(const Key&, const Key&)>(std::less<Key>{});
 				//重排序对象
 				sort();
 			}
@@ -247,11 +246,51 @@ namespace engine
 
 			return true;
 		}
-		//对象卸载 —— 单对象重载
+		//对象尝试卸载 —— 目标不存在时静默返回
+		bool try_unload(const Key& key)
+		{
+			//获取目标对象迭代器
+			auto it = find(key);
+			//若目标对象不存在则返回卸载失败
+			if (it == objects.end())
+				return false;
+			//记录目标对象索引与ID
+			uint64_t target_index = static_cast<uint64_t>(it - objects.begin());
+			uint64_t target_ID = it->ID();
+			//若为哈希定位模式则卸载索引映射
+			if (!is_sorted)
+				mapping.erase(key);
+			//回收目标对象ID
+			ID_allocator.recycle(target_ID);
+			//设置预留无效ID
+			objects[target_index].object_ID = min_ID - 1;
+			//设置目标对象记录不合法
+			objects[target_index].is_valid = false;
+			//若目标不在无效区边界则交换到边界
+			if (target_index != min_valid_index)
+			{
+				//交换目标与无效区边界对象
+				std::swap(objects[target_index], objects[min_valid_index]);
+				//若为哈希定位模式则同步更新被交换有效对象映射索引
+				if (!is_sorted)
+					mapping.insert_or_assign(projector(objects[target_index]), target_index);
+			}
+			//回收目标对象索引
+			index_allocator.recycle(min_valid_index);
+			//更新有效索引起点
+			min_valid_index++;
+			//若当前为排序模式则重排序对象集合
+			if (is_sorted)
+				sort();
+			//返回卸载成功
+			return true;
+		}
+		//对象卸载 —— 单对象重载（目标不存在时告警）
 		void unload(const Key& key)
 		{
-			//调用多对象重载
-			unload(std::vector<Key>{key});
+			//尝试卸载目标对象
+			if (!try_unload(key))
+				logger.warn("Object_Pool::目标对象不存在: {}", key);
 		}
 		//对象卸载 —— 多对象重载
 		void unload(const std::vector<Key>& keys)

@@ -76,5 +76,34 @@ namespace engine
             //返回规范化路径键
             return path;
         }
+
+        //路径前缀判定（前缀是否为目标路径的目录前缀；逐节比较）
+        inline bool path_prefix_check(const std::filesystem::path& prefix,
+            const std::filesystem::path& target)
+        {
+            //空前缀不构成有效前缀
+            if (prefix.empty())
+                return false;
+            //逐节比对
+            auto prefix_it = prefix.begin();
+            auto target_it = target.begin();
+            for (; prefix_it != prefix.end(); ++prefix_it, ++target_it)
+            {
+                //目标路径短于前缀
+                if (target_it == target.end())
+                    return false;
+                //当前节不同
+                if (*prefix_it != *target_it)
+                    return false;
+            }
+            //所有节均匹配
+            return true;
+        }
+        //路径前缀判定 —— string重载
+        inline bool path_prefix_check(const std::string& prefix, const std::string& target)
+        {
+            //转化为标准路径后调用path重载
+            return path_prefix_check(string_to_path(prefix), string_to_path(target));
+        }
     }
 }

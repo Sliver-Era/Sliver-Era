@@ -2,7 +2,7 @@
 //预编译头
 #include "Engine/EngineFoundation/common/前置头文件包含.h"
 //获取日志系统
-#include "Engine/EngineFoundation/src/tools/Logging/日志系统运行包.h"
+#include "Engine/EngineFoundation/src/log/日志系统运行包.h"
 
 namespace engine
 {
@@ -16,7 +16,7 @@ namespace engine
 	//数值池 —— 模板参数 T 指定分配数值类型
 	template <typename T = uint64_t>
 		requires std::is_integral_v<T>
-	class Number_Allocator
+	class Number_Pool
 	{
 	private:
 		//数值分配方式
@@ -40,8 +40,8 @@ namespace engine
 			//若待分配新数值大于分配起点
 			if(min_number < next_number)
 			{
-				logger.info("Number_Allocator::分配起点小于当前待分配新数值");
-				logger.info("Number_Allocator::待分配数值保持当前大小");
+				logger.info("Number_Pool::分配起点小于当前待分配新数值");
+				logger.info("Number_Pool::待分配数值保持当前大小");
 			}
 			else
 				next_number = min_number;
@@ -80,7 +80,7 @@ namespace engine
 				//若可分配数值耗尽
 				if (next_number == (std::numeric_limits<T>::max)())
 				{
-					logger.warn("Number_Allocator::数值分配殆尽\n已进行回绕分配");
+					logger.warn("Number_Pool::数值分配殆尽\n已进行回绕分配");
 					//获取可分配新数值
 					number = next_number = (std::numeric_limits<T>::min)();
 				}

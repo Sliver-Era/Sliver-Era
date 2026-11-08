@@ -2,6 +2,8 @@
 
 > 依据版次：EngineRenderer 672a4bf ｜ 依据：当前工作区源码（含未提交改动） ｜ 更新：2026-11-08
 
+> 本版次加深：`Ui_Context` 控件级公开接口全量登记（原缺 33 项，含 label/checkbox/slider 创建、checked/value 读写、系统输入名/模态/命令绑定、焦点同步、键盘总闸、本帧按压标记与文本路由），并补齐 `frame_begin` 的 11 步固定顺序与命中规则。
+
 ## 一、文件内目录
 
 本模块覆盖 `Engine/EngineRenderer/src/render/` 下两个并列子目录，共 15 个文件。快照内 `Application/Game/星屑弹幕/external/silver_era/include/...` 下的同名头是外部使用方的随包拷贝，不属于本模块源码，不重复登记。本版次新增 `UI/UI事件桥.h` 与 `UI/core/UI事件桥.cpp`（系统输入 / 焦点 / 命令 / 文本的事件接入），并新增 UI 纯色与 UI 文字两对着色器。
@@ -363,32 +365,74 @@ public:
     void shutdown(void);                                  // 清空控件树与交互状态（根节点也清除）
     Ui_Handle root_get(void) const;                       // 空树返回 0，否则恒为 1
 
+    //—— 控件创建（七种）——
     Ui_Handle panel_create(Ui_Handle parent, const Ui_Rect& rect, const Ui_Color& color);
     Ui_Handle button_create(Ui_Handle parent, const Ui_Rect& rect, const std::string& label,
         void (*on_click)(Ui_Handle, void*) = nullptr, void* user = nullptr,
         const Ui_Color& color = Ui_Color{ 0.20f, 0.20f, 0.50f, 1.0f });
     Ui_Handle text_box_create(Ui_Handle parent, const Ui_Rect& rect, const std::string& text);
-    bool destroy(Ui_Handle handle);
+    Ui_Handle label_create(Ui_Handle parent, const Ui_Rect& rect, const std::string& text,
+        const Ui_Color& text_color = Ui_Color{ 1.0f, 1.0f, 1.0f, 1.0f });
+    Ui_Handle checkbox_create(Ui_Handle parent, const Ui_Rect& rect, const std::string& label,
+        bool checked = false, void (*on_toggle)(Ui_Handle, bool, void*) = nullptr, void* user = nullptr);
+    Ui_Handle slider_create(Ui_Handle parent, const Ui_Rect& rect, float value,
+        void (*on_value)(Ui_Handle, float, void*) = nullptr, void* user = nullptr);
+    bool destroy(Ui_Handle handle);                       // 含全部后代
 
+    //—— 通用属性与状态 ——
     bool rect_set(Ui_Handle handle, const Ui_Rect& rect);
     bool rect_get(Ui_Handle handle, Ui_Rect& rect_out) const;
     bool color_set(Ui_Handle handle, const Ui_Color& color);
     bool label_set(Ui_Handle handle, const std::string& label);
-    bool text_set(Ui_Handle handle, const std::string& text);
+    bool text_set(Ui_Handle handle, const std::string& text);   // 光标移到末尾
     bool text_get(Ui_Handle handle, std::string& text_out) const;
+    bool checked_get(Ui_Handle handle) const;
+    bool checked_set(Ui_Handle handle, bool checked);
+    bool value_get(Ui_Handle handle, float& value_out) const;
+    bool value_set(Ui_Handle handle, float value);              // 钳到 0..1
     bool visible_set(Ui_Handle handle, bool visible);
     bool enabled_set(Ui_Handle handle, bool enabled);
-    bool clicked_consume(Ui_Handle handle);
+    bool clicked_consume(Ui_Handle handle);                     // 取走即清零
     bool hovered_get(Ui_Handle handle) const;
     bool focused_get(Ui_Handle handle) const;
 
+    //—— 系统输入 / UI 事件桥对接 ——
+    const std::string& focused_input_name_get(void) const;
+    void focus_clear(void);
+    void system_focus_sync(const std::string& child);
+    void keyboard_gate_set(bool enabled);
+    bool keyboard_gate_get(void) const;
     bool text_focus_active(void) const;
-    void font_set(uint64_t font);
-    uint64_t font_get(void) const;
+    const std::string& text_focus_input_name(void) const;
+    bool input_name_set(Ui_Handle handle, const std::string& name);
+    std::string input_name_get(Ui_Handle handle) const;
+    void input_root_name_set(const std::string& name);
+    const std::string& input_root_name_get(void) const;
+    void input_outside_name_set(const std::string& name);
+    const std::string& input_outside_name_get(void) const;
+    bool modal_set(Ui_Handle handle);                           // 需已绑定 input_name
+    void modal_clear(void);
+    const std::string& modal_input_name_get(void) const;
+    void command_bind(const std::string& command, Ui_Handle handle);
+    void command_unbind(const std::string& command);
+    bool command_dispatch(const std::string& command);
+    void system_focus_apply(const std::string& main, const std::string& child,
+        const std::string& modal, bool text);
+    bool system_focused_get(Ui_Handle handle) const;
+    bool system_text_apply(const std::string& text);
+    const std::string& pressed_input_name_get(void) const;
+    bool press_outside_get(void) const;
+    bool press_any_get(void) const;
+    void text_route_set(bool route);
+    bool text_route_get(void) const;
 
-    std::size_t node_count(void) const;
+    //—— 字体与查询 ——
+    void font_set(uint64_t font);                               // 0 = 不绘制文本
+    uint64_t font_get(void) const;
+    std::size_t node_count(void) const;                         // 含根与已销毁空槽
     const Ui_Node* node_at(std::size_t index) const;
 
+    //—— 帧交互 ——
     void frame_begin(const Input_Frame& input);
 };
 ```
@@ -413,6 +457,66 @@ public:
 | `node_count(void) const` | 槽位总数（含根、含已销毁空槽）。 | 无。 |
 | `node_at(std::size_t) const` | 按槽位取只读节点；越界或已销毁 → `nullptr`。 | 无。 |
 | `frame_begin(const Input_Frame&)` | 每帧一次：刷根矩形为窗口客户区、清点击标记、校验焦点、命中测试刷新悬停、处理左键按下/抬起沿、刷新按下态、编辑焦点文本框（详见 §七）。 | 树为空时除根处理外均为空操作；不产生日志。 |
+
+#### 3.10.1 控件创建补充
+
+| 成员 | 语义 / 前置 | 失败行为 |
+| --- | --- | --- |
+| `label_create` | 建 `Label` 节点，写入 `text` 与 `text_color`；不参与命中，只绘制。 | 父无效 → 挂根；树空 → 0。 |
+| `checkbox_create` | 建 `Checkbox` 节点，写入 `label`、`checked`、`on_toggle`、`user`，背景 `(0.02,0.02,0.05,0.95)`、文本白。 | 同上。 |
+| `slider_create` | 建 `Slider` 节点，初值先钳到 `0..1`，写入 `on_value`、`user`，背景 `(0.08,0.08,0.12,1)`。 | 同上。 |
+
+七种创建都走同一内部流程：父句柄为 0 / 越界 / 已销毁 → 改挂根节点；树为空 → 返回 0；否则复用**第一个** `alive == false` 的空槽，再追加新槽（`handle = 下标 + 1`）。节点默认背景透明、文本白。
+
+#### 3.10.2 属性与状态读写
+
+| 成员 | 语义 / 前置 | 失败行为 |
+| --- | --- | --- |
+| `checked_get / checked_set` | 读 / 写 `Ui_Node::checked`；不做控件类型校验，对非复选框节点同样生效。 | 句柄无效 → `false`（不写）。 |
+| `value_get / value_set` | 读 / 写 `Ui_Node::value`；`value_set` 把值钳到 `0..1`，且 `NaN`/负值按 0 处理。 | 句柄无效 → `false`。 |
+| `text_set / text_get` | `text_set` 写文本并把 `caret` 移到末尾；`text_get` 原样输出 `text`（不限控件类型）。 | 句柄无效 → `false`。 |
+| `visible_set / enabled_set` | 写标记；置假且该节点正持焦点时调用 `focus_set(0)` 清焦点。 | 句柄无效 → `false`。 |
+| `clicked_consume / hovered_get / focused_get` | 取走单击标记（读后清零）/ 只读悬停 / 只读本地焦点。 | 句柄无效 → `false`。 |
+
+#### 3.10.3 系统输入 / UI 事件桥对接
+
+| 成员 | 语义 / 前置 | 失败行为 |
+| --- | --- | --- |
+| `input_name_set / input_name_get` | 绑定 / 读取控件的系统输入对象名；空名 = 不参与系统焦点与文本路由。 | 句柄无效 → `false` / 空串。 |
+| `input_root_name_set / _get` | UI 主对象名，仅缓存，由事件桥在 `FocusChanged` 判定时读取。 | 无。 |
+| `input_outside_name_set / _get` | 点击 UI 外部时系统的目标对象名，仅缓存。 | 无。 |
+| `modal_set` | 目标控件必须存在且 `input_name` 非空，否则返回假；成功则 `modal_input_name = node->input_name`。 | 返回假，不改原模态。 |
+| `modal_clear / modal_input_name_get` | 清空 / 读取模态根名。 | 无。 |
+| `command_bind / command_unbind` | 绑定或解除「系统语义命令 → 控件」；控件不存在时忽略；同命令后绑覆盖先绑。 | 无。 |
+| `command_dispatch` | 查绑定 → 控件必须存活、可见、可用；`Button` 置 `clicked` 并调 `on_click`，`Checkbox` 切换 `checked` 并调 `on_toggle`，其余类型不触发。 | 未绑定 / 控件不可用 / 类型不支持 → `false`。 |
+| `system_focus_apply` | 先清全部 `system_focused`；`target = child 非空 ? child : main`；把 `input_name == target` 或 `input_name == modal` 的存活控件置 `system_focused`；`text` 参数当前未使用。 | 无。 |
+| `system_focused_get` | 读 `Ui_Node::system_focused`。 | 句柄无效 → `false`。 |
+| `system_text_apply` | 空文本返回假；焦点必须是已绑定 `input_name` 的 `Text_Box`；`caret` 越界先钳到末尾，再在光标处插入并推进。 | 空文本 / 焦点不符 → `false`。 |
+| `focused_input_name_get` | 焦点控件的 `input_name`；无焦点或未绑定返回**静态空串**（避免悬空引用）。 | 无。 |
+| `text_focus_input_name` | 仅当焦点为 `Text_Box` 时返回其 `input_name`，否则静态空串。 | 无。 |
+| `focus_clear` | `focus_set(0)` 并终止滑动条拖拽（`slider_drag = 0`）。 | 无。 |
+| `system_focus_sync` | `child` 为空 → 保持本地焦点；本地焦点已同名 → 空操作；否则按创建顺序线性查找「同名 + 可聚焦 + 可见 + 可用」的控件并聚焦，同时终止拖拽。 | 找不到同名控件 → 保持原焦点。 |
+| `keyboard_gate_set / get` | 键盘交互总闸，默认 `true`；关闭时 `frame_begin` 不响应 Tab 导航与 Enter/空格激活，鼠标交互不受影响。 | 无。 |
+| `pressed_input_name_get` | 本帧左键按下命中的控件系统输入名；`frame_begin` 每帧先清空，仅命中带名字控件时写入。 | 无。 |
+| `press_outside_get` | 本帧左键按下且 `hovered == 0`（未命中任何控件）时为真。 | 无。 |
+| `press_any_get` | 本帧是否发生左键按下。 | 无。 |
+| `text_route_set / get` | 为真且焦点文本框已绑定 `input_name` 时，`frame_begin` **跳过**本地 `input.text.committed` 插入，文本改由 `system_text_apply` 落盘；为假时本地直接拼接。 | 无。 |
+
+#### 3.10.4 `frame_begin` 固定执行顺序
+
+1. 根节点矩形刷成窗口客户区 `(0, 0, window_width, window_height)`。
+2. 清全部节点的 `clicked`。
+3. 复位 `pressed_input_name`、`press_outside`、`press_any`。
+4. 校验当前焦点：节点不存在、不可聚焦、不可见或不可用 → `focus_set(0)`。
+5. `keyboard_gate` 为真且 Tab 按下沿 → `focus_navigate(!shift)`。
+6. 悬停：`hovered = input.window_focused ? hit_test(pointer) : 0`；逐节点写 `hovered` 视觉位（仅可聚焦控件）。
+7. 左键按下沿：清 `pressed` / `slider_drag`，置 `press_any = true`、`press_outside = (hovered == 0)`；命中节点带 `input_name` 时记 `pressed_input_name`；命中可聚焦控件 → 记 `pressed` 并 `focus_set`，`Slider` 另起拖拽并按指针横坐标取值；未命中可聚焦控件（空白 / 面板 / 标签）→ `focus_set(0)`。
+8. 左键按住且拖拽滑动条 → 持续按指针横坐标取值。
+9. 左键抬起沿：`pressed == hovered` 时 `Button` 置 `clicked` 并调 `on_click`、`Checkbox` 切换并调 `on_toggle`；随后清 `pressed` 与 `slider_drag`。
+10. 刷新逐节点 `pressed` 视觉位（`handle == pressed && button_down[0]`）。
+11. `keyboard_gate` 为真且焦点有效：Enter / 小键盘 Enter / 空格激活 `Button` 与 `Checkbox`；焦点为 `Text_Box` 时执行 `text_edit`。
+
+命中规则：逆序遍历槽位（后创建者在上），跳过 `Root` / `Label` / 不可见 / 不可用；`Panel` 会挡住下层控件但不触发焦点；不做父链可见性裁剪。
 
 命中测试的**可观测接口**是 `hovered_get` / `focused_get` / `clicked_consume` / `text_focus_active`；真正的命中函数 `hit_test` 是私有成员，见 §四。
 
@@ -1088,3 +1192,7 @@ push.transform[15] =  1
 【待确认：9】`Ui_Event_Bridge` 的 `pending_focus` / `pending_age` 只在焦点上报未被系统确认期间抑制本地导航；超时阈值与「视为系统已拒绝」的判定写入实现，头文件与注释未约定具体帧数，调用方无法预期。
 
 【待确认：10】`attach` 的订阅者名默认 `Renderer_UI` 且仅在 `acl_key == 0` 时重新取密钥；同一进程若创建两个事件桥实例并使用同名订阅者，中转站侧的订阅登记会互相覆盖，本模块无冲突检测。
+
+【待确认：11】`Ui_Context::system_focus_apply(..., bool text)` 的 `text` 参数在实现中未使用（`(void)text;`）；文本模式的消费方是事件桥的 `text_route` 与 `system_text_apply`，接口签名保留该参数易误导调用方以为会映射到控件文本状态。
+
+【待确认：12】`checked_set` / `value_set` / `text_set` 不校验控件类型，对任意类型节点都直接写字段；`command_bind` 同命令后绑静默覆盖先绑、`command_unbind` 无“未绑定”提示。是否补类型/重复绑定校验需确认。

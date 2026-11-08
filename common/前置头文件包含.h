@@ -13,6 +13,7 @@
 #include <stdlib.h>     // malloc, free, atoi, rand, srand, exit, qsort
 #include <stdint.h>     // int8_t, uint16_t, int32_t, uint64_t
 #include <time.h>       // time, localtime, strftime, clock
+#include <limits.h>     // PATH_MAX 等平台数值上限（POSIX 分支使用）
 #include <cassert>      // assert（C++ 风格）
 
 //============================================================================
@@ -20,6 +21,14 @@
 //============================================================================
 
 // ----- 通用实用工具 -----
+#include <cstddef>      // std::size_t, std::ptrdiff_t
+#include <cstdint>      // std::uint8_t 等定宽整数
+#include <cstdlib>      // std::strtof 等 C 标准函数
+#include <cstdio>       // std::printf / std::snprintf 等
+#include <cstring>      // std::memcpy / std::memcmp 等
+#include <cctype>       // std::isdigit / std::tolower 等
+#include <new>          // std::nothrow
+#include <system_error> // std::error_code, std::errc
 #include <utility>      // std::pair, std::move, std::swap
 #include <tuple>        // std::tuple
 #include <optional>     // std::optional (C++17)
@@ -77,8 +86,7 @@
 #include <source_location>  // std::source_location
 
 //============================================================================
-// 3. 编译器与平台相关（仅 Windows）
+// 3. 平台相关头文件
+//    说明：标准库头文件一律只能出现在本预编译头；
+//    windows.h / unistd.h / mach-o 等平台头由真正依赖其内容的头文件自行包含。
 //============================================================================
-#ifdef _WIN32
-#include <windows.h>    // Windows API
-#endif

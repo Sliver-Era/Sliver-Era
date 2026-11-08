@@ -187,7 +187,7 @@ Engine/EngineFoundation/
 │       ├── Engine_Env/引擎环境.h
 │       ├── Logging/日志系统.h
 │       ├── Mesh_Loader/{网格加载器.h, 局部命名空间使用.h, core/网格加载器.cpp}
-│       ├── Number_Allocator/数值分配器.h
+│       ├── Number_Pool/数值分配器.h
 │       ├── Random_Generator/随机数生成器.h
 │       └── Timer/{计时器.h, 局部命名空间使用.h, core/计时器.cpp}
 └── out/                        # CMake 构建输出（build / install，不纳入版本控制）
@@ -257,7 +257,7 @@ Engine/EngineFoundation/
 
 - 事件系统被对象系统、碰撞系统、配置加载器共同复用；`Config_Loader` 与 `Collision_Proxy` 都持有公开成员 `Event_Terminal event_terminal`。
 - `Collision_Proxy` 是本层**唯一对外的碰撞门面**：它持有多个 `Collision_Region`，维护「碰撞体编号 → 归属空间」的多重映射，并订阅 / 发布事件。
-- `Object_Pool` 依赖 `Number_Allocator` 提供编号；`Event_Terminal` 依赖 `Random_Generator` 生成 ACL 密钥。
+- `Object_Pool` 依赖 `Number_Pool` 提供编号；`Event_Terminal` 依赖 `Random_Generator` 生成 ACL 密钥。
 - 四叉树内部依赖 `坐标类型.h` 的 `Point2i/Point2l/Point2d` 与 `Rect2i/Rect2l/Rect2d`；碰撞模块依赖 `依赖库封装.h` 收敛 bullet3 类型。
 
 ### 5.3 典型运行链路
@@ -554,7 +554,7 @@ namespace engine
 **内部实现要点**：
 
 - 类约束 `requires std::is_base_of_v<Object, T>`：只有继承 `Object` 的类型才能入池，从类型层面保证每个元素都有编号。
-- 双分配器：`Number_Allocator ID_allocator`（分配对象编号）与 `Number_Allocator index_allocator`（分配容器下标）。
+- 双分配器：`Number_Pool ID_allocator`（分配对象编号）与 `Number_Pool index_allocator`（分配容器下标）。
 - **union 双模式**：容器内部用一个匿名 `union` 复用同一块内存——稳定模式下是 `unordered_map`（键 → 下标），排序模式下是「投影器 + 比较器 + `min_valid_index`」三元组，配合排序后的 `std::vector<T> objects` 做二分查找。`is_sorted` 标记当前模式。
 - `build()` 是唯一的「新增对象」入口：先用 `index_allocator.get()` 取得池下标（越界则扩容），把该槽位重置为 `T{}` 以清除残留，再用 `ID_allocator.get()` 分配对象编号并 `valid_set(true)`，最后按当前模式维护索引映射或重排序；返回值为新对象所在的池下标。
 - `min_valid_index` 记录当前有效元素的最小下标，`find()` 在排序模式下从该下标起二分，避免在已卸载的前缀上白费比较；`find()` 返回容器的迭代器，未命中时返回 `end()`。
@@ -973,7 +973,7 @@ namespace engine
 
 **内部实现要点**：
 
-- 私有成员：`name`（空间名）、`is_active`（活跃标记）、`Number_Allocator ID_allocator`（碰撞体编号分配）、`Collider region_boundary`（空间边界本身也是一个碰撞体）、`Collision_Backend backend`（子弹后端四件套）、`std::unordered_map<uint64_t, Collider> mapping`（编号 → 碰撞体）、`std::function<bool(uint64_t, Vector3&)> displacement_reader`（位移事件读取回调）、`std::unordered_map<uint64_t, cross_state> cross_states`（各碰撞体的跨越状态记录）、`std::vector<Cross_Notice> cross_notices`（本帧收集的跨越通知）。
+- 私有成员：`name`（空间名）、`is_active`（活跃标记）、`Number_Pool ID_allocator`（碰撞体编号分配）、`Collider region_boundary`（空间边界本身也是一个碰撞体）、`Collision_Backend backend`（子弹后端四件套）、`std::unordered_map<uint64_t, Collider> mapping`（编号 → 碰撞体）、`std::function<bool(uint64_t, Vector3&)> displacement_reader`（位移事件读取回调）、`std::unordered_map<uint64_t, cross_state> cross_states`（各碰撞体的跨越状态记录）、`std::vector<Cross_Notice> cross_notices`（本帧收集的跨越通知）。
 - **位移来源只有事件通道**：位移向量由碰撞代理器的 `Collision/ColliderDisplacement` 事件提供，代理器经 `displacement_reader_set` 注入读取回调；`detect()` 开头按编号重读最新位移事件写入 `displacement_vector`，**位移持续生效**，直到被新事件覆盖或被响应流程作废，不再有「一次性生效后清零」与直接写位移的接口。
 - **边界即碰撞体**：空间边界复用了 `Collider` 的表示（`region_boundary`），由 `boundary_build(mesh_path)` 按 OBJ 网格路径构建，因此边界与普通碰撞体走同一套检测机制；但边界本身**不参与碰撞对**（见下）。
 - **析构顺序的硬约束**：碰撞体与空间边界都直接持有子弹对象，而碰撞世界内部记录的是这些对象的地址。`~Collision_Region()` 先把全部碰撞对象移出碰撞世界，再让映射与后端析构，否则碰撞世界析构时会解引用已释放的对象。同理，按值搬移（默认移动构造）之后须重新执行边界构建，否则边界会留下悬空指针；`Collision_Proxy` 用 `unique_ptr` 持有空间则不受此影响。
@@ -1066,7 +1066,7 @@ namespace engine
 | `Engine_Env`（引擎环境） | `Engine_Env/引擎环境.h`（137 行） | 获取可执行文件路径 / 目录，拼接绝对路径 |
 | `Timer`（计时器） | `Timer/计时器.h`（39 行）、`core/计时器.cpp`（74 行）、`局部命名空间使用.h` | 多任务命名计时 |
 | `Random_Generator`（随机数生成器） | `Random_Generator/随机数生成器.h` | 基于 PCG32 的全范围 / 无偏区间随机数（模板类，约束 `std::is_integral_v<T>`） |
-| `Number_Allocator`（数值分配器） | `Number_Allocator/数值分配器.h`（78 行） | 编号分配与回收（复用池） |
+| `Number_Pool`（数值分配器） | `Number_Pool/数值分配器.h`（78 行） | 编号分配与回收（复用池） |
 
 > `Config_Loader`（配置加载器）已从 `src/tools/` 迁至 `src/core/config/Config_Loader/`（头文件 `配置加载器.h`），职责与接口不变。
 > 实现已按功能域拆分为 `core/` 下的 **9 个编译单元**：配置加载器（构造与接入）／路径与文件／脏标记／路由文件读写／配置投递／路由文件处理／配置加载／缓存清除／事件分发。
@@ -1082,7 +1082,7 @@ namespace engine
 - `Engine_Env`：`exe_path_get()`、`exe_dir_get()`、`absolute_path_get(path/string)`；可执行路径的获取按平台分派（Windows `GetModuleFileNameW` / Linux `/proc/self/exe` / macOS `_NSGetExecutablePath`），失败时回退到当前工作目录。
 - `Timer`：`using Clock = std::chrono::steady_clock`，`task_build()` 建任务、`elapsed(task, restart = false)` 读耗时，静态 `units()` / `Milli_units()` / `Micro_units()` / `Nano_units()` 提供单位换算。
 - `Random_Generator`：模板类 `template <typename T> requires std::is_integral_v<T> class Random_Generator`；内核是结构 `Pcg32 { uint64_t state, inc; }`，`operator()()` 生成 `T` 的全范围无偏随机数，`operator()(min, max)` 生成 `[min, max]` 无偏区间随机数；构造函数可传种子；`key()` 就是它的使用者。
-- `Number_Allocator`：`set(min)` 设下限、`get()` 取号、`recycle(单/多)` 回收、`reset()` 复位；回收时用二分查找查重，重复回收会打 `logger.warn("Number_Pool::待回收数值已被回收!!!")`。
+- `Number_Pool`：`set(min)` 设下限、`get()` 取号、`recycle(单/多)` 回收、`reset()` 复位；回收时用二分查找查重，重复回收会打 `logger.warn("Number_Pool::待回收数值已被回收!!!")`。
 
 ---
 
@@ -1317,7 +1317,7 @@ file(GLOB_RECURSE ...)  ──▶  byjy_source_list_sync()  ──▶  层根/�
 - **模板实例化**：新增模板类型若要进入 `EngineFoundation`，需在对应 `xxx实例化.cpp` 中补 `template class ...;`。
 - **事件 `receiver` 过滤**：定向事件（非空 `receiver`）必须由接收方自行过滤，中转器不会代劳。
 - **`Event_Broker` 的匹配粒度**：订阅匹配看 `category` + `tag`，`config` 不参与匹配；因此同一 `category` + `tag` 只能有一条投递规则。
-- **`Number_Allocator` 重复回收**：会打印告警而非崩溃，排查编号错乱时可据此定位。
+- **`Number_Pool` 重复回收**：会打印告警而非崩溃，排查编号错乱时可据此定位。
 - **路径扫描越权防护**：`Config_Loader` 只扫描 `assets/config/route/` 且限制在 `assets/config/` 之内，新增路由目录不在此范围会被跳过。
 
 ---

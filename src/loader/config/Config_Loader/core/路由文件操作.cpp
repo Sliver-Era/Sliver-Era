@@ -1,5 +1,5 @@
-#include "src/core/config/Config_Loader/局部命名空间使用.h"
-#include "src/tools/Logging/日志系统运行包.h"
+#include "../局部命名空间使用.h"
+#include "src/log/日志系统运行包.h"
 
 //引擎命名空间
 namespace engine
@@ -17,11 +17,11 @@ namespace engine
             return;
         }
         //若顶层脏标记有效则取出
-        if (detail::field_check<json>(route_file, "dirty_mark"))
-            mark = route_file["dirty_mark"];
+        if (detail::field_check<json>(route_file, config_event::field_dirty_mark))
+            mark = route_file[config_event::field_dirty_mark];
         //若路由条目数组有效则取出
-        if (detail::field_check<json>(route_file, "config_routes"))
-            entries = route_file["config_routes"];
+        if (detail::field_check<json>(route_file, config_event::field_config_routes))
+            entries = route_file[config_event::field_config_routes];
         //若无效则授予空值
         else
             entries = json();
@@ -35,8 +35,8 @@ namespace engine
         json route_file;
         //若顶层脏标记非空则写入（空值表示本轮不写顶层标记）
         if (!mark.is_null())
-            route_file["dirty_mark"] = mark;
-        route_file["config_routes"] = entries;
+            route_file[config_event::field_dirty_mark] = mark;
+        route_file[config_event::field_config_routes] = entries;
         //打开目标文件
         ofstream file(file_path);
         //若文件打开失败
@@ -77,8 +77,8 @@ namespace engine
         for (auto& entry : entries)
         {
             //若目标字段无效
-            if(!detail::field_check<string>(entry,"object") ||
-               !detail::field_check<string>(entry,"config_path"))
+            if(!detail::field_check<string>(entry,event_protocol::field_object) ||
+               !detail::field_check<string>(entry,config_event::field_config_path))
             {
                 logger.error("Config_Loader::目标字段无效");
                 logger.error("Config_Loader::可能原因如下：");
@@ -89,11 +89,11 @@ namespace engine
             }
 
             //取条目事件类别（缺省回落 Config）
-            const string event_category = detail::field_check<string>(entry, "event_category")
-                ? entry["event_category"].get<string>() : "Config";
+            const string event_category = detail::field_check<string>(entry, config_event::field_event_category)
+                ? entry[config_event::field_event_category].get<string>() : event_protocol::config;
             //取条目事件标签（缺省回落 Load）
-            const string event_tag = detail::field_check<string>(entry, "event_tag")
-                ? entry["event_tag"].get<string>() : "Load";
+            const string event_tag = detail::field_check<string>(entry, config_event::field_event_tag)
+                ? entry[config_event::field_event_tag].get<string>() : event_protocol::load;
             //若条目事件标识命中配置加载器预定义事件
             if(event_identifier_reserved(event_category,event_tag))
             {
@@ -102,9 +102,9 @@ namespace engine
             }
 
             //存储目标对象名称
-            const std::string object = entry["object"];
+            const std::string object = entry[event_protocol::field_object];
             //存储配置文件路径
-            const std::string config_path = entry["config_path"];
+            const std::string config_path = entry[config_event::field_config_path];
 
             //若存在对象过滤条件且不匹配则跳过
             if (!only_object.empty() && object != only_object)
@@ -176,17 +176,17 @@ namespace engine
         for (auto& entry : entries)
         {
             //若目标字段无效
-            if (!detail::field_check<string>(entry, "object") ||
-                !detail::field_check<string>(entry, "config_path"))
+            if (!detail::field_check<string>(entry, event_protocol::field_object) ||
+                !detail::field_check<string>(entry, config_event::field_config_path))
             {
                 logger.error("Config_Loader::目标字段无效");
                 continue;
             }
 
             //存储目标对象名称
-            const std::string object = entry["object"];
+            const std::string object = entry[event_protocol::field_object];
             //存储配置文件路径
-            const std::string config_path = entry["config_path"];
+            const std::string config_path = entry[config_event::field_config_path];
 
             //若存在对象过滤条件且不匹配则跳过
             if (!only_object.empty() && object != only_object)
@@ -211,7 +211,7 @@ namespace engine
             }
 
             //若配置文件不在本目录对的配置目录下则跳过（卸载不要求文件仍存在）
-            if (!path_prefix_check(content.config, detail::string_to_path(config_path).parent_path()))
+            if (!detail::path_prefix_check(content.config, detail::string_to_path(config_path).parent_path()))
                 continue;
 
             //移除对象配置文件缓存
@@ -226,9 +226,9 @@ namespace engine
             }
 
             //抹除条目脏标记（使同进程内重新加载不再被条目脏标记短路）
-            if (entry.contains("dirty_mark"))
+            if (entry.contains(config_event::field_dirty_mark))
             {
-                entry.erase("dirty_mark");
+                entry.erase(config_event::field_dirty_mark);
                 changed = true;
             }
         }

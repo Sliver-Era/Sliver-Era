@@ -1,5 +1,7 @@
 #pragma once
 #include "配置加载器.h"
+#include "Common/配置事件.h"
+#include "Engine/EngineFoundation/src/event/Common/事件协议.h"
 
 // ---------- 容器 -----------
 using std::vector;

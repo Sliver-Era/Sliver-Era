@@ -2,13 +2,11 @@
 //预编译头
 #include "Engine/EngineFoundation/common/前置头文件包含.h"
 //获取事件系统运行包
-#include "Engine/EngineFoundation/src/core/event/事件系统运行包.h"
-//获取引擎环境信息
-#include "Engine/EngineFoundation/src/tools/Engine_Env/引擎环境.h"
+#include "Engine/EngineFoundation/src/event/事件系统运行包.h"
 //获取数据校验工具
-#include "Engine/EngineFoundation/src/tools/Detail/package/数据校验工具.h"
+#include "Engine/EngineFoundation/src/detail/methods/package/数据校验工具.h"
 //获取路径字符串转换工具
-#include "Engine/EngineFoundation/src/tools/Detail/package/路径操作工具.h"
+#include "Engine/EngineFoundation/src/detail/methods/package/路径操作工具.h"
 
 //游戏引擎命名空间
 namespace engine
@@ -127,10 +125,6 @@ namespace engine
 
         //异常信息输出
         bool error_out(std::error_code& info) const;
-
-        //路径前缀判定（前缀是否为目标路径的目录前缀）
-        static bool path_prefix_check(const std::filesystem::path& prefix,
-            const std::filesystem::path& target);
 
         //文件读取
         void file_read(const std::filesystem::path& file_path, nlohmann::json& receiver) const;

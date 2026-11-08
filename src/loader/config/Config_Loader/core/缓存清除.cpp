@@ -1,5 +1,5 @@
-#include "src/core/config/Config_Loader/局部命名空间使用.h"
-#include "src/tools/Logging/日志系统运行包.h"
+#include "../局部命名空间使用.h"
+#include "src/log/日志系统运行包.h"
 
 //引擎命名空间
 namespace engine
@@ -17,8 +17,8 @@ namespace engine
             for (const auto& content : cache.second)
             {
                 //若路由目录与配置目录均以可信根对应目录为前缀
-                if (path_prefix_check(root.route, content.route) &&
-                    path_prefix_check(root.config, content.config))
+                if (detail::path_prefix_check(root.route, content.route) &&
+                    detail::path_prefix_check(root.config, content.config))
                     //记录该「对象 × 目录对」命中
                     hits.push_back({ cache.first, content });
             }
@@ -36,8 +36,8 @@ namespace engine
             std::erase_if(it->second, [&root](const Config_Content& content)
                 {
                     //路由目录与配置目录均需以可信根对应目录为前缀
-                    return path_prefix_check(root.route, content.route) &&
-                        path_prefix_check(root.config, content.config);
+                    return detail::path_prefix_check(root.route, content.route) &&
+                        detail::path_prefix_check(root.config, content.config);
                 });
             //若该对象已无配置目录记录则删除对象条目
             if (it->second.empty())
@@ -53,7 +53,7 @@ namespace engine
             std::erase_if(it->second, [&root](const auto& pair)
                 {
                     //配置文件路径需以可信根配置目录为前缀
-                    return path_prefix_check(root.config, detail::string_to_path(pair.first));
+                    return detail::path_prefix_check(root.config, detail::string_to_path(pair.first));
                 });
             //若该对象已无配置文件记录则删除对象条目
             if (it->second.empty())
@@ -103,8 +103,8 @@ namespace engine
         //事件指定的卸载文件清单（为空则卸载全部）
         json only_files = json();
         //若事件指定卸载文件清单(存在容器非空检查)
-        if (detail::field_check<vector<string>>(request, "files"))
-            only_files = request["files"];
+        if (detail::field_check<vector<string>>(request, config_event::field_files))
+            only_files = request[config_event::field_files];
 
         //若未指定文件清单则全量卸载
         if (only_files.is_null())

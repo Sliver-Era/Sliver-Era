@@ -1,5 +1,5 @@
-#include "src/core/config/Config_Loader/局部命名空间使用.h"
-#include "src/tools/Logging/日志系统运行包.h"
+#include "../局部命名空间使用.h"
+#include "src/log/日志系统运行包.h"
 
 //引擎命名空间
 namespace engine
@@ -8,19 +8,19 @@ namespace engine
     bool Config_Loader::receiver_check(const std::string& object)
     {
         //构造查看事件（目标对象名经载荷传递，事件目标留空以命中中转站自身处理契约）
-        auto evt = event_terminal.build("", "", "Subscriber", "Check");
+        auto evt = event_terminal.build("", "", event_protocol::subscriber, event_protocol::check);
         //若事件构造失败
         if (evt == nullptr)
             return false;
         //写入待查询对象名
-        evt->config["object"] = object;
+        evt->config[event_protocol::field_object] = object;
         //发送查看事件（中转站同步处理并就地写入答复字段）
         if (!event_terminal.send(evt, acl_key))
             return false;
 
         //若答复字段无效或目标尚未接入
-        if (!detail::field_check<bool>(evt->config, "subscribed") ||
-            !evt->config["subscribed"].get<bool>())
+        if (!detail::field_check<bool>(evt->config, event_protocol::field_subscribed) ||
+            !evt->config[event_protocol::field_subscribed].get<bool>())
             return false;
         //若目标对象存在
         else
@@ -48,14 +48,14 @@ namespace engine
 
         //剔除可能存在的脏标记字段（脏标记不参与投递）
         if (config_data.is_object())
-            config_data.erase("dirty_mark");
+            config_data.erase(config_event::field_dirty_mark);
 
         //取条目事件类别（缺省回落 Config）
-        const string event_category = detail::field_check<string>(entry, "event_category")
-            ? entry["event_category"].get<string>() : "Config";
+        const string event_category = detail::field_check<string>(entry, config_event::field_event_category)
+            ? entry[config_event::field_event_category].get<string>() : event_protocol::config;
         //取条目事件标签（缺省回落 Load）
-        const string event_tag = detail::field_check<string>(entry, "event_tag")
-            ? entry["event_tag"].get<string>() : "Load";
+        const string event_tag = detail::field_check<string>(entry, config_event::field_event_tag)
+            ? entry[config_event::field_event_tag].get<string>() : event_protocol::load;
         //若条目事件标识命中配置加载器预定义事件
         if (event_identifier_reserved(event_category, event_tag))
         {
@@ -86,7 +86,7 @@ namespace engine
         }
 
         //投递成功后写入条目标记（只有真正阅读配置并发送配置才写脏标记）
-        entry["dirty_mark"] = mark;
+        entry[config_event::field_dirty_mark] = mark;
         //报告事件信息
         logger.info("Config_Loader::已发送配置事件: {}", object);
         //返回投递成功
@@ -100,8 +100,8 @@ namespace engine
         //计算该「对象×文件」本轮标记
         const uint64_t want_mark = mark_make(object, config_path);
         //脏标记命中表示本轮已加载过该对象该文件
-        const bool marked = detail::field_check<uint64_t>(entry, "dirty_mark") &&
-            entry["dirty_mark"].get<uint64_t>() == want_mark;
+        const bool marked = detail::field_check<uint64_t>(entry, config_event::field_dirty_mark) &&
+            entry[config_event::field_dirty_mark].get<uint64_t>() == want_mark;
 
         //若本轮已加载过
         if (marked)
@@ -181,10 +181,10 @@ namespace engine
         }
 
         //若事件指定加载文件清单(存在容器非空检查)
-        if (detail::field_check<vector<string>>(request, "files"))
+        if (detail::field_check<vector<string>>(request, config_event::field_files))
         {
             //逐个收集有效文件路径
-            for (const auto& file : request["files"])
+            for (const auto& file : request[config_event::field_files])
             {
                 //若文件非空
                 if (!file.empty())

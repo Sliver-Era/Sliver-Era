@@ -1,5 +1,5 @@
-#include "src/core/config/Config_Loader/局部命名空间使用.h"
-#include "src/tools/Logging/日志系统运行包.h"
+#include "../局部命名空间使用.h"
+#include "src/log/日志系统运行包.h"
 
 //引擎命名空间
 namespace engine
@@ -8,7 +8,7 @@ namespace engine
     const path Config_Loader::base_dir_get(void) const
     {
         //返回配置基目录
-        return Engine_Env::exe_dir_get();
+        return detail::exe_dir_get();
     }
 
     //异常信息输出
@@ -30,29 +30,7 @@ namespace engine
         }
     }
 
-    //路径前缀判定（前缀是否为目标路径的目录前缀）
-    bool Config_Loader::path_prefix_check(const path& prefix, const path& target)
-    {
-        //空前缀不构成有效前缀
-        if (prefix.empty())
-            return false;
-
-        //逐节比对
-        auto prefix_it = prefix.begin();
-        auto target_it = target.begin();
-        for (; prefix_it != prefix.end(); ++prefix_it, ++target_it)
-        {
-            //若目标路径短于前缀则不构成前缀
-            if (target_it == target.end())
-                return false;
-            //若当前节不同则不构成前缀
-            if (*prefix_it != *target_it)
-                return false;
-        }
-
-        //所有节均匹配
-        return true;
-    }
+    //路径前缀判定已下沉至 detail::path_prefix_check
 
     //文件读取
     void Config_Loader::file_read(const path& file_path, json& receiver) const
@@ -131,14 +109,10 @@ namespace engine
         }
 
         //检查路径中是否存在危险跳转符号".."
-        for (const auto& part : suspect_path)
+        if (!detail::path_traversal_check(suspect_path))
         {
-            //若检测出跳转符号
-            if (part.string() == "..")
-            {
-                logger.error("Config_Loader::存在非法父目录返回符号");
-                return false;
-            }
+            logger.error("Config_Loader::存在非法父目录返回符号");
+            return false;
         }
 
         //逐节比对：标准配置目录必须为待检查路径的前缀

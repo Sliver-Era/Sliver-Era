@@ -344,7 +344,7 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 文字绘制不覆盖场景纹理)
 	if (font_path.empty())
 		GTEST_SKIP() << "本机缺少候选中文字体";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, font_path, 24));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, font_path, 24));
 	apply_scene(renderer);
 	//满屏棋盘格四边形
 	uint64_t checker = 0;
@@ -368,7 +368,7 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 文字绘制不覆盖场景纹理)
 	//第二帧：棋盘四边形 ＋ 同帧文字（文字会把字体图集绑定为当前纹理）
 	renderer.texture_bind_set(checker);
 	ASSERT_TRUE(renderer.mesh_draw(quad, full.data()));
-	ASSERT_TRUE(renderer.text_draw(font, "ABC", 8.0f, 8.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "ABC", 8.0f, 8.0f));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 
@@ -381,5 +381,5 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 文字绘制不覆盖场景纹理)
 
 	renderer.mesh_unload(quad);
 	renderer.texture_unload(checker);
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }

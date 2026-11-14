@@ -176,13 +176,13 @@ TEST_F(Renderer_Text_Layout_Test, 未初始化守卫)
 	engine::Renderer renderer;
 	float width = 123.0f;
 	float height = 123.0f;
-	EXPECT_FALSE(renderer.text_measure(1u, "AB", &width, &height));
+	EXPECT_FALSE(renderer.ui().text_measure(1u, "AB", &width, &height));
 	EXPECT_EQ(width, 0.0f);
 	EXPECT_EQ(height, 0.0f);
 	//出参可为空（不崩溃）
-	EXPECT_FALSE(renderer.text_measure(1u, "AB", nullptr, nullptr));
+	EXPECT_FALSE(renderer.ui().text_measure(1u, "AB", nullptr, nullptr));
 	engine::Text_Layout layout{};
-	EXPECT_FALSE(renderer.text_draw_layout(1u, "AB", 0.0f, 0.0f, layout));
+	EXPECT_FALSE(renderer.ui().text_draw_layout(1u, "AB", 0.0f, 0.0f, layout));
 }
 
 //度量：同一字体下宽度随字符数单调递增，高度恒为字体像素高度
@@ -193,16 +193,16 @@ TEST_F(Renderer_Text_Layout_Test, 度量宽度随字符数单调)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//三个长度递增的文本
 	float width_one = 0.0f;
 	float width_two = 0.0f;
 	float width_three = 0.0f;
 	float measured_height = 0.0f;
-	ASSERT_TRUE(renderer.text_measure(font, "I", &width_one, &measured_height));
-	ASSERT_TRUE(renderer.text_measure(font, "II", &width_two, nullptr));
-	ASSERT_TRUE(renderer.text_measure(font, "III", &width_three, nullptr));
+	ASSERT_TRUE(renderer.ui().text_measure(font, "I", &width_one, &measured_height));
+	ASSERT_TRUE(renderer.ui().text_measure(font, "II", &width_two, nullptr));
+	ASSERT_TRUE(renderer.ui().text_measure(font, "III", &width_three, nullptr));
 	EXPECT_GT(width_one, 0.0f);
 	EXPECT_GT(width_two, width_one);
 	EXPECT_GT(width_three, width_two);
@@ -211,12 +211,12 @@ TEST_F(Renderer_Text_Layout_Test, 度量宽度随字符数单调)
 
 	//尾随空白不计入宽度
 	float with_space = 0.0f;
-	ASSERT_TRUE(renderer.text_measure(font, "I   ", &with_space, nullptr));
+	ASSERT_TRUE(renderer.ui().text_measure(font, "I   ", &with_space, nullptr));
 	EXPECT_EQ(with_space, width_one) << "尾随空白不应计入宽度";
 
 	//无效句柄返回假
-	EXPECT_FALSE(renderer.text_measure(99999u, "I", &width_one, nullptr));
-	renderer.font_unload(font);
+	EXPECT_FALSE(renderer.ui().text_measure(99999u, "I", &width_one, nullptr));
+	renderer.ui().font_unload(font);
 }
 
 //空文本与全空白文本：无可见字形 → 度量返回假且出参归零
@@ -227,18 +227,18 @@ TEST_F(Renderer_Text_Layout_Test, 空文本度量为零)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	float width = 99.0f;
 	float height = 99.0f;
-	EXPECT_FALSE(renderer.text_measure(font, "", &width, &height));
+	EXPECT_FALSE(renderer.ui().text_measure(font, "", &width, &height));
 	EXPECT_EQ(width, 0.0f);
 	EXPECT_EQ(height, 0.0f);
 	//全空白同样无可见字形
-	EXPECT_FALSE(renderer.text_measure(font, "   ", &width, &height));
+	EXPECT_FALSE(renderer.ui().text_measure(font, "   ", &width, &height));
 	EXPECT_EQ(width, 0.0f);
 	EXPECT_EQ(height, 0.0f);
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 //显式换行：两行墨迹分别落在第一 / 第二个行高区间
@@ -251,11 +251,11 @@ TEST_F(Renderer_Text_Layout_Test, 显式换行产生两行墨迹)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//「I\nI」：显式换行，行高默认取字号
 	engine::Text_Layout layout{};
-	ASSERT_TRUE(renderer.text_draw_layout(font, "I\nI", 4.0f, 0.0f, layout));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "I\nI", 4.0f, 0.0f, layout));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 
@@ -268,7 +268,7 @@ TEST_F(Renderer_Text_Layout_Test, 显式换行产生两行墨迹)
 	uint32_t third_band = ink_in_band(pixels, 2 * FONT_PIXEL_HEIGHT, 3 * FONT_PIXEL_HEIGHT);
 	EXPECT_EQ(third_band, 0u) << "出现多余的第三行墨迹";
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 //按 max_width 自动换行：每行仅容纳一个字形时，三个字形分处三个行高区间
@@ -281,15 +281,15 @@ TEST_F(Renderer_Text_Layout_Test, 窄宽度逐字换行)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//以「单字形宽度」为换行上限 → 每行恰好一个字形
 	float glyph_width = 0.0f;
-	ASSERT_TRUE(renderer.text_measure(font, "I", &glyph_width, nullptr));
+	ASSERT_TRUE(renderer.ui().text_measure(font, "I", &glyph_width, nullptr));
 	ASSERT_GT(glyph_width, 0.0f);
 	engine::Text_Layout layout{};
 	layout.max_width = glyph_width;
-	ASSERT_TRUE(renderer.text_draw_layout(font, "III", 4.0f, 0.0f, layout));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "III", 4.0f, 0.0f, layout));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 
@@ -299,7 +299,7 @@ TEST_F(Renderer_Text_Layout_Test, 窄宽度逐字换行)
 	EXPECT_GT(ink_in_band(pixels, 2 * FONT_PIXEL_HEIGHT, 3 * FONT_PIXEL_HEIGHT), 0u) << "第三行无墨迹";
 	//第四行应无墨迹
 	EXPECT_EQ(ink_in_band(pixels, 3 * FONT_PIXEL_HEIGHT, 4 * FONT_PIXEL_HEIGHT), 0u) << "多出一行";
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 //行内右对齐：同一文本在对齐基准内被平移到右侧
@@ -312,14 +312,14 @@ TEST_F(Renderer_Text_Layout_Test, 右对齐使墨迹靠右)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//对齐基准宽度（远大于单字宽度）
 	constexpr float ALIGN_WIDTH = 100.0f;
 	engine::Text_Layout right_layout{};
 	right_layout.max_width = ALIGN_WIDTH;
 	right_layout.align = engine::Text_Align::Right;
-	ASSERT_TRUE(renderer.text_draw_layout(font, "I", 4.0f, 0.0f, right_layout));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "I", 4.0f, 0.0f, right_layout));
 	std::vector<uint8_t> right_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(right_pixels.data(), static_cast<uint32_t>(right_pixels.size())));
 	uint32_t right_min = 0;
@@ -332,7 +332,7 @@ TEST_F(Renderer_Text_Layout_Test, 右对齐使墨迹靠右)
 	engine::Text_Layout left_layout{};
 	left_layout.max_width = ALIGN_WIDTH;
 	left_layout.align = engine::Text_Align::Left;
-	ASSERT_TRUE(renderer.text_draw_layout(font, "I", 4.0f, 0.0f, left_layout));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "I", 4.0f, 0.0f, left_layout));
 	std::vector<uint8_t> left_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(left_pixels.data(), static_cast<uint32_t>(left_pixels.size())));
 	uint32_t left_min = 0;
@@ -341,7 +341,7 @@ TEST_F(Renderer_Text_Layout_Test, 右对齐使墨迹靠右)
 	EXPECT_GT(left_max, left_min);
 	EXPECT_LE(left_min, 20u) << "左对齐墨迹未回到左侧（可能命中旧网格缓存）";
 	EXPECT_GT(ink_total(left_pixels), 0u);
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 //字距（tracking）计入行宽：同一文本的字距增大后墨迹右端明显右移
@@ -354,11 +354,11 @@ TEST_F(Renderer_Text_Layout_Test, 字距增大使墨迹右移)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//无字距
 	engine::Text_Layout plain{};
-	ASSERT_TRUE(renderer.text_draw_layout(font, "III", 4.0f, 0.0f, plain));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "III", 4.0f, 0.0f, plain));
 	std::vector<uint8_t> plain_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain_pixels.data(), static_cast<uint32_t>(plain_pixels.size())));
 	uint32_t plain_min = 0;
@@ -368,7 +368,7 @@ TEST_F(Renderer_Text_Layout_Test, 字距增大使墨迹右移)
 	//加宽字距（每个字形后额外 6 像素）
 	engine::Text_Layout spaced{};
 	spaced.tracking = 6.0f;
-	ASSERT_TRUE(renderer.text_draw_layout(font, "III", 4.0f, 0.0f, spaced));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "III", 4.0f, 0.0f, spaced));
 	std::vector<uint8_t> spaced_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(spaced_pixels.data(), static_cast<uint32_t>(spaced_pixels.size())));
 	uint32_t spaced_min = 0;
@@ -379,7 +379,7 @@ TEST_F(Renderer_Text_Layout_Test, 字距增大使墨迹右移)
 	EXPECT_GT(spaced_max, plain_max + 8u)
 		<< "字距未生效（无字距右端 " << plain_max << " / 有字距右端 " << spaced_max << "）";
 	EXPECT_EQ(spaced_min, plain_min) << "字距不应改变起始笔位";
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 //首行缩进只作用于第一行：首行墨迹右移、第二行不受影响
@@ -392,11 +392,11 @@ TEST_F(Renderer_Text_Layout_Test, 首行缩进只影响首行)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//无缩进：两行同一起点
 	engine::Text_Layout plain{};
-	ASSERT_TRUE(renderer.text_draw_layout(font, "I\nI", 0.0f, 0.0f, plain));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "I\nI", 0.0f, 0.0f, plain));
 	std::vector<uint8_t> plain_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain_pixels.data(), static_cast<std::uint32_t>(plain_pixels.size())));
 	uint32_t plain_first_min = 0;
@@ -406,7 +406,7 @@ TEST_F(Renderer_Text_Layout_Test, 首行缩进只影响首行)
 	//首行缩进 30 像素
 	engine::Text_Layout indented{};
 	indented.first_line_indent = 30.0f;
-	ASSERT_TRUE(renderer.text_draw_layout(font, "I\nI", 0.0f, 0.0f, indented));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "I\nI", 0.0f, 0.0f, indented));
 	std::vector<uint8_t> indented_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(indented_pixels.data(), static_cast<std::uint32_t>(indented_pixels.size())));
 	uint32_t indented_first_min = 0;
@@ -424,7 +424,7 @@ TEST_F(Renderer_Text_Layout_Test, 首行缩进只影响首行)
 	EXPECT_LE(indented_first_min, plain_first_min + 34u) << "首行缩进量不符（应为 30 像素）";
 	//第二行不受缩进影响
 	EXPECT_EQ(indented_second_min, plain_second_min) << "缩进不应影响第二行";
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 /*
@@ -441,11 +441,11 @@ TEST_F(Renderer_Text_Layout_Test, 行距倍数拉伸行间步进)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//单倍行距：第二行在 [16,32)
 	engine::Text_Layout plain{};
-	ASSERT_TRUE(renderer.text_draw_layout(font, "I\nI", 0.0f, 0.0f, plain));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "I\nI", 0.0f, 0.0f, plain));
 	std::vector<uint8_t> plain_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain_pixels.data(), static_cast<std::uint32_t>(plain_pixels.size())));
 	uint32_t plain_second_band = ink_in_band(plain_pixels, FONT_PIXEL_HEIGHT, 2 * FONT_PIXEL_HEIGHT);
@@ -456,7 +456,7 @@ TEST_F(Renderer_Text_Layout_Test, 行距倍数拉伸行间步进)
 	//双倍行距：第二行整体下移一个行高
 	engine::Text_Layout spaced{};
 	spaced.line_spacing = 2.0f;
-	ASSERT_TRUE(renderer.text_draw_layout(font, "I\nI", 0.0f, 0.0f, spaced));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "I\nI", 0.0f, 0.0f, spaced));
 	std::vector<uint8_t> spaced_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(spaced_pixels.data(), static_cast<std::uint32_t>(spaced_pixels.size())));
 	uint32_t spaced_second_band = ink_in_band(spaced_pixels, FONT_PIXEL_HEIGHT, 2 * FONT_PIXEL_HEIGHT);
@@ -469,17 +469,17 @@ TEST_F(Renderer_Text_Layout_Test, 行距倍数拉伸行间步进)
 	//非法值按单倍：画面与默认布局逐字节一致
 	engine::Text_Layout invalid_zero{};
 	invalid_zero.line_spacing = 0.0f;
-	ASSERT_TRUE(renderer.text_draw_layout(font, "I\nI", 0.0f, 0.0f, invalid_zero));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "I\nI", 0.0f, 0.0f, invalid_zero));
 	std::vector<uint8_t> zero_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(zero_pixels.data(), static_cast<std::uint32_t>(zero_pixels.size())));
 	EXPECT_EQ(zero_pixels, plain_pixels) << "行距 0 未按单倍处理";
 
 	engine::Text_Layout invalid_negative{};
 	invalid_negative.line_spacing = -1.0f;
-	ASSERT_TRUE(renderer.text_draw_layout(font, "I\nI", 0.0f, 0.0f, invalid_negative));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, "I\nI", 0.0f, 0.0f, invalid_negative));
 	std::vector<uint8_t> negative_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(negative_pixels.data(), static_cast<std::uint32_t>(negative_pixels.size())));
 	EXPECT_EQ(negative_pixels, plain_pixels) << "负行距未按单倍处理";
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }

@@ -70,7 +70,7 @@ TEST_F(Renderer_Resource_Test, 资源计数随加载卸载变化)
 	const uint8_t pixel[4] = { 255, 255, 255, 255 };
 	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
 	ASSERT_TRUE(renderer.texture_load(texture, pixel, 1, 1));
-	ASSERT_TRUE(renderer.font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16));
 	ASSERT_TRUE(renderer.pipeline_load(pipeline, "后处理.vert.spv", "反色.frag.spv"));
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 	ASSERT_TRUE(renderer.material_load(material, engine::Material_Data{}));
@@ -89,7 +89,7 @@ TEST_F(Renderer_Resource_Test, 资源计数随加载卸载变化)
 	renderer.material_unload(material);
 	renderer.render_target_destroy(target);
 	renderer.pipeline_unload(pipeline);
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 	renderer.texture_unload(texture);
 	renderer.mesh_unload(mesh);
 	engine::Renderer_Resource_Counts unloaded = renderer.resource_counts();

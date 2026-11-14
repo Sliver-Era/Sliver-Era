@@ -130,7 +130,7 @@ TEST_F(Renderer_Text_Test, 未初始化加载字体失败)
 	engine::Renderer renderer;
 	//未 init 直接加载
 	uint64_t font = 12345;
-	EXPECT_FALSE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	EXPECT_FALSE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 	//句柄须被复位为 0
 	EXPECT_EQ(font, 0u);
 }
@@ -141,7 +141,7 @@ TEST_F(Renderer_Text_Test, 字体文件缺失加载失败)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t font = 0;
-	EXPECT_FALSE(renderer.font_load_file(font, "C:\\不存在的字体文件.ttf", FONT_PIXEL_HEIGHT));
+	EXPECT_FALSE(renderer.ui().font_load_file(font, "C:\\不存在的字体文件.ttf", FONT_PIXEL_HEIGHT));
 	EXPECT_EQ(font, 0u);
 	//帧仍正常推进（字体加载失败不破坏帧循环）
 	std::vector<uint8_t> pixels(pixel_bytes());
@@ -161,11 +161,11 @@ TEST_F(Renderer_Text_Test, 文本在指定位置产生非背景像素)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载字体
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 	EXPECT_GE(font, 1u);
 
 	//在左上附近画两个大写字母
-	ASSERT_TRUE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
 	//渲染并回读
 	std::vector<uint8_t> pixels(pixel_bytes());
 	uint32_t read_width = 0;
@@ -186,8 +186,8 @@ TEST_F(Renderer_Text_Test, 文本在指定位置产生非背景像素)
 	EXPECT_EQ(far_ink, 0u) << "远离文本处出现非背景像素";
 
 	//卸载字体与重绘：卸载后再画应失败（句柄失效）
-	renderer.font_unload(font);
-	EXPECT_FALSE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
+	renderer.ui().font_unload(font);
+	EXPECT_FALSE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
 }
 
 //不同文本产生不同的像素分布（证明确实按文本光栅化，而非固定图样）
@@ -201,17 +201,17 @@ TEST_F(Renderer_Text_Test, 不同文本产生不同像素分布)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载字体
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//第一帧：三个窄字形
-	ASSERT_TRUE(renderer.text_draw(font, "III", 4.0f, 4.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "III", 4.0f, 4.0f));
 	std::vector<uint8_t> narrow(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(narrow.data(), static_cast<uint32_t>(narrow.size())));
 	//窄字形的墨迹量
 	uint32_t narrow_ink = ink_count(narrow, 0, 0, 64, 24);
 
 	//第二帧：三个宽字形
-	ASSERT_TRUE(renderer.text_draw(font, "WWW", 4.0f, 4.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "WWW", 4.0f, 4.0f));
 	std::vector<uint8_t> wide(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(wide.data(), static_cast<uint32_t>(wide.size())));
 	//宽字形的墨迹量
@@ -222,7 +222,7 @@ TEST_F(Renderer_Text_Test, 不同文本产生不同像素分布)
 	EXPECT_GT(wide_ink, narrow_ink)
 		<< "宽窄字形墨迹量未区分（窄 " << narrow_ink << " / 宽 " << wide_ink << "）";
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 //空文本返回真但不登记绘制项；无效字体句柄返回假
@@ -233,15 +233,15 @@ TEST_F(Renderer_Text_Test, 空文本与无效句柄行为)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//无效字体句柄 → 假
-	EXPECT_FALSE(renderer.text_draw(99999u, "AB", 0.0f, 0.0f));
+	EXPECT_FALSE(renderer.ui().text_draw(99999u, "AB", 0.0f, 0.0f));
 	//加载字体后空文本 → 真（无可绘制项）
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
-	EXPECT_TRUE(renderer.text_draw(font, "", 0.0f, 0.0f));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	EXPECT_TRUE(renderer.ui().text_draw(font, "", 0.0f, 0.0f));
 	//帧仍正常推进
 	std::vector<uint8_t> pixels(pixel_bytes());
 	EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 /*
@@ -252,23 +252,23 @@ TEST_F(Renderer_Text_Test, 纯ASCII不产生跳过计数)
 {
 	engine::Renderer renderer;
 	//未初始化时任何句柄都返回 0
-	EXPECT_EQ(renderer.font_skipped_codepoints(1u), 0u);
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(1u), 0u);
 	if (!font_available())
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 	//加载后计数为 0（ASCII 已全部烘焙）
-	EXPECT_EQ(renderer.font_skipped_codepoints(font), 0u) << "加载阶段不应产生跳过计数";
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(font), 0u) << "加载阶段不应产生跳过计数";
 	//画纯 ASCII 字符串（含空白字符，空白不应被计为跳过）
-	ASSERT_TRUE(renderer.text_draw(font, "AB C1", 4.0f, 4.0f));
-	EXPECT_EQ(renderer.font_skipped_codepoints(font), 0u) << "纯 ASCII 与空白字符不应计入跳过数";
+	ASSERT_TRUE(renderer.ui().text_draw(font, "AB C1", 4.0f, 4.0f));
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(font), 0u) << "纯 ASCII 与空白字符不应计入跳过数";
 	//重复绘制同样不增
-	ASSERT_TRUE(renderer.text_draw(font, "AB C1", 4.0f, 4.0f));
-	EXPECT_EQ(renderer.font_skipped_codepoints(font), 0u);
+	ASSERT_TRUE(renderer.ui().text_draw(font, "AB C1", 4.0f, 4.0f));
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(font), 0u);
 	//无效句柄仍为 0
-	EXPECT_EQ(renderer.font_skipped_codepoints(99999u), 0u);
-	renderer.font_unload(font);
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(99999u), 0u);
+	renderer.ui().font_unload(font);
 }
 
 /*
@@ -283,27 +283,27 @@ TEST_F(Renderer_Text_Test, 不支持码点计入跳过计数)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
-	ASSERT_EQ(renderer.font_skipped_codepoints(font), 0u);
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_EQ(renderer.ui().font_skipped_codepoints(font), 0u);
 
 	//「A ＋ U+E000 ＋ B」：私有区码点不在字体覆盖范围
 	std::string unsupported = "A";
 	unsupported += "\xEE\x80\x80";
 	unsupported += "B";
 	//ASCII 部分仍产生墨迹，故绘制整体返回真
-	ASSERT_TRUE(renderer.text_draw(font, unsupported, 4.0f, 4.0f));
-	EXPECT_EQ(renderer.font_skipped_codepoints(font), 1u)
+	ASSERT_TRUE(renderer.ui().text_draw(font, unsupported, 4.0f, 4.0f));
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(font), 1u)
 		<< "字体不含的码点应计入跳过数（实际 "
-		<< renderer.font_skipped_codepoints(font) << "）";
+		<< renderer.ui().font_skipped_codepoints(font) << "）";
 	//重复绘制同一文本：该码点已登记（含 0 推进的空度量），不再重复计数
-	ASSERT_TRUE(renderer.text_draw(font, unsupported, 4.0f, 4.0f));
-	EXPECT_EQ(renderer.font_skipped_codepoints(font), 1u) << "同一码点不应重复计数";
+	ASSERT_TRUE(renderer.ui().text_draw(font, unsupported, 4.0f, 4.0f));
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(font), 1u) << "同一码点不应重复计数";
 	//另一串纯 ASCII 不改变计数
-	ASSERT_TRUE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
-	EXPECT_EQ(renderer.font_skipped_codepoints(font), 1u);
+	ASSERT_TRUE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(font), 1u);
 	//卸载后句柄失效，读取归 0
-	renderer.font_unload(font);
-	EXPECT_EQ(renderer.font_skipped_codepoints(font), 0u);
+	renderer.ui().font_unload(font);
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(font), 0u);
 }
 
 /*
@@ -320,14 +320,14 @@ TEST_F(Renderer_Text_Test, 文字颜色着色生效)
         if (!renderer.readback_supported())
                 GTEST_SKIP() << "本机交换链图像不具备传输源用法";
         uint64_t font = 0;
-        ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+        ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
         //第一帧：默认白色
-        ASSERT_TRUE(renderer.text_draw(font, "HH", 8.0f, 8.0f));
+        ASSERT_TRUE(renderer.ui().text_draw(font, "HH", 8.0f, 8.0f));
         std::vector<uint8_t> white_pixels(pixel_bytes());
         ASSERT_TRUE(renderer.frame_render(white_pixels.data(), static_cast<uint32_t>(white_pixels.size())));
         //第二帧：红色（重新登记绘制项）
-        renderer.text_color_set(std::array<float, 4>{ 1.0f, 0.0f, 0.0f, 1.0f }.data());
-        ASSERT_TRUE(renderer.text_draw(font, "HH", 8.0f, 8.0f));
+        renderer.ui().text_color_set(std::array<float, 4>{ 1.0f, 0.0f, 0.0f, 1.0f }.data());
+        ASSERT_TRUE(renderer.ui().text_draw(font, "HH", 8.0f, 8.0f));
         std::vector<uint8_t> red_pixels(pixel_bytes());
         ASSERT_TRUE(renderer.frame_render(red_pixels.data(), static_cast<uint32_t>(red_pixels.size())));
 
@@ -366,7 +366,7 @@ TEST_F(Renderer_Text_Test, 文字颜色着色生效)
 	EXPECT_GE(red_max - red_min, 100) << "文字着色未生效（仍为中性色）：" << pixel_text(red_pixel);
 	EXPECT_GE(red_max, 200) << "着色后墨迹过暗：" << pixel_text(red_pixel);
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 /*
@@ -383,15 +383,15 @@ TEST_F(Renderer_Text_Test, 文字透明度生效)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 	//不透明白字
-	renderer.text_color_set(std::array<float, 4>{ 1.0f, 1.0f, 1.0f, 1.0f }.data());
-	ASSERT_TRUE(renderer.text_draw(font, "HH", 8.0f, 8.0f));
+	renderer.ui().text_color_set(std::array<float, 4>{ 1.0f, 1.0f, 1.0f, 1.0f }.data());
+	ASSERT_TRUE(renderer.ui().text_draw(font, "HH", 8.0f, 8.0f));
 	std::vector<uint8_t> opaque_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(opaque_pixels.data(), static_cast<uint32_t>(opaque_pixels.size())));
 	//半透明白字
-	renderer.text_color_set(std::array<float, 4>{ 1.0f, 1.0f, 1.0f, 0.5f }.data());
-	ASSERT_TRUE(renderer.text_draw(font, "HH", 8.0f, 8.0f));
+	renderer.ui().text_color_set(std::array<float, 4>{ 1.0f, 1.0f, 1.0f, 0.5f }.data());
+	ASSERT_TRUE(renderer.ui().text_draw(font, "HH", 8.0f, 8.0f));
 	std::vector<uint8_t> alpha_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(alpha_pixels.data(), static_cast<uint32_t>(alpha_pixels.size())));
 
@@ -424,7 +424,7 @@ TEST_F(Renderer_Text_Test, 文字透明度生效)
 	EXPECT_LT(alpha_luma, opaque_luma) << "半透明文字未变暗：" << pixel_text(alpha) << " / " << pixel_text(opaque);
 	EXPECT_GT(alpha_luma, background_luma + 30) << "半透明文字过暗（已接近背景）：" << pixel_text(alpha);
 
-        renderer.font_unload(font);
+        renderer.ui().font_unload(font);
 }
 
 /*
@@ -435,24 +435,24 @@ TEST_F(Renderer_Text_Test, 文字透明度生效)
 TEST_F(Renderer_Text_Test, 文字缓存命中计数)
 {
         engine::Renderer renderer;
-        EXPECT_EQ(renderer.text_cache_hits(), 0u);
-        EXPECT_EQ(renderer.text_cache_misses(), 0u);
+        EXPECT_EQ(renderer.ui().text_cache_hits(), 0u);
+        EXPECT_EQ(renderer.ui().text_cache_misses(), 0u);
         ASSERT_TRUE(renderer.init(hidden_config()));
         uint64_t font = 0;
-        ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+        ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
         //首次：未命中
-        ASSERT_TRUE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
-        EXPECT_EQ(renderer.text_cache_misses(), 1u);
-        EXPECT_EQ(renderer.text_cache_hits(), 0u);
+        ASSERT_TRUE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
+        EXPECT_EQ(renderer.ui().text_cache_misses(), 1u);
+        EXPECT_EQ(renderer.ui().text_cache_hits(), 0u);
         //再次：命中
-        ASSERT_TRUE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
-        EXPECT_EQ(renderer.text_cache_hits(), 1u);
-        EXPECT_EQ(renderer.text_cache_misses(), 1u);
+        ASSERT_TRUE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
+        EXPECT_EQ(renderer.ui().text_cache_hits(), 1u);
+        EXPECT_EQ(renderer.ui().text_cache_misses(), 1u);
         //换文本：未命中
-        ASSERT_TRUE(renderer.text_draw(font, "AC", 4.0f, 4.0f));
-        EXPECT_EQ(renderer.text_cache_misses(), 2u);
-        EXPECT_EQ(renderer.text_cache_hits(), 1u);
-        renderer.font_unload(font);
+        ASSERT_TRUE(renderer.ui().text_draw(font, "AC", 4.0f, 4.0f));
+        EXPECT_EQ(renderer.ui().text_cache_misses(), 2u);
+        EXPECT_EQ(renderer.ui().text_cache_hits(), 1u);
+        renderer.ui().font_unload(font);
 }
 
 //文本网格缓存容量可配（第八十四轮）：默认 64；设为 2 后条目数受限于 2，最早条目被淘汰后重画计未命中
@@ -462,43 +462,43 @@ TEST_F(Renderer_Text_Test, 文本缓存容量可配)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	//未初始化：set 静默忽略、get 为 0
-	renderer.text_cache_capacity_set(8);
-	EXPECT_EQ(renderer.text_cache_capacity(), 0u);
-	EXPECT_EQ(renderer.text_cache_size(), 0u);
+	renderer.ui().text_cache_capacity_set(8);
+	EXPECT_EQ(renderer.ui().text_cache_capacity(), 0u);
+	EXPECT_EQ(renderer.ui().text_cache_size(), 0u);
 
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//默认 64
-	EXPECT_EQ(renderer.text_cache_capacity(), 64u);
+	EXPECT_EQ(renderer.ui().text_cache_capacity(), 64u);
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//缩到 2
-	renderer.text_cache_capacity_set(2);
-	EXPECT_EQ(renderer.text_cache_capacity(), 2u);
+	renderer.ui().text_cache_capacity_set(2);
+	EXPECT_EQ(renderer.ui().text_cache_capacity(), 2u);
 	//画三段不同文本（第三段触发淘汰）
-	ASSERT_TRUE(renderer.text_draw(font, "C1", 4.0f, 4.0f));
-	ASSERT_TRUE(renderer.text_draw(font, "C2", 4.0f, 4.0f));
-	ASSERT_TRUE(renderer.text_draw(font, "C3", 4.0f, 4.0f));
-	EXPECT_LE(renderer.text_cache_size(), 2u) << "缓存条目数超过设定上限";
+	ASSERT_TRUE(renderer.ui().text_draw(font, "C1", 4.0f, 4.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "C2", 4.0f, 4.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "C3", 4.0f, 4.0f));
+	EXPECT_LE(renderer.ui().text_cache_size(), 2u) << "缓存条目数超过设定上限";
 
 	//最早一段已被淘汰，重画应再次计未命中
-	uint64_t misses_before = renderer.text_cache_misses();
-	ASSERT_TRUE(renderer.text_draw(font, "C1", 4.0f, 4.0f));
-	EXPECT_EQ(renderer.text_cache_misses(), misses_before + 1) << "被淘汰文本重画未计未命中";
-	EXPECT_LE(renderer.text_cache_size(), 2u);
+	uint64_t misses_before = renderer.ui().text_cache_misses();
+	ASSERT_TRUE(renderer.ui().text_draw(font, "C1", 4.0f, 4.0f));
+	EXPECT_EQ(renderer.ui().text_cache_misses(), misses_before + 1) << "被淘汰文本重画未计未命中";
+	EXPECT_LE(renderer.ui().text_cache_size(), 2u);
 
 	//缩容立即生效：从 2 缩到 1，条目数应回到 1
-	renderer.text_cache_capacity_set(1);
-	EXPECT_EQ(renderer.text_cache_capacity(), 1u);
-	EXPECT_LE(renderer.text_cache_size(), 1u) << "缩容未立即淘汰";
+	renderer.ui().text_cache_capacity_set(1);
+	EXPECT_EQ(renderer.ui().text_cache_capacity(), 1u);
+	EXPECT_LE(renderer.ui().text_cache_size(), 1u) << "缩容未立即淘汰";
 
 	//钳制：0 → 1、超大 → 1024
-	renderer.text_cache_capacity_set(0);
-	EXPECT_EQ(renderer.text_cache_capacity(), 1u);
-	renderer.text_cache_capacity_set(5000);
-	EXPECT_EQ(renderer.text_cache_capacity(), 1024u);
+	renderer.ui().text_cache_capacity_set(0);
+	EXPECT_EQ(renderer.ui().text_cache_capacity(), 1u);
+	renderer.ui().text_cache_capacity_set(5000);
+	EXPECT_EQ(renderer.ui().text_cache_capacity(), 1024u);
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 //文本网格缓存上限（第四十八轮）：连画 70 段不同文本触发 LRU 淘汰，淘汰后重画最早文本仍应成功出墨
@@ -511,24 +511,24 @@ TEST_F(Renderer_Text_Test, 文本网格缓存淘汰后仍可重画)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//连续登记 70 段不同文本（缓存上限 64，必有 6 条被淘汰）
 	for (uint32_t index = 0; index < 70; ++index)
 	{
 		const std::string text = "T" + std::to_string(index);
-		ASSERT_TRUE(renderer.text_draw(font, text, 4.0f, 4.0f)) << "第 " << index << " 段文本登记失败";
+		ASSERT_TRUE(renderer.ui().text_draw(font, text, 4.0f, 4.0f)) << "第 " << index << " 段文本登记失败";
 	}
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	EXPECT_GT(ink_count(pixels, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), 0u) << "大量文本下未出现墨迹";
 
 	//重画最早的一段（其网格已被淘汰，应经重建再次成功）
-	ASSERT_TRUE(renderer.text_draw(font, "T0", 4.0f, 4.0f)) << "淘汰后的文本无法重画";
+	ASSERT_TRUE(renderer.ui().text_draw(font, "T0", 4.0f, 4.0f)) << "淘汰后的文本无法重画";
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	EXPECT_GT(ink_count(pixels, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), 0u) << "淘汰重建后未出现墨迹";
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 /*
@@ -555,8 +555,8 @@ TEST_F(Renderer_Text_Test, 覆盖率写入下文字仍可绘制)
 
 	//加载字体并绘制
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
-	ASSERT_TRUE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
 	//渲染并回读
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -566,7 +566,7 @@ TEST_F(Renderer_Text_Test, 覆盖率写入下文字仍可绘制)
 	RecordProperty("text_coverage_samples", static_cast<int>(renderer.msaa_samples()));
 	EXPECT_GT(ink, 0u) << "开启覆盖率写入后文字消失";
 
-        renderer.font_unload(font);
+        renderer.ui().font_unload(font);
 }
 
 /*
@@ -584,18 +584,18 @@ TEST_F(Renderer_Text_Test, 文字描边扩大墨迹且关闭后还原)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//① 无描边（默认）
-	ASSERT_TRUE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
 	std::vector<uint8_t> plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain.data(), static_cast<uint32_t>(plain.size())));
 	const uint32_t plain_ink = ink_count(plain, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
 	//② 红色描边（UV 半宽 0.004）
 	const float outline[3] = { 1.0f, 0.0f, 0.0f };
-	renderer.text_outline_set(0.004f, outline);
-	ASSERT_TRUE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
+	renderer.ui().text_outline_set(0.004f, outline);
+	ASSERT_TRUE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
 	std::vector<uint8_t> outlined(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(outlined.data(), static_cast<uint32_t>(outlined.size())));
 	const uint32_t outlined_ink = ink_count(outlined, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -606,13 +606,13 @@ TEST_F(Renderer_Text_Test, 文字描边扩大墨迹且关闭后还原)
 	EXPECT_NE(outlined, plain) << "描边未改变画面";
 
 	//③ 关闭描边（宽度 0）后与默认逐像素一致
-	renderer.text_outline_set(0.0f, outline);
-	ASSERT_TRUE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
+	renderer.ui().text_outline_set(0.0f, outline);
+	ASSERT_TRUE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
 	std::vector<uint8_t> restored(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(restored.data(), static_cast<uint32_t>(restored.size())));
 	EXPECT_EQ(restored, plain) << "关闭描边后画面未还原";
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 /*
@@ -631,14 +631,14 @@ TEST_F(Renderer_Text_Test, 宽描边墨迹单调增加)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//渲染一帧并返回墨迹像素数（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	const float outline[3] = { 0.0f, 0.0f, 1.0f };
 	auto render_ink = [&](float 宽度)
 	{
-		renderer.text_outline_set(宽度, outline);
-		EXPECT_TRUE(renderer.text_draw(font, "AB", 4.0f, 4.0f));
+		renderer.ui().text_outline_set(宽度, outline);
+		EXPECT_TRUE(renderer.ui().text_draw(font, "AB", 4.0f, 4.0f));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return ink_count(pixels, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -656,5 +656,5 @@ TEST_F(Renderer_Text_Test, 宽描边墨迹单调增加)
 	EXPECT_GT(narrow_ink, plain_ink) << "窄描边未扩大墨迹";
 	EXPECT_GT(wide_ink, narrow_ink) << "宽描边未比窄描边更厚（" << narrow_ink << " → " << wide_ink << "）";
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }

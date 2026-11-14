@@ -305,10 +305,10 @@ TEST_F(Renderer_Post_Chain_Test, 文字经后处理链保持)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 
 	//参考帧：直通（只画文字）
-	ASSERT_TRUE(renderer.text_draw(font, "ABC", 8.0f, 8.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "ABC", 8.0f, 8.0f));
 	std::vector<uint8_t> reference(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 
@@ -325,7 +325,7 @@ TEST_F(Renderer_Post_Chain_Test, 文字经后处理链保持)
 	ASSERT_TRUE(renderer.post_chain_set(chain_invert, 2));
 	uint64_t targets[2] = { target0, target1 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(targets, 2));
-	ASSERT_TRUE(renderer.text_draw(font, "ABC", 8.0f, 8.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "ABC", 8.0f, 8.0f));
 	std::vector<uint8_t> identity(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(identity.data(), static_cast<uint32_t>(identity.size())));
 
@@ -364,7 +364,7 @@ TEST_F(Renderer_Post_Chain_Test, 文字经后处理链保持)
 	ASSERT_NE(gray, 0u);
 	ASSERT_TRUE(renderer.post_chain_set(&gray, 1));
 	ASSERT_TRUE(renderer.render_target_present_chain_set(targets, 2));
-	ASSERT_TRUE(renderer.text_draw(font, "ABC", 8.0f, 8.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "ABC", 8.0f, 8.0f));
 	std::vector<uint8_t> grayed(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(grayed.data(), static_cast<uint32_t>(grayed.size())));
 
@@ -400,7 +400,7 @@ TEST_F(Renderer_Post_Chain_Test, 文字经后处理链保持)
         renderer.pipeline_unload(invert_b);
         renderer.render_target_destroy(target1);
         renderer.render_target_destroy(target0);
-        renderer.font_unload(font);
+        renderer.ui().font_unload(font);
 }
 
 /*

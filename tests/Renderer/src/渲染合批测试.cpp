@@ -279,10 +279,10 @@ TEST_F(Renderer_Scene_Test, 文字绘制项不参与合批)
 			return false;
 		//加载测试字体
 		uint64_t font = 0;
-		if (!renderer.font_load_file(font, font_path, 16))
+		if (!renderer.ui().font_load_file(font, font_path, 16))
 			return false;
 		//同一文本、同一位置连续两次
-		if (!renderer.text_draw(font, "AB", 4.0f, 4.0f) || !renderer.text_draw(font, "AB", 4.0f, 4.0f))
+		if (!renderer.ui().text_draw(font, "AB", 4.0f, 4.0f) || !renderer.ui().text_draw(font, "AB", 4.0f, 4.0f))
 			return false;
 		pixels.resize(pixel_bytes());
 		//整帧渲染并回读

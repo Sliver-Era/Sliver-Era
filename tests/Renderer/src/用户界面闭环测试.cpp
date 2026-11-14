@@ -180,7 +180,7 @@ TEST(User_Interface_Test, 面板与按钮绘制)
 		GTEST_SKIP() << "设备不支持像素回读";
 
 	//取原生 UI 上下文
-	Ui_Context* ui = renderer.ui_context();
+	Ui_Context* ui = renderer.ui().ui_context();
 	ASSERT_NE(ui, nullptr);
 
 	//面板铺满窗口
@@ -207,9 +207,9 @@ TEST(User_Interface_Test, 悬停与点击)
 {
 	Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	Ui_Context* ui = renderer.ui_context();
+	Ui_Context* ui = renderer.ui().ui_context();
 	ASSERT_NE(ui, nullptr);
-	Input_Aggregator* input = renderer.input_aggregator();
+	Input_Aggregator* input = renderer.ui().input_aggregator();
 	ASSERT_NE(input, nullptr);
 
 	//按钮与点击计数
@@ -245,15 +245,15 @@ TEST(User_Interface_Test, 文本框焦点与编辑)
 
 	Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	Ui_Context* ui = renderer.ui_context();
-	Input_Aggregator* input = renderer.input_aggregator();
+	Ui_Context* ui = renderer.ui().ui_context();
+	Input_Aggregator* input = renderer.ui().input_aggregator();
 	ASSERT_NE(ui, nullptr);
 	ASSERT_NE(input, nullptr);
 
 	//加载字体并绑定到 UI（失败时字体系断言跳过）
 	uint64_t font = 0;
 	if (font_ready)
-		font_ready = renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT);
+		font_ready = renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT);
 	if (font_ready)
 		ui->font_set(font);
 
@@ -311,8 +311,8 @@ TEST(User_Interface_Test, 复选框点击切换)
 {
 	Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	Ui_Context* ui = renderer.ui_context();
-	Input_Aggregator* input = renderer.input_aggregator();
+	Ui_Context* ui = renderer.ui().ui_context();
+	Input_Aggregator* input = renderer.ui().input_aggregator();
 	ASSERT_NE(ui, nullptr);
 	ASSERT_NE(input, nullptr);
 
@@ -341,8 +341,8 @@ TEST(User_Interface_Test, 滑动条拖拽)
 {
 	Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	Ui_Context* ui = renderer.ui_context();
-	Input_Aggregator* input = renderer.input_aggregator();
+	Ui_Context* ui = renderer.ui().ui_context();
+	Input_Aggregator* input = renderer.ui().input_aggregator();
 	ASSERT_NE(ui, nullptr);
 	ASSERT_NE(input, nullptr);
 
@@ -382,8 +382,8 @@ TEST(User_Interface_Test, Tab焦点导航)
 {
 	Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	Ui_Context* ui = renderer.ui_context();
-	Input_Aggregator* input = renderer.input_aggregator();
+	Ui_Context* ui = renderer.ui().ui_context();
+	Input_Aggregator* input = renderer.ui().input_aggregator();
 	ASSERT_NE(ui, nullptr);
 	ASSERT_NE(input, nullptr);
 
@@ -430,12 +430,12 @@ TEST(User_Interface_Test, 标签绘制与裁剪)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "设备不支持像素回读";
-	Ui_Context* ui = renderer.ui_context();
+	Ui_Context* ui = renderer.ui().ui_context();
 	ASSERT_NE(ui, nullptr);
 
 	//加载字体并绑定
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
 	ui->font_set(font);
 
 	//标签矩形宽 40，文本远超宽度

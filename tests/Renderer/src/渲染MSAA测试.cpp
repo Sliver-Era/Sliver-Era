@@ -346,12 +346,12 @@ TEST_F(Renderer_Msaa_Test, 文字在MSAA下可绘制)
 
 	//加载系统等宽字体（缺失则跳过）
 	uint64_t font = 0;
-	if (!renderer.font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16))
+	if (!renderer.ui().font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16))
 		GTEST_SKIP() << "本机缺少 consola.ttf";
 
 	//绘制一段文本并统计有墨迹像素
 	engine::Text_Layout layout{};
-	renderer.text_draw_layout(font, "MSAA", 20.0f, 40.0f, layout);
+	renderer.ui().text_draw_layout(font, "MSAA", 20.0f, 40.0f, layout);
 	std::vector<uint8_t> pixels(static_cast<std::size_t>(renderer.extent_width()) * renderer.extent_height() * 4, 0);
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	std::size_t inked = 0;
@@ -365,7 +365,7 @@ TEST_F(Renderer_Msaa_Test, 文字在MSAA下可绘制)
 	}
 	EXPECT_GT(inked, 0u) << "MSAA 下文字未产生墨迹";
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 //关闭 MSAA 后画面恢复到与初始单采样逐字节一致（零副作用）
@@ -549,7 +549,7 @@ TEST_F(Renderer_Msaa_Test, 高组合冒烟)
 
         //文字项（字体缺失时跳过文字部分，其余组合照常验证）
         uint64_t font = 0;
-        const bool text_ready = renderer.font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16);
+        const bool text_ready = renderer.ui().font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16);
 
         for (uint32_t frame = 0; frame < 3; ++frame)
         {
@@ -557,7 +557,7 @@ TEST_F(Renderer_Msaa_Test, 高组合冒烟)
                 ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
                 //文字每帧重新登记（待绘制项逐帧清空）
                 if (text_ready)
-                        ASSERT_TRUE(renderer.text_draw(font, "MSAA", 4.0f, 4.0f));
+                        ASSERT_TRUE(renderer.ui().text_draw(font, "MSAA", 4.0f, 4.0f));
                 ASSERT_TRUE(renderer.frame_render());
         }
         engine::Frame_Stats stats = renderer.frame_stats_get();

@@ -197,7 +197,7 @@ TEST_F(Renderer_Scene_Test, 雾场景上的文字仍可见)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//系统等宽字体缺失则跳过
 	uint64_t font = 0;
-	if (!renderer.font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16))
+	if (!renderer.ui().font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16))
 		GTEST_SKIP() << "系统中缺少 consola.ttf";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -210,9 +210,9 @@ TEST_F(Renderer_Scene_Test, 雾场景上的文字仍可见)
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
 	renderer.fog_set(black, 1.0f, 1.0f, 4.0f);
 	const float white_text[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	renderer.text_color_set(white_text);
+	renderer.ui().text_color_set(white_text);
 	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
-	ASSERT_TRUE(renderer.text_draw(font, "FOG", 4.0f, 4.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "FOG", 4.0f, 4.0f));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 

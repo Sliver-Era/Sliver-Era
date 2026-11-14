@@ -622,7 +622,7 @@ TEST_F(Renderer_Post_Chain_Test, 后处理链上UI不被处理)
 	EXPECT_LE(gray_span, CHAIN_TOLERANCE) << "灰度级未生效：" << pixel_text(gray_center);
 
 	//挂接 UI 回调并再出一帧：UI 色绘在末级之后，通道差应被完整保留
-	engine::Ui_Channel_Context* channel = renderer.ui_channel();
+	engine::Ui_Channel_Context* channel = renderer.ui().ui_channel();
 	ASSERT_NE(channel, nullptr);
 	Ui_Clear_Data ui_data{ { 0.55f, 0.30f, 0.12f, 1.0f } };
 	channel->draw_callback_set(ui_clear_frame, &ui_data);

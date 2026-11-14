@@ -233,7 +233,7 @@ namespace engine
             return false;
 
         //—— 取 UI 通道 ——
-        Ui_Channel_Context* 通道 = 渲染器.ui_channel();
+        Ui_Channel_Context* 通道 = 渲染器.ui().ui_channel();
         if (通道 == nullptr || !通道->valid())
         {
             渲染器.shutdown();

@@ -157,11 +157,11 @@ TEST_F(Renderer_Cjk_Text_Test, 中文产生非背景像素)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载中文字体
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, font_path, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, font_path, FONT_PIXEL_HEIGHT));
 	EXPECT_GE(font, 1u);
 
 	//在左上附近画两个中文
-	ASSERT_TRUE(renderer.text_draw(font, "中文", 8.0f, 8.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "中文", 8.0f, 8.0f));
 	//渲染并回读
 	std::vector<uint8_t> pixels(pixel_bytes());
 	uint32_t read_width = 0;
@@ -182,12 +182,12 @@ TEST_F(Renderer_Cjk_Text_Test, 中文产生非背景像素)
 	EXPECT_EQ(far_ink, 0u) << "远离文本处出现非背景像素";
 
 	//同一文本重复绘制复用缓存网格，仍应出帧并保持墨迹
-	ASSERT_TRUE(renderer.text_draw(font, "中文", 8.0f, 8.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "中文", 8.0f, 8.0f));
 	std::vector<uint8_t> again(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(again.data(), static_cast<uint32_t>(again.size())));
 	EXPECT_GT(ink_count(again, 0, 0, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2), 0u) << "重复绘制后中文墨迹消失";
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 //两串不同中文各自产生墨迹（证补烘按码点进行，而非固定图样）
@@ -201,16 +201,16 @@ TEST_F(Renderer_Cjk_Text_Test, 不同中文各自产生墨迹)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, font_path, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, font_path, FONT_PIXEL_HEIGHT));
 
 	//第一串：默认尺寸、无额外变换，先画一组
-	ASSERT_TRUE(renderer.text_draw(font, "日月", 8.0f, 8.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "日月", 8.0f, 8.0f));
 	std::vector<uint8_t> first(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(first.data(), static_cast<uint32_t>(first.size())));
 	uint32_t first_ink = ink_count(first, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
 	//第二串：另一组不同汉字（触发新的惰性补烘）
-	ASSERT_TRUE(renderer.text_draw(font, "山水", 8.0f, 8.0f));
+	ASSERT_TRUE(renderer.ui().text_draw(font, "山水", 8.0f, 8.0f));
 	std::vector<uint8_t> second(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(second.data(), static_cast<uint32_t>(second.size())));
 	uint32_t second_ink = ink_count(second, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -219,7 +219,7 @@ TEST_F(Renderer_Cjk_Text_Test, 不同中文各自产生墨迹)
 	EXPECT_GT(first_ink, 0u) << "第一串中文无墨迹";
 	EXPECT_GT(second_ink, 0u) << "第二串中文无墨迹";
 
-	renderer.font_unload(font);
+	renderer.ui().font_unload(font);
 }
 
 /*
@@ -237,7 +237,7 @@ TEST_F(Renderer_Cjk_Text_Test, 图集扩容不跳过字形)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//48 像素字号（放大字形，快速耗尽图集高度）
 	uint64_t font = 0;
-	ASSERT_TRUE(renderer.font_load_file(font, font_path, 48u));
+	ASSERT_TRUE(renderer.ui().font_load_file(font, font_path, 48u));
 	//拼接 600 个不重复汉字（基本区按 8 码点步进取样）
 	std::string 长串;
 	for (uint32_t 序号 = 0; 序号 < 600; ++序号)
@@ -246,12 +246,12 @@ TEST_F(Renderer_Cjk_Text_Test, 图集扩容不跳过字形)
 	布局.max_width = 120.0f;
 	布局.line_height = 52.0f;
 	//绘制一次即触发全部码点的惰性补烘（含多次扩容）
-	ASSERT_TRUE(renderer.text_draw_layout(font, 长串, 4.0f, 4.0f, 布局));
+	ASSERT_TRUE(renderer.ui().text_draw_layout(font, 长串, 4.0f, 4.0f, 布局));
 	//渲染一帧确认链路可用
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	EXPECT_GT(ink_count(pixels, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), 0u) << "长串中文未产生任何墨迹";
 	//关键断言：扩容而非跳过（修复前会出现若干被跳过的码点）
-	EXPECT_EQ(renderer.font_skipped_codepoints(font), 0u) << "字形图集空间不足导致码点被跳过";
-	renderer.font_unload(font);
+	EXPECT_EQ(renderer.ui().font_skipped_codepoints(font), 0u) << "字形图集空间不足导致码点被跳过";
+	renderer.ui().font_unload(font);
 }

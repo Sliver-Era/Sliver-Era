@@ -21,7 +21,7 @@ TEST_F(Renderer_Post_Chain_Test, 无效句柄回落)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//含未登记句柄的链应被整链拒绝
 	uint64_t unregistered = 12345;
@@ -43,7 +43,7 @@ TEST_F(Renderer_Post_Chain_Test, 单级链反色生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//创建场景目标
 	uint64_t scene_target = 0;
@@ -81,7 +81,7 @@ TEST_F(Renderer_Post_Chain_Test, 两级反色恒等于原画面)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
@@ -93,7 +93,7 @@ TEST_F(Renderer_Post_Chain_Test, 两级反色恒等于原画面)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		//创建 ping-pong 成对目标
 		uint64_t scene_target = 0;
@@ -131,7 +131,7 @@ TEST_F(Renderer_Post_Chain_Test, 两级反色与阈值叠加)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//创建 ping-pong 成对目标
 	uint64_t scene_target = 0;
@@ -184,7 +184,7 @@ TEST_F(Renderer_Post_Chain_Test, 单级链与既有单级路径等价)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -200,7 +200,7 @@ TEST_F(Renderer_Post_Chain_Test, 单级链与既有单级路径等价)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -229,7 +229,7 @@ TEST_F(Renderer_Post_Chain_Test, 目标尺寸不一致仍走后处理)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//比交换链窄的目标（触发范围不一致）
 	uint64_t narrow_target = 0;
@@ -324,7 +324,7 @@ TEST_F(Renderer_Post_Chain_Test, 灰度预设去色生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
 	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -362,7 +362,7 @@ TEST_F(Renderer_Post_Chain_Test, 描边预设压暗边界)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
 	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -410,7 +410,7 @@ TEST_F(Renderer_Post_Chain_Test, 色调映射压缩高亮)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
 	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -442,7 +442,7 @@ TEST_F(Renderer_Post_Chain_Test, 预设可串联)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
 	uint64_t second_target = 0;
@@ -601,7 +601,7 @@ TEST_F(Renderer_Post_Chain_Test, 后处理链上UI不被处理)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//场景目标与单级灰度链
 	uint64_t scene_target = 0;

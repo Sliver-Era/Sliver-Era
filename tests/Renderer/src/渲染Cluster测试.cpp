@@ -72,26 +72,26 @@ TEST(Renderer_Cluster_Test, 光源记录上传与开关)
 {
 	engine::Renderer renderer;
 	//未初始化：能力与开关均为假、计数为 0、启用被拒
-	EXPECT_FALSE(renderer.cluster_supported());
-	EXPECT_FALSE(renderer.cluster_enable_get());
-	EXPECT_EQ(renderer.cluster_light_count(), 0u);
-	EXPECT_FALSE(renderer.cluster_enable_set(true));
+	EXPECT_FALSE(renderer.compute().cluster_supported());
+	EXPECT_FALSE(renderer.compute().cluster_enable_get());
+	EXPECT_EQ(renderer.compute().cluster_light_count(), 0u);
+	EXPECT_FALSE(renderer.compute().cluster_enable_set(true));
 
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//默认关闭：不创建资源、不上传
-	EXPECT_FALSE(renderer.cluster_enable_get());
-	EXPECT_EQ(renderer.cluster_light_count(), 0u);
+	EXPECT_FALSE(renderer.compute().cluster_enable_get());
+	EXPECT_EQ(renderer.compute().cluster_light_count(), 0u);
 	//本机不支持计算路径时 Cluster 保持关闭（与 GPU 路径降级口径一致）
-	if (!renderer.cluster_supported())
+	if (!renderer.compute().cluster_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，Cluster 光照保持关闭";
 	}
 
 	//开启后首帧上传主方向光 ＋ 补光两条记录
-	ASSERT_TRUE(renderer.cluster_enable_set(true));
-	EXPECT_TRUE(renderer.cluster_enable_get());
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
+	EXPECT_TRUE(renderer.compute().cluster_enable_get());
 	ASSERT_TRUE(renderer.frame_render());
-	EXPECT_EQ(renderer.cluster_light_count(), 2u);
+	EXPECT_EQ(renderer.compute().cluster_light_count(), 2u);
 
 	//追加一点光与一聚光后，下一帧上传 4 条
 	const float point_position[3] = { 1.0f, 2.0f, 3.0f };
@@ -100,17 +100,17 @@ TEST(Renderer_Cluster_Test, 光源记录上传与开关)
 	ASSERT_TRUE(renderer.light_add_point(point_position, point_color, 7.0f, 0.5f, 0.1f, 1, 0.8f, 32.0f));
 	ASSERT_TRUE(renderer.light_add_spot(point_position, spot_direction, point_color, 7.0f, 0.5f, 30.0f, 45.0f, 0.1f));
 	ASSERT_TRUE(renderer.frame_render());
-	EXPECT_EQ(renderer.cluster_light_count(), 4u);
+	EXPECT_EQ(renderer.compute().cluster_light_count(), 4u);
 
 	//清空光源后回到两条基础记录
 	renderer.lights_clear();
 	ASSERT_TRUE(renderer.frame_render());
-	EXPECT_EQ(renderer.cluster_light_count(), 2u);
+	EXPECT_EQ(renderer.compute().cluster_light_count(), 2u);
 
 	//关闭后计数归零、开关为假
-	ASSERT_TRUE(renderer.cluster_enable_set(false));
-	EXPECT_FALSE(renderer.cluster_enable_get());
-	EXPECT_EQ(renderer.cluster_light_count(), 0u);
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(false));
+	EXPECT_FALSE(renderer.compute().cluster_enable_get());
+	EXPECT_EQ(renderer.compute().cluster_light_count(), 0u);
 }
 
 //分簇网格与 CPU 逐簇计数参考（第二百六十七轮）
@@ -121,34 +121,34 @@ TEST(Renderer_Cluster_Test, 分簇网格与逐簇计数参考)
 	uint32_t grid_x = 1;
 	uint32_t grid_y = 1;
 	uint32_t grid_z = 1;
-	EXPECT_FALSE(renderer.cluster_grid_get(grid_x, grid_y, grid_z));
-	EXPECT_EQ(renderer.cluster_grid_cluster_count(), 0u);
-	EXPECT_FALSE(renderer.cluster_grid_set(16, 9, 24));
+	EXPECT_FALSE(renderer.compute().cluster_grid_get(grid_x, grid_y, grid_z));
+	EXPECT_EQ(renderer.compute().cluster_grid_cluster_count(), 0u);
+	EXPECT_FALSE(renderer.compute().cluster_grid_set(16, 9, 24));
 	std::vector<uint32_t> counts(4096);
 	uint32_t total = 0;
-	EXPECT_FALSE(renderer.cluster_counts_reference_ex(counts.data(), static_cast<uint32_t>(counts.size()), &total));
+	EXPECT_FALSE(renderer.compute().cluster_counts_reference_ex(counts.data(), static_cast<uint32_t>(counts.size()), &total));
 
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//默认网格 16 × 9 × 24 = 3456 簇
-	ASSERT_TRUE(renderer.cluster_grid_get(grid_x, grid_y, grid_z));
+	ASSERT_TRUE(renderer.compute().cluster_grid_get(grid_x, grid_y, grid_z));
 	EXPECT_EQ(grid_x, 16u);
 	EXPECT_EQ(grid_y, 9u);
 	EXPECT_EQ(grid_z, 24u);
-	EXPECT_EQ(renderer.cluster_grid_cluster_count(), 3456u);
+	EXPECT_EQ(renderer.compute().cluster_grid_cluster_count(), 3456u);
 
 	//网格钳制：全 0 → 每轴 1；100 × 100 × 100 → 总簇数不超过 4096
-	ASSERT_TRUE(renderer.cluster_grid_set(0, 0, 0));
-	EXPECT_EQ(renderer.cluster_grid_cluster_count(), 1u);
-	ASSERT_TRUE(renderer.cluster_grid_set(100, 100, 100));
-	EXPECT_LE(renderer.cluster_grid_cluster_count(), 4096u);
+	ASSERT_TRUE(renderer.compute().cluster_grid_set(0, 0, 0));
+	EXPECT_EQ(renderer.compute().cluster_grid_cluster_count(), 1u);
+	ASSERT_TRUE(renderer.compute().cluster_grid_set(100, 100, 100));
+	EXPECT_LE(renderer.compute().cluster_grid_cluster_count(), 4096u);
 	//恢复默认网格
-	ASSERT_TRUE(renderer.cluster_grid_set(16, 9, 24));
+	ASSERT_TRUE(renderer.compute().cluster_grid_set(16, 9, 24));
 
 	//容量不足被拒
-	EXPECT_FALSE(renderer.cluster_counts_reference_ex(counts.data(), 100, &total));
+	EXPECT_FALSE(renderer.compute().cluster_counts_reference_ex(counts.data(), 100, &total));
 
 	//仅主方向光（补光强度 0 不计）：全部簇计数 1
-	ASSERT_TRUE(renderer.cluster_counts_reference_ex(counts.data(), 3456, &total));
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), 3456, &total));
 	EXPECT_EQ(total, 3456u);
 	for (uint32_t index = 0; index < 3456; ++index)
 		EXPECT_EQ(counts[index], 1u);
@@ -157,13 +157,13 @@ TEST(Renderer_Cluster_Test, 分簇网格与逐簇计数参考)
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
 	ASSERT_TRUE(renderer.light_add_point(position, color, 100.0f, 0.5f, 0.1f));
-	ASSERT_TRUE(renderer.cluster_counts_reference_ex(counts.data(), 3456, &total));
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), 3456, &total));
 	for (uint32_t index = 0; index < 3456; ++index)
 		EXPECT_EQ(counts[index], 2u);
 
 	//清空点光后回到 1
 	renderer.lights_clear();
-	ASSERT_TRUE(renderer.cluster_counts_reference_ex(counts.data(), 3456, &total));
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), 3456, &total));
 	for (uint32_t index = 0; index < 3456; ++index)
 		EXPECT_EQ(counts[index], 1u);
 }
@@ -178,16 +178,16 @@ TEST(Renderer_Cluster_Test, GPU逐簇计数与CPU参考一致)
 	uint32_t cpu_total = 0;
 	uint32_t gpu_total = 0;
 	//容量不足被拒
-	EXPECT_FALSE(renderer.cluster_counts_gpu(gpu_counts.data(), 100, &gpu_total));
+	EXPECT_FALSE(renderer.compute().cluster_counts_gpu(gpu_counts.data(), 100, &gpu_total));
 	//本机不支持计算路径时跳过（GPU 计数降级口径）
-	if (!renderer.compute_supported())
+	if (!renderer.compute().compute_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，GPU 逐簇计数不可用";
 	}
 
 	//仅主方向光：GPU 与 CPU 逐簇一致
-	ASSERT_TRUE(renderer.cluster_counts_reference_ex(cpu_counts.data(), 3456, &cpu_total));
-	ASSERT_TRUE(renderer.cluster_counts_gpu(gpu_counts.data(), 3456, &gpu_total));
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(cpu_counts.data(), 3456, &cpu_total));
+	ASSERT_TRUE(renderer.compute().cluster_counts_gpu(gpu_counts.data(), 3456, &gpu_total));
 	ASSERT_EQ(cpu_total, gpu_total);
 	for (uint32_t index = 0; index < cpu_total; ++index)
 		EXPECT_EQ(cpu_counts[index], gpu_counts[index]);
@@ -196,8 +196,8 @@ TEST(Renderer_Cluster_Test, GPU逐簇计数与CPU参考一致)
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
 	ASSERT_TRUE(renderer.light_add_point(position, color, 100.0f, 0.5f, 0.1f));
-	ASSERT_TRUE(renderer.cluster_counts_reference_ex(cpu_counts.data(), 3456, &cpu_total));
-	ASSERT_TRUE(renderer.cluster_counts_gpu(gpu_counts.data(), 3456, &gpu_total));
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(cpu_counts.data(), 3456, &cpu_total));
+	ASSERT_TRUE(renderer.compute().cluster_counts_gpu(gpu_counts.data(), 3456, &gpu_total));
 	ASSERT_EQ(cpu_total, gpu_total);
 	for (uint32_t index = 0; index < cpu_total; ++index)
 		EXPECT_EQ(cpu_counts[index], gpu_counts[index]);
@@ -221,21 +221,21 @@ TEST(Renderer_Cluster_Test, 块内前缀和与CPU参考一致)
 	uint32_t cpu_blocks = 0;
 	uint32_t gpu_blocks = 0;
 	//CPU 参考：容量不足被拒
-	EXPECT_FALSE(renderer.cluster_prefix_block_scan_cpu(counts.data(), COUNT, cpu_prefix.data(),
+	EXPECT_FALSE(renderer.compute().cluster_prefix_block_scan_cpu(counts.data(), COUNT, cpu_prefix.data(),
 		cpu_totals.data(), 4, &cpu_blocks));
 	//GPU：容量不足被拒
-	EXPECT_FALSE(renderer.cluster_prefix_block_scan_gpu(counts.data(), COUNT, gpu_prefix.data(),
+	EXPECT_FALSE(renderer.compute().cluster_prefix_block_scan_gpu(counts.data(), COUNT, gpu_prefix.data(),
 		gpu_totals.data(), 4, &gpu_blocks));
 	//本机不支持计算路径时跳过（GPU 扫描降级口径）
-	if (!renderer.compute_supported())
+	if (!renderer.compute().compute_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，GPU 块内扫描不可用";
 	}
 
-	ASSERT_TRUE(renderer.cluster_prefix_block_scan_cpu(counts.data(), COUNT, cpu_prefix.data(),
+	ASSERT_TRUE(renderer.compute().cluster_prefix_block_scan_cpu(counts.data(), COUNT, cpu_prefix.data(),
 		cpu_totals.data(), BLOCKS, &cpu_blocks));
 	ASSERT_EQ(cpu_blocks, BLOCKS);
-	ASSERT_TRUE(renderer.cluster_prefix_block_scan_gpu(counts.data(), COUNT, gpu_prefix.data(),
+	ASSERT_TRUE(renderer.compute().cluster_prefix_block_scan_gpu(counts.data(), COUNT, gpu_prefix.data(),
 		gpu_totals.data(), BLOCKS, &gpu_blocks));
 	ASSERT_EQ(gpu_blocks, BLOCKS);
 	//逐元素前缀和与逐块总和一致
@@ -258,13 +258,13 @@ TEST(Renderer_Cluster_Test, 全量前缀和与CPU参考一致)
 	std::vector<uint32_t> cpu_prefix(COUNT);
 	std::vector<uint32_t> gpu_prefix(COUNT);
 	//本机不支持计算路径时跳过（GPU 全量扫描降级口径）
-	if (!renderer.compute_supported())
+	if (!renderer.compute().compute_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，GPU 全量扫描不可用";
 	}
 
-	ASSERT_TRUE(renderer.cluster_prefix_scan_cpu(counts.data(), COUNT, cpu_prefix.data()));
-	ASSERT_TRUE(renderer.cluster_prefix_scan_gpu(counts.data(), COUNT, gpu_prefix.data()));
+	ASSERT_TRUE(renderer.compute().cluster_prefix_scan_cpu(counts.data(), COUNT, cpu_prefix.data()));
+	ASSERT_TRUE(renderer.compute().cluster_prefix_scan_gpu(counts.data(), COUNT, gpu_prefix.data()));
 	//逐元素一致，且单调不减、末项等于全量总和
 	uint64_t total_sum = 0;
 	for (uint32_t index = 0; index < COUNT; ++index)
@@ -290,13 +290,13 @@ TEST(Renderer_Cluster_Test, 簇光源列表与CPU参考一致)
 	//逐簇计数
 	std::vector<uint32_t> counts(CLUSTERS);
 	uint32_t total = 0;
-	ASSERT_TRUE(renderer.cluster_counts_reference_ex(counts.data(), CLUSTERS, &total));
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), CLUSTERS, &total));
 	ASSERT_EQ(total, CLUSTERS);
 	uint32_t entries = 0;
 	for (uint32_t cluster = 0; cluster < CLUSTERS; ++cluster)
 		entries += counts[cluster];
 	//本机不支持计算路径时跳过（GPU 列表降级口径）
-	if (!renderer.compute_supported())
+	if (!renderer.compute().compute_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，GPU 簇列表不可用";
 	}
@@ -308,11 +308,11 @@ TEST(Renderer_Cluster_Test, 簇光源列表与CPU参考一致)
 	uint32_t cpu_entries = 0;
 	uint32_t gpu_entries = 0;
 	//容量不足被拒
-	EXPECT_FALSE(renderer.cluster_list_build_gpu(gpu_list.data(), entries - 1, gpu_offsets.data(),
+	EXPECT_FALSE(renderer.compute().cluster_list_build_gpu(gpu_list.data(), entries - 1, gpu_offsets.data(),
 		counts.data(), CLUSTERS, &gpu_entries));
-	ASSERT_TRUE(renderer.cluster_list_build_cpu(cpu_list.data(), entries, cpu_offsets.data(),
+	ASSERT_TRUE(renderer.compute().cluster_list_build_cpu(cpu_list.data(), entries, cpu_offsets.data(),
 		counts.data(), CLUSTERS, &cpu_entries));
-	ASSERT_TRUE(renderer.cluster_list_build_gpu(gpu_list.data(), entries, gpu_offsets.data(),
+	ASSERT_TRUE(renderer.compute().cluster_list_build_gpu(gpu_list.data(), entries, gpu_offsets.data(),
 		counts.data(), CLUSTERS, &gpu_entries));
 	EXPECT_EQ(cpu_entries, entries);
 	EXPECT_EQ(gpu_entries, entries);
@@ -347,7 +347,7 @@ TEST(Renderer_Cluster_Test, 簇数据整备与观测)
 	//参考计数与条目数
 	std::vector<uint32_t> reference_counts(CLUSTERS);
 	uint32_t total = 0;
-	ASSERT_TRUE(renderer.cluster_counts_reference_ex(reference_counts.data(), CLUSTERS, &total));
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(reference_counts.data(), CLUSTERS, &total));
 	uint32_t entries = 0;
 	for (uint32_t cluster = 0; cluster < CLUSTERS; ++cluster)
 		entries += reference_counts[cluster];
@@ -358,22 +358,22 @@ TEST(Renderer_Cluster_Test, 簇数据整备与观测)
 	std::vector<uint32_t> offsets_cpu(CLUSTERS);
 	std::vector<uint32_t> list_cpu(entries);
 	uint32_t built_entries = 0;
-	EXPECT_FALSE(renderer.cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
+	EXPECT_FALSE(renderer.compute().cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
 		100, entries, &built_entries, false));
 	//CPU 路径整备：计数与参考一致、条目与观测一致
-	ASSERT_TRUE(renderer.cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
+	ASSERT_TRUE(renderer.compute().cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
 		CLUSTERS, entries, &built_entries, false));
 	EXPECT_EQ(built_entries, entries);
-	EXPECT_EQ(renderer.cluster_entries_get(), entries);
-	EXPECT_GE(renderer.cluster_build_ms_get(), 0.0);
+	EXPECT_EQ(renderer.compute().cluster_entries_get(), entries);
+	EXPECT_GE(renderer.compute().cluster_build_ms_get(), 0.0);
 	for (uint32_t cluster = 0; cluster < CLUSTERS; ++cluster)
 		EXPECT_EQ(counts_cpu[cluster], reference_counts[cluster]);
 	//列表容量不足被拒
-	EXPECT_FALSE(renderer.cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
+	EXPECT_FALSE(renderer.compute().cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
 		CLUSTERS, entries - 1, &built_entries, false));
 
 	//本机不支持计算路径时跳过（GPU 整备降级口径）
-	if (!renderer.compute_supported())
+	if (!renderer.compute().compute_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，GPU 簇数据整备不可用";
 	}
@@ -382,10 +382,10 @@ TEST(Renderer_Cluster_Test, 簇数据整备与观测)
 	std::vector<uint32_t> offsets_gpu(CLUSTERS);
 	std::vector<uint32_t> list_gpu(entries);
 	uint32_t gpu_entries = 0;
-	ASSERT_TRUE(renderer.cluster_data_build(counts_gpu.data(), offsets_gpu.data(), list_gpu.data(),
+	ASSERT_TRUE(renderer.compute().cluster_data_build(counts_gpu.data(), offsets_gpu.data(), list_gpu.data(),
 		CLUSTERS, entries, &gpu_entries, true));
 	EXPECT_EQ(gpu_entries, entries);
-	EXPECT_EQ(renderer.cluster_entries_get(), entries);
+	EXPECT_EQ(renderer.compute().cluster_entries_get(), entries);
 	for (uint32_t cluster = 0; cluster < CLUSTERS; ++cluster)
 	{
 		EXPECT_EQ(counts_gpu[cluster], counts_cpu[cluster]);
@@ -407,11 +407,11 @@ TEST(Renderer_Cluster_Test, 帧内整备与统计)
 	//开启：需要计算能力（不支持时跳过）
 	engine::Renderer on;
 	ASSERT_TRUE(on.init(hidden_config()));
-	if (!on.cluster_supported())
+	if (!on.compute().cluster_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，帧内簇整备不可用";
 	}
-	ASSERT_TRUE(on.cluster_enable_set(true));
+	ASSERT_TRUE(on.compute().cluster_enable_set(true));
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
 	ASSERT_TRUE(on.light_add_point(position, color, 10.0f, 0.5f, 0.1f));
@@ -419,10 +419,10 @@ TEST(Renderer_Cluster_Test, 帧内整备与统计)
 	engine::Frame_Stats stats_on = on.frame_stats_get();
 	EXPECT_GT(stats_on.cluster_entries, 0u);
 	EXPECT_GE(stats_on.cluster_build_ms, 0.0);
-	EXPECT_EQ(on.cluster_entries_get(), stats_on.cluster_entries);
+	EXPECT_EQ(on.compute().cluster_entries_get(), stats_on.cluster_entries);
 
 	//关闭后观测清零
-	ASSERT_TRUE(on.cluster_enable_set(false));
+	ASSERT_TRUE(on.compute().cluster_enable_set(false));
 	ASSERT_TRUE(on.frame_render());
 	engine::Frame_Stats stats_closed = on.frame_stats_get();
 	EXPECT_EQ(stats_closed.cluster_entries, 0u);
@@ -450,9 +450,9 @@ TEST(Renderer_Cluster_Test, 开关组合矩阵)
 		//请求 Cluster 但不支持时跳过（降级矩阵口径）
 		if (config.cluster_enable)
 		{
-			if (!renderer.cluster_supported())
+			if (!renderer.compute().cluster_supported())
 				GTEST_SKIP() << "本机不支持计算路径，无法覆盖 Cluster 开启组合";
-			ASSERT_TRUE(renderer.cluster_enable_set(true));
+			ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 		}
 		renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
@@ -497,7 +497,7 @@ TEST(Renderer_Cluster_Test, 构建性能对照)
 	constexpr uint32_t LIST_CAPACITY = CLUSTERS * 70u;
 	constexpr uint32_t RUNS = 5;
 	//本机不支持计算路径时跳过（GPU 基线不可测）
-	if (!renderer.compute_supported())
+	if (!renderer.compute().compute_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，GPU 构建基线不可测";
 	}
@@ -509,7 +509,7 @@ TEST(Renderer_Cluster_Test, 构建性能对照)
 	std::vector<uint32_t> offsets_gpu(CLUSTERS);
 	std::vector<uint32_t> list_gpu(LIST_CAPACITY);
 	//开启 Cluster 以解除 8 盏登记上限（第二百八十轮）
-	ASSERT_TRUE(renderer.cluster_enable_set(true));
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 	//四档光源规模：2 条基础 / ＋2 / ＋6 / ＋62（对应 2 / 4 / 8 / 64 条记录）
 	for (uint32_t stage = 0; stage < 4; ++stage)
 	{
@@ -525,18 +525,18 @@ TEST(Renderer_Cluster_Test, 构建性能对照)
 		double cpu_best_ms = 1e9;
 		for (uint32_t run = 0; run < RUNS; ++run)
 		{
-			ASSERT_TRUE(renderer.cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
+			ASSERT_TRUE(renderer.compute().cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
 				CLUSTERS, LIST_CAPACITY, &cpu_entries, false));
-			cpu_best_ms = (std::min)(cpu_best_ms, renderer.cluster_build_ms_get());
+			cpu_best_ms = (std::min)(cpu_best_ms, renderer.compute().cluster_build_ms_get());
 		}
 		//GPU 路径：5 次取最小耗时
 		uint32_t gpu_entries = 0;
 		double gpu_best_ms = 1e9;
 		for (uint32_t run = 0; run < RUNS; ++run)
 		{
-			ASSERT_TRUE(renderer.cluster_data_build(counts_gpu.data(), offsets_gpu.data(), list_gpu.data(),
+			ASSERT_TRUE(renderer.compute().cluster_data_build(counts_gpu.data(), offsets_gpu.data(), list_gpu.data(),
 				CLUSTERS, LIST_CAPACITY, &gpu_entries, true));
-			gpu_best_ms = (std::min)(gpu_best_ms, renderer.cluster_build_ms_get());
+			gpu_best_ms = (std::min)(gpu_best_ms, renderer.compute().cluster_build_ms_get());
 		}
 		//两条路径结果一致
 		EXPECT_EQ(cpu_entries, gpu_entries);
@@ -570,9 +570,9 @@ TEST(Renderer_Cluster_Test, 组合矩阵_阴影与MSAA)
 				ASSERT_TRUE(renderer.init(config));
 				if (cluster_index != 0)
 				{
-					if (!renderer.cluster_supported())
+					if (!renderer.compute().cluster_supported())
 						GTEST_SKIP() << "本机不支持计算路径，无法覆盖 Cluster 开启组合";
-					ASSERT_TRUE(renderer.cluster_enable_set(true));
+					ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 				}
 				renderer.shadow_enable_set(shadow_index != 0);
 				renderer.camera_position_set(0.0f, 0.0f, 5.0f);
@@ -633,11 +633,11 @@ TEST(Renderer_Cluster_Test, 光源登记上限与截断)
 	//开启 Cluster：可登记超过 8 盏（本用例登记 32 盏）
 	engine::Renderer on;
 	ASSERT_TRUE(on.init(hidden_config()));
-	if (!on.cluster_supported())
+	if (!on.compute().cluster_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，Cluster 开启路径不可用";
 	}
-	ASSERT_TRUE(on.cluster_enable_set(true));
+	ASSERT_TRUE(on.compute().cluster_enable_set(true));
 	for (uint32_t index = 0; index < 32; ++index)
 	{
 		const float position[3] = { static_cast<float>(index) * 0.15f - 2.0f, 0.0f, 0.0f };
@@ -650,7 +650,7 @@ TEST(Renderer_Cluster_Test, 光源登记上限与截断)
 	EXPECT_EQ(on.frame_stats_get().light_truncated, 0u);
 
 	//关闭 Cluster 后再次登记被拒，并置截断标志
-	ASSERT_TRUE(on.cluster_enable_set(false));
+	ASSERT_TRUE(on.compute().cluster_enable_set(false));
 	EXPECT_FALSE(on.light_add_point(extra_position, extra_color, 6.0f, 0.4f, 0.1f));
 	ASSERT_TRUE(on.frame_render());
 	EXPECT_EQ(on.frame_stats_get().light_truncated, 1u);
@@ -662,11 +662,11 @@ TEST(Renderer_Cluster_Test, 光源容量边界)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//本机不支持计算路径时跳过（Cluster 开启路径不可用）
-	if (!renderer.cluster_supported())
+	if (!renderer.compute().cluster_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，Cluster 开启路径不可用";
 	}
-	ASSERT_TRUE(renderer.cluster_enable_set(true));
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 	//登记到容量上限（1024 盏）
 	constexpr uint32_t CAPACITY = 1024;
 	for (uint32_t index = 0; index < CAPACITY; ++index)
@@ -709,9 +709,9 @@ TEST(Renderer_Cluster_Test, 图形set0簇缓冲上传)
 		//开启态需要计算路径
 		if (config.cluster_enable)
 		{
-			if (!renderer.cluster_supported())
+			if (!renderer.compute().cluster_supported())
 				GTEST_SKIP() << "本机不支持计算路径，无法覆盖簇缓冲上传";
-			ASSERT_TRUE(renderer.cluster_enable_set(true));
+			ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 		}
 		renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
@@ -766,9 +766,9 @@ TEST(Renderer_Cluster_Test, 片元簇采样_八盏等价)
 		//开启态需要计算路径
 		if (cluster_index != 0)
 		{
-			if (!renderer.cluster_supported())
+			if (!renderer.compute().cluster_supported())
 				GTEST_SKIP() << "本机不支持计算路径，簇采样路径不可用";
-			ASSERT_TRUE(renderer.cluster_enable_set(true));
+			ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 		}
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
@@ -831,9 +831,9 @@ TEST(Renderer_Cluster_Test, 片元簇采样_三十三盏扩展)
 		//开启态需要计算路径
 		if (cluster_index != 0)
 		{
-			if (!renderer.cluster_supported())
+			if (!renderer.compute().cluster_supported())
 				GTEST_SKIP() << "本机不支持计算路径，簇采样路径不可用";
-			ASSERT_TRUE(renderer.cluster_enable_set(true));
+			ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 		}
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
@@ -897,9 +897,9 @@ TEST(Renderer_Cluster_Test, 片元簇采样_MSAA四倍等价)
 		//开启态需要计算路径
 		if (cluster_index != 0)
 		{
-			if (!renderer.cluster_supported())
+			if (!renderer.compute().cluster_supported())
 				GTEST_SKIP() << "本机不支持计算路径，簇采样路径不可用";
-			ASSERT_TRUE(renderer.cluster_enable_set(true));
+			ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 		}
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
@@ -950,11 +950,11 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.cluster_supported())
+	if (!renderer.compute().cluster_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，大光源场景不可用";
 	}
-	ASSERT_TRUE(renderer.cluster_enable_set(true));
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 	constexpr uint32_t LIGHT_COUNT = 512;
 	const float color[3] = { 0.6f, 0.7f, 0.8f };
 	//32 × 16 网格分布（相机前方，半径 2 覆盖局部簇）
@@ -1001,12 +1001,12 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏)
 	double gpu_best_ms = 1e9;
 	for (uint32_t run = 0; run < 2; ++run)
 	{
-		ASSERT_TRUE(renderer.cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
+		ASSERT_TRUE(renderer.compute().cluster_data_build(counts_cpu.data(), offsets_cpu.data(), list_cpu.data(),
 			CLUSTERS, LIST_CAPACITY, &cpu_entries, false));
-		cpu_best_ms = (std::min)(cpu_best_ms, renderer.cluster_build_ms_get());
-		ASSERT_TRUE(renderer.cluster_data_build(counts_gpu.data(), offsets_gpu.data(), list_gpu.data(),
+		cpu_best_ms = (std::min)(cpu_best_ms, renderer.compute().cluster_build_ms_get());
+		ASSERT_TRUE(renderer.compute().cluster_data_build(counts_gpu.data(), offsets_gpu.data(), list_gpu.data(),
 			CLUSTERS, LIST_CAPACITY, &gpu_entries, true));
-		gpu_best_ms = (std::min)(gpu_best_ms, renderer.cluster_build_ms_get());
+		gpu_best_ms = (std::min)(gpu_best_ms, renderer.compute().cluster_build_ms_get());
 	}
 	//两路径同一份计数
 	EXPECT_EQ(cpu_entries, gpu_entries);
@@ -1028,11 +1028,11 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏聚光灯)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.cluster_supported())
+	if (!renderer.compute().cluster_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，大光源聚光场景不可用";
 	}
-	ASSERT_TRUE(renderer.cluster_enable_set(true));
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 	constexpr uint32_t LIGHT_COUNT = 512;
 	const float color[3] = { 0.5f, 0.7f, 0.9f };
 	const float direction[3] = { 0.0f, 0.0f, -1.0f };
@@ -1070,10 +1070,10 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏聚光灯)
 	std::vector<uint32_t> offsets(CLUSTERS);
 	std::vector<uint32_t> list(CLUSTERS * (LIGHT_COUNT + 2u));
 	uint32_t entries = 0;
-	ASSERT_TRUE(renderer.cluster_data_build(counts.data(), offsets.data(), list.data(),
+	ASSERT_TRUE(renderer.compute().cluster_data_build(counts.data(), offsets.data(), list.data(),
 		CLUSTERS, static_cast<uint32_t>(list.size()), &entries, false));
 	EXPECT_GT(entries, 0u);
-	std::cout << "[大光源512聚光] CPU " << renderer.cluster_build_ms_get() << " ms | 条目 " << entries << std::endl;
+	std::cout << "[大光源512聚光] CPU " << renderer.compute().cluster_build_ms_get() << " ms | 条目 " << entries << std::endl;
 
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
@@ -1087,7 +1087,7 @@ TEST(Renderer_Cluster_Test, 簇开关反复切换)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.cluster_supported())
+	if (!renderer.compute().cluster_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，簇开关切换不可用";
 	}
@@ -1103,7 +1103,7 @@ TEST(Renderer_Cluster_Test, 簇开关反复切换)
 	const bool states[3] = { true, false, true };
 	for (uint32_t cycle = 0; cycle < 3; ++cycle)
 	{
-		ASSERT_TRUE(renderer.cluster_enable_set(states[cycle]));
+		ASSERT_TRUE(renderer.compute().cluster_enable_set(states[cycle]));
 		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 		const engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -1119,7 +1119,7 @@ TEST(Renderer_Cluster_Test, 簇开关反复切换)
 		}
 	}
 	//收尾：关闭并释放
-	ASSERT_TRUE(renderer.cluster_enable_set(false));
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(false));
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
 }
@@ -1133,11 +1133,11 @@ TEST(Renderer_Cluster_Test, 簇网格切换与缓冲重建)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.cluster_supported())
+	if (!renderer.compute().cluster_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，簇缓冲重建不可用";
 	}
-	ASSERT_TRUE(renderer.cluster_enable_set(true));
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 	//一盏点光（半径 10 保守覆盖全簇）
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
@@ -1159,8 +1159,8 @@ TEST(Renderer_Cluster_Test, 簇网格切换与缓冲重建)
 	std::vector<uint8_t> pixels(pixel_count, 0u);
 	for (uint32_t stage = 0; stage < 3; ++stage)
 	{
-		ASSERT_TRUE(renderer.cluster_grid_set(grid_sets[stage][0], grid_sets[stage][1], grid_sets[stage][2]));
-		EXPECT_EQ(renderer.cluster_grid_cluster_count(), expected_total[stage]);
+		ASSERT_TRUE(renderer.compute().cluster_grid_set(grid_sets[stage][0], grid_sets[stage][1], grid_sets[stage][2]));
+		EXPECT_EQ(renderer.compute().cluster_grid_cluster_count(), expected_total[stage]);
 		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 		const engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -1169,7 +1169,7 @@ TEST(Renderer_Cluster_Test, 簇网格切换与缓冲重建)
 		EXPECT_EQ(stats.cluster_gpu_bytes, expected_total[stage] * 8u + stats.cluster_entries * 4u);
 	}
 	//恢复默认网格
-	ASSERT_TRUE(renderer.cluster_grid_set(16, 9, 24));
+	ASSERT_TRUE(renderer.compute().cluster_grid_set(16, 9, 24));
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
 }
@@ -1199,12 +1199,12 @@ TEST(Renderer_Cluster_Test, 大光源整帧耗时对照)
 	ASSERT_TRUE(on_eight.init(config));
 	ASSERT_TRUE(on_many.init(config));
 	//开启态需要计算路径
-	if (!on_many.cluster_supported())
+	if (!on_many.compute().cluster_supported())
 	{
 		GTEST_SKIP() << "本机不支持计算路径，整帧对照不可用";
 	}
-	ASSERT_TRUE(on_eight.cluster_enable_set(true));
-	ASSERT_TRUE(on_many.cluster_enable_set(true));
+	ASSERT_TRUE(on_eight.compute().cluster_enable_set(true));
+	ASSERT_TRUE(on_many.compute().cluster_enable_set(true));
 	//全屏四边形（缩放 8×，法线朝 +Z）
 	engine::Mesh_Handle off_mesh = 0;
 	engine::Mesh_Handle on_eight_mesh = 0;
@@ -1302,9 +1302,9 @@ TEST(Renderer_Cluster_Test, 片元簇采样_线性衰减提前退出)
 		ASSERT_TRUE(renderer.init(config));
 		if (cluster_index != 0)
 		{
-			if (!renderer.cluster_supported())
+			if (!renderer.compute().cluster_supported())
 				GTEST_SKIP() << "本机不支持计算路径，簇采样路径不可用";
-			ASSERT_TRUE(renderer.cluster_enable_set(true));
+			ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 		}
 		//关闭主方向光，让画面由点光主导
 		const float no_direction[3] = { 0.0f, 0.0f, -1.0f };

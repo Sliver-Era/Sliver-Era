@@ -15,7 +15,7 @@ TEST_F(Renderer_Post_Chain_Test, 暗角压暗边角)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -35,7 +35,7 @@ TEST_F(Renderer_Post_Chain_Test, 暗角压暗边角)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -75,7 +75,7 @@ TEST_F(Renderer_Post_Chain_Test, 对比度放大明暗差)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
@@ -87,7 +87,7 @@ TEST_F(Renderer_Post_Chain_Test, 对比度放大明暗差)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -128,7 +128,7 @@ TEST_F(Renderer_Post_Chain_Test, 饱和度放大通道差)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
@@ -140,7 +140,7 @@ TEST_F(Renderer_Post_Chain_Test, 饱和度放大通道差)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -302,7 +302,7 @@ TEST_F(Renderer_Post_Chain_Test, 文字经后处理链保持)
 		GTEST_SKIP() << "本机缺少系统字体 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -444,7 +444,7 @@ TEST_F(Renderer_Post_Chain_Test, 锐化放大边缘对比)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 4, 4));
@@ -461,7 +461,7 @@ TEST_F(Renderer_Post_Chain_Test, 锐化放大边缘对比)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
@@ -543,7 +543,7 @@ TEST_F(Renderer_Post_Chain_Test, 色差分离红蓝通道)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		renderer.clear_color_set(black);
 		uint64_t texture = 0;
@@ -561,7 +561,7 @@ TEST_F(Renderer_Post_Chain_Test, 色差分离红蓝通道)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
@@ -654,7 +654,7 @@ TEST_F(Renderer_Post_Chain_Test, 色调分离产生色带)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 64, 1));
@@ -671,7 +671,7 @@ TEST_F(Renderer_Post_Chain_Test, 色调分离产生色带)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));

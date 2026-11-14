@@ -63,7 +63,7 @@ TEST_F(Renderer_Post_Grade_Test, 色彩校正饱和度与亮度)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//纯红 1×1 纹理贴满四边形
@@ -104,7 +104,7 @@ TEST_F(Renderer_Post_Grade_Test, 径向模糊产生画面差异)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//棋盘格纹理增强高频细节
@@ -129,7 +129,7 @@ TEST_F(Renderer_Post_Grade_Test, 色温冷暖偏移方向)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//中灰纹理

@@ -31,7 +31,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深对焦面保持清晰)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -51,7 +51,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深对焦面保持清晰)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -98,7 +98,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深离焦使边缘变软)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -118,7 +118,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深离焦使边缘变软)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -164,7 +164,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深最大模糊近零近似直通)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -184,7 +184,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深最大模糊近零近似直通)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -220,7 +220,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深在MSAA下区分对焦与离焦)
 		engine::Renderer renderer;
 		if (!renderer.init(msaa_config(samples)))
 			return false;
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			return false;
 		uint64_t scene_target = 0;
 		if (!renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
@@ -262,7 +262,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深在MSAA下区分对焦与离焦)
 	{
 		engine::Renderer probe;
 		ASSERT_TRUE(probe.init(hidden_config()));
-		if (!probe.readback_supported())
+		if (!probe.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	}
 	//支持多重采样才继续（本用例只验证 > 1× 的行为）

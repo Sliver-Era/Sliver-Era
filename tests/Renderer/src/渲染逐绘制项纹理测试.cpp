@@ -195,7 +195,7 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 同帧两个四边形各自贴图)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	apply_scene(renderer);
 	//纯白 / 纯黑纹理（只用亮度判定，不依赖通道序）
@@ -242,7 +242,7 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 静态合批不跨纹理合并)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	apply_scene(renderer);
 	renderer.static_batching_set(true);
@@ -286,7 +286,7 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 棋盘格四边形可见)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	apply_scene(renderer);
 	uint64_t checker = 0;
@@ -337,7 +337,7 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 文字绘制不覆盖场景纹理)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//字体缺失时跳过（与中文字形用例同一口径）
 	const std::string font_path = cjk_font_path();

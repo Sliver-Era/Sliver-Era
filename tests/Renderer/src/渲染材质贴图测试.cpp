@@ -65,7 +65,7 @@ TEST_F(Renderer_Scene_Test, 材质无贴图逐字节不变)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
@@ -136,7 +136,7 @@ TEST_F(Renderer_Scene_Test, 法线贴图改变受光)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//反照率（白）与法线贴图
 	uint64_t albedo = 0;
@@ -205,7 +205,7 @@ TEST_F(Renderer_Scene_Test, 粗糙度贴图改变高光)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> gray = solid_gray();
@@ -285,7 +285,7 @@ TEST_F(Renderer_Scene_Test, 自发光贴图默认白逐字节不变)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
@@ -356,7 +356,7 @@ TEST_F(Renderer_Scene_Test, 自发光贴图改变发光颜色)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
@@ -442,7 +442,7 @@ TEST_F(Renderer_Scene_Test, 环境光遮蔽贴图降低环境光)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
@@ -534,7 +534,7 @@ TEST_F(Renderer_Scene_Test, 金属度贴图改变漫反射权重)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
@@ -612,7 +612,7 @@ TEST_F(Renderer_Scene_Test, 五张材质贴图同时生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
@@ -693,7 +693,7 @@ TEST_F(Renderer_Scene_Test, 贴图UV变换改变采样位置)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> texels = left_right_rgba();

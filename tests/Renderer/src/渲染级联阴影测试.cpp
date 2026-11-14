@@ -73,7 +73,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影默认单级不变)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -132,7 +132,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影远端覆盖)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -209,7 +209,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影切回单级恢复)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -266,7 +266,7 @@ TEST_F(Renderer_Scene_Test, 三级级联覆盖中距并切回单级恢复)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -336,7 +336,7 @@ TEST_F(Renderer_Scene_Test, 级联接缝淡化)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -441,7 +441,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影纹素对齐)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();

@@ -35,7 +35,7 @@ TEST_F(Renderer_Scene_Test, 覆盖率写入单采样下画面不变)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	ASSERT_EQ(renderer.msaa_samples(), 1u) << "本用例要求 1×（未开 MSAA）";
 
@@ -96,7 +96,7 @@ TEST_F(Renderer_Scene_Test, 多重采样下覆盖率降低透明覆盖)
 	engine::Renderer_Config config = hidden_config();
 	config.msaa_samples = 4;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设备不支持多重采样则跳过（本用例只验证 > 1× 的行为）
 	if (renderer.msaa_samples() < 2)
@@ -166,7 +166,7 @@ TEST_F(Renderer_Scene_Test, 覆盖率写入不透明档产生覆盖)
 	engine::Renderer_Config config = hidden_config();
 	config.msaa_samples = 4;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	if (renderer.msaa_samples() < 2)
 		GTEST_SKIP() << "本机不支持多重采样";

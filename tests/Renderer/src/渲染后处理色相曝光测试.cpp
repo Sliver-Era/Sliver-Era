@@ -46,7 +46,7 @@ TEST_F(Renderer_Post_Chain_Test, 色相旋转改变主通道)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
@@ -63,7 +63,7 @@ TEST_F(Renderer_Post_Chain_Test, 色相旋转改变主通道)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
@@ -115,7 +115,7 @@ TEST_F(Renderer_Post_Chain_Test, 曝光倍数单调改变亮度)
 	std::vector<uint8_t> texels = solid_texture(128, 128, 128);
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));

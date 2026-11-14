@@ -248,7 +248,7 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性与细节层级设置后仍
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//程序生成棋盘格纹理（两种灰度交替，中心像素必为纹理色而非清屏色）
 	uint64_t texture = 0;
@@ -319,7 +319,7 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, mip过滤开关产生像素级差异)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//大尺寸细棋格纹（256 × 256、格边 4 像素的纯黑 / 白棋格），配小四边形以制造强缩小
 	uint64_t texture = 0;
@@ -381,7 +381,7 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性开关产生像素级差异
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//垂直条纹纹理（256 × 256、条宽 2 像素）：细节落在被压缩的 u 方向，才能体现各向异性
 	uint64_t texture = 0;

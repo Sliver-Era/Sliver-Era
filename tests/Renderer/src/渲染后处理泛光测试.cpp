@@ -14,7 +14,7 @@ TEST_F(Renderer_Post_Chain_Test, 三级链亮部提取模糊灰度)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//三个与交换链同尺寸的目标（满足后处理 1:1 取源）
 	uint64_t scene_target = 0;
@@ -71,7 +71,7 @@ TEST_F(Renderer_Post_Chain_Test, 二级链模糊确实参与)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//两个目标（场景目标 ＋ 模糊级宿）
 	uint64_t scene_target = 0;
@@ -125,7 +125,7 @@ TEST_F(Renderer_Post_Chain_Test, 目标组不足时回落)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
 	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -177,7 +177,7 @@ TEST_F(Renderer_Post_Chain_Test, 双源叠加形成泛光)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t gray_texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
@@ -202,7 +202,7 @@ TEST_F(Renderer_Post_Chain_Test, 双源叠加形成泛光)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t gray_texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
@@ -269,7 +269,7 @@ TEST_F(Renderer_Post_Chain_Test, 半尺寸目标链可用)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//全尺寸场景目标 ＋ 半尺寸中间目标
 	uint64_t scene_target = 0;
@@ -315,7 +315,7 @@ TEST_F(Renderer_Post_Chain_Test, 降采样泛光扩散更广)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;
@@ -405,7 +405,7 @@ TEST_F(Renderer_Post_Chain_Test, 升采样链可用)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;
@@ -469,7 +469,7 @@ TEST_F(Renderer_Post_Chain_Test, 多级降采样链扩散更广)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;
@@ -556,7 +556,7 @@ TEST_F(Renderer_Post_Chain_Test, 泛光参数生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;
@@ -647,7 +647,7 @@ TEST_F(Renderer_Post_Chain_Test, 逐级泛光参数覆盖全局)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;

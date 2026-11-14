@@ -350,7 +350,7 @@ namespace engine
             上下文.运行状态.particle_compact_ms = 统计.particle_compact_ms;
             //软粒子档位（第三百七十轮；取自粒子参数快照，0 表示关闭）
             上下文.运行状态.particle_soft_depth = 渲染器.particle().particle_params_get().soft_depth_range;
-            上下文.运行状态.gpu_supported = 渲染器.gpu_timestamp_supported();
+            上下文.运行状态.gpu_supported = 渲染器.compute().gpu_timestamp_supported();
 
             //推进一帧
             if (!渲染器.frame_render())

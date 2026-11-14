@@ -173,7 +173,7 @@ TEST_F(Renderer_Blend_Test, 不透明档忽略源alpha)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载 2×2 半透明白纹理并绑定
 	uint64_t texture = 0;
@@ -205,7 +205,7 @@ TEST_F(Renderer_Blend_Test, alpha档产生半透明叠加)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载半透明纹理并绑定
 	uint64_t texture = 0;
@@ -250,7 +250,7 @@ TEST_F(Renderer_Blend_Test, 加法档叠加两层亮度累加)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载中性灰纹理并绑定
 	uint64_t texture = 0;
@@ -296,7 +296,7 @@ TEST_F(Renderer_Blend_Test, 切回不透明档后恢复实白)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载半透明纹理并绑定
 	uint64_t texture = 0;

@@ -20,7 +20,7 @@ TEST_F(Renderer_Post_Chain_Test, 伽马校正改变中间调)
 	}
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));

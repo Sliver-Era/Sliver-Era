@@ -8,7 +8,7 @@ TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -111,7 +111,7 @@ TEST_F(Renderer_Scene_Test, 阴影强度生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -216,7 +216,7 @@ TEST_F(Renderer_Scene_Test, 阴影分辨率可配)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -295,7 +295,7 @@ TEST_F(Renderer_Scene_Test, 阴影按需重绘)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -383,7 +383,7 @@ TEST_F(Renderer_Scene_Test, 阴影软度连续可调)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -558,7 +558,7 @@ TEST_F(Renderer_Scene_Test, 斜法线不产生自阴影)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -621,7 +621,7 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影输出与单线程一致)
 		engine::Renderer renderer;
 		engine::Renderer_Config config = hidden_config();
 		config.render_threads = thread_count;
-		if (!renderer.init(config) || !renderer.readback_supported())
+		if (!renderer.init(config) || !renderer.compute().readback_supported())
 			return pixels;
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
@@ -707,7 +707,7 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影pass分段录制画面一致)
 		engine::Renderer renderer;
 		engine::Renderer_Config config = hidden_config();
 		config.render_threads = thread_count;
-		if (!renderer.init(config) || !renderer.readback_supported())
+		if (!renderer.init(config) || !renderer.compute().readback_supported())
 			return pixels;
 		//关闭静态合批：避免相邻等价项被并成 1 项而达不到并行阈值
 		renderer.static_batching_set(false);

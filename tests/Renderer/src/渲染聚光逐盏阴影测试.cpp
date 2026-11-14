@@ -198,7 +198,7 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏质量缩放)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//渲染一帧（apply = 假时使用默认逐盏缩放 1 / 1）
@@ -296,7 +296,7 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏阴影优先级)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//渲染一帧（boost = 真时把槽位 8 / 9 的优先级提到 10）

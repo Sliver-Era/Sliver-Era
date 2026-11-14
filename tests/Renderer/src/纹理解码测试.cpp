@@ -320,7 +320,7 @@ TEST_F(Renderer_Decode_Test, BMP解码并绘制)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//现场写出 2×2 纯红 BMP
 	ASSERT_TRUE(write_file(BMP_FILE, bmp_encode_2x2(SAMPLE_RED, SAMPLE_GREEN, SAMPLE_BLUE)));
@@ -347,7 +347,7 @@ TEST_F(Renderer_Decode_Test, PNG解码并绘制)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//现场写出 2×2 纯红 PNG
 	ASSERT_TRUE(write_file(PNG_FILE, png_encode_2x2(SAMPLE_RED, SAMPLE_GREEN, SAMPLE_BLUE)));

@@ -142,7 +142,7 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 顶点平移改变画面位置)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
 	renderer.resource().texture_bind_set(0);
@@ -231,7 +231,7 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 索引区域更新改变覆盖)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
 	renderer.resource().texture_bind_set(0);

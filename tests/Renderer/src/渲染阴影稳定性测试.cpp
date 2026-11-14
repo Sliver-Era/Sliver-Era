@@ -80,7 +80,7 @@ TEST_F(Renderer_Scene_Test, 亚纹素平移轨迹阴影图不变)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -130,7 +130,7 @@ TEST_F(Renderer_Scene_Test, 静止相机阴影复用)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -180,7 +180,7 @@ TEST_F(Renderer_Scene_Test, 同一相机重复应用幂等)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();

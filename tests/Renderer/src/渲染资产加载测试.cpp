@@ -277,7 +277,7 @@ TEST(Renderer_Asset_Load_Test, OBJ端到端绘制)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//基线：同相机、不登记绘制（只有清屏 ＋ 天空）
@@ -511,7 +511,7 @@ TEST(Renderer_Asset_Load_Test, 场景清单端到端装载)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//基线（空场景）

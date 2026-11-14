@@ -84,7 +84,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾关闭原样输出)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> reference = render_fog({ 0.0f, 0.0f, 0.0f, 0.0f });
@@ -119,7 +119,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾覆盖远景)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//密度 0.2、无高度衰减、最大 20 世界单位、步数缩放 1（24 步）
@@ -140,7 +140,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾高度衰减)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> flat = render_fog({ 0.3f, 0.0f, 20.0f, 1.0f });
@@ -160,7 +160,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾多级链取源)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//两级链渲染（首级管线由 fog_shader 指定、参数由 density 控制；次级恒为反色）
@@ -223,7 +223,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾步数开销)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.gpu_timestamp_supported())
+	if (!probe.compute().gpu_timestamp_supported())
 		GTEST_SKIP() << "本机不支持 GPU 时间戳";
 
 	//单次测量（分辨率 / 步数缩放进 / 录制与 GPU 帧出）
@@ -307,7 +307,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾密度噪声)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> smooth = render_fog({ 0.2f, 0.0f, 20.0f, 1.0f }, 0.0f);
@@ -375,7 +375,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾与深度描边组合)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//两级链渲染（fog_density = 0 表示首级恒等；outline > 0 时次级做深度描边）
@@ -442,7 +442,7 @@ TEST_F(Renderer_Post_Chain_Test, 四级链目标轮转)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//四级链渲染（fog 为密度；outline 为描边强度；outline > 0 才设描边参数）
@@ -512,7 +512,7 @@ TEST_F(Renderer_Post_Chain_Test, 雾基准高度可配)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> ground0 = render_fog({ 0.3f, 2.0f, 20.0f, 1.0f }, 0.0f, 0.0f);
@@ -538,7 +538,7 @@ TEST_F(Renderer_Post_Chain_Test, 雾时域抖动与空间降噪)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	const std::array<float, 4> params = { 0.3f, 1.0f, 20.0f, 0.6f };

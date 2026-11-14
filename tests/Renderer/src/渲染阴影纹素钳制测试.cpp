@@ -60,7 +60,7 @@ TEST_F(Renderer_Scene_Test, 纹素上限默认不干预)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -113,7 +113,7 @@ TEST_F(Renderer_Scene_Test, 纹素钳制覆盖面收缩)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();

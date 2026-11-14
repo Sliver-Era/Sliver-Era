@@ -141,7 +141,7 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 设置尺寸后下一帧兑现重建)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设置新尺寸（重建尚未发生，范围暂不变）
 	ASSERT_TRUE(renderer.window_size_set(160, 120));
@@ -169,7 +169,7 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 连续三次改尺寸重建出帧)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//三次目标尺寸（逐次不同，覆盖放大 / 缩小两向）
 	const std::array<std::pair<uint32_t, uint32_t>, 3> sizes = { {
@@ -209,7 +209,7 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 重建后几何仍生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//先改尺寸并出帧一次，使新尺寸交换链生效
 	ASSERT_TRUE(renderer.window_size_set(160, 120));

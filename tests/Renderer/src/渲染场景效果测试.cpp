@@ -8,7 +8,7 @@ TEST_F(Renderer_Scene_Test, 环境光颜色着色)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
@@ -58,7 +58,7 @@ TEST_F(Renderer_Scene_Test, 非法环境光颜色被忽略)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
@@ -97,7 +97,7 @@ TEST_F(Renderer_Scene_Test, 场景描述携带环境光颜色)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
@@ -153,7 +153,7 @@ TEST_F(Renderer_Scene_Test, 场景描述非法环境光颜色被忽略)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
@@ -196,7 +196,7 @@ TEST_F(Renderer_Scene_Test, 半球环境光上下异色)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -257,7 +257,7 @@ TEST_F(Renderer_Scene_Test, 逐盏高光缩放生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -319,7 +319,7 @@ TEST_F(Renderer_Scene_Test, 方向光与补光高光缩放生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -384,7 +384,7 @@ TEST_F(Renderer_Scene_Test, 逐盏光泽度生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -453,7 +453,7 @@ TEST_F(Renderer_Scene_Test, 补光可独立生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -507,7 +507,7 @@ TEST_F(Renderer_Scene_Test, PBR镜面开关与粗糙度)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
@@ -572,7 +572,7 @@ TEST_F(Renderer_Scene_Test, PBR金属度压暗漫反射)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
@@ -641,7 +641,7 @@ TEST_F(Renderer_Scene_Test, 逐物体材质覆盖全局PBR)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
@@ -715,7 +715,7 @@ TEST_F(Renderer_Scene_Test, 逐物体色调着色)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
@@ -786,7 +786,7 @@ TEST_F(Renderer_Scene_Test, 逐物体自发光提亮)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();

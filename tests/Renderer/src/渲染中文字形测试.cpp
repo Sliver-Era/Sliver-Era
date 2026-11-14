@@ -153,7 +153,7 @@ TEST_F(Renderer_Cjk_Text_Test, 中文产生非背景像素)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载中文字体
 	uint64_t font = 0;
@@ -198,7 +198,7 @@ TEST_F(Renderer_Cjk_Text_Test, 不同中文各自产生墨迹)
 		GTEST_SKIP() << "本机无测试用中文字体";
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, font_path, FONT_PIXEL_HEIGHT));

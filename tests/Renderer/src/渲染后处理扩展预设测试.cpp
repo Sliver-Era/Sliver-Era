@@ -55,7 +55,7 @@ TEST_F(Renderer_Post_Extra_Test, 色调分离抖动)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	uint64_t texture = 0;
@@ -79,7 +79,7 @@ TEST_F(Renderer_Post_Extra_Test, 桶形畸变)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	uint64_t texture = 0;
@@ -103,7 +103,7 @@ TEST_F(Renderer_Post_Extra_Test, 双色调暖色方向)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	const uint8_t gray[4] = { 200, 200, 200, 255 };
@@ -145,7 +145,7 @@ TEST_F(Renderer_Post_Extra_Test, FXAA平滑斜边)
 
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Mesh_Handle quad = 0;
@@ -188,7 +188,7 @@ TEST_F(Renderer_Post_Extra_Test, FXAA强度为零原样输出)
 {
         engine::Renderer renderer;
         ASSERT_TRUE(renderer.init(hidden_config()));
-        if (!renderer.readback_supported())
+        if (!renderer.compute().readback_supported())
                 GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
         engine::Mesh_Handle quad = 0;
@@ -238,7 +238,7 @@ TEST_F(Renderer_Post_Extra_Test, 色调映射曲线亮度次序)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//亮暗分明且中心为亮格的棋盘纹理

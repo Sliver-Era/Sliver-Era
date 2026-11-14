@@ -88,7 +88,7 @@ TEST_F(Renderer_Scene_Test, 水平面可见)
 {
 	engine::Renderer 渲染器;
 	ASSERT_TRUE(渲染器.init(hidden_config()));
-	if (!渲染器.readback_supported())
+	if (!渲染器.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	应用场景(渲染器);
 	//白色纹理 ＋ 20×20 水平面
@@ -113,7 +113,7 @@ TEST_F(Renderer_Scene_Test, 竖直面可见)
 {
 	engine::Renderer 渲染器;
 	ASSERT_TRUE(渲染器.init(hidden_config()));
-	if (!渲染器.readback_supported())
+	if (!渲染器.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	应用场景(渲染器);
 	//白色纹理 ＋ 2×2 竖直面，放在相机正前方

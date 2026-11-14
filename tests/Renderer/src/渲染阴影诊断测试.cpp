@@ -257,7 +257,7 @@ TEST_F(Renderer_Scene_Test, 阴影批量提交单次且画面不变)
 	{
 		Outcome outcome;
 		engine::Renderer renderer;
-		if (!renderer.init(hidden_config()) || !renderer.readback_supported())
+		if (!renderer.init(hidden_config()) || !renderer.compute().readback_supported())
 			return outcome;
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
@@ -356,7 +356,7 @@ TEST_F(Renderer_Scene_Test, 聚光阴影图集两态画面一致)
 	{
 		Outcome outcome;
 		engine::Renderer renderer;
-		if (!renderer.init(hidden_config()) || !renderer.readback_supported())
+		if (!renderer.init(hidden_config()) || !renderer.compute().readback_supported())
 			return outcome;
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
@@ -441,7 +441,7 @@ TEST_F(Renderer_Scene_Test, 聚光图集阴影耗时对比)
 	{
 		Outcome outcome;
 		engine::Renderer renderer;
-		if (!renderer.init(hidden_config()) || !renderer.readback_supported())
+		if (!renderer.init(hidden_config()) || !renderer.compute().readback_supported())
 			return outcome;
 		std::vector<uint8_t> texels = solid_white();
 		if (!renderer.resource().texture_load(outcome.texture, texels.data(), 2, 2))
@@ -547,7 +547,7 @@ TEST_F(Renderer_Scene_Test, 图集八瓦片映射与MSAA一致)
 		engine::Renderer renderer;
 		engine::Renderer_Config config = hidden_config();
 		config.msaa_samples = samples;
-		if (!renderer.init(config) || !renderer.readback_supported())
+		if (!renderer.init(config) || !renderer.compute().readback_supported())
 			return outcome;
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
@@ -650,7 +650,7 @@ TEST_F(Renderer_Scene_Test, 图集启用回收独立瓦片)
 
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();

@@ -70,28 +70,28 @@ TEST_F(Renderer_HiZ_Test, 默认关闭且资源惰性)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//能力不足则跳过（本机应具备计算与 R32 浮点存储图像）
-	if (!renderer.hiz_supported())
+	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力（计算 ＋ R32 浮点存储图像）";
-	EXPECT_FALSE(renderer.hiz_enable_get());
+	EXPECT_FALSE(renderer.compute().hiz_enable_get());
 	//未开启时不存在资源
 	uint32_t width = 1;
 	uint32_t height = 1;
 	uint32_t levels = 1;
-	EXPECT_FALSE(renderer.hiz_state_get(width, height, levels));
+	EXPECT_FALSE(renderer.compute().hiz_state_get(width, height, levels));
 	EXPECT_EQ(width, 0u);
 	EXPECT_EQ(height, 0u);
 	EXPECT_EQ(levels, 0u);
 	//开启后资源建立
-	ASSERT_TRUE(renderer.hiz_enable_set(true));
-	EXPECT_TRUE(renderer.hiz_enable_get());
-	ASSERT_TRUE(renderer.hiz_state_get(width, height, levels));
+	ASSERT_TRUE(renderer.compute().hiz_enable_set(true));
+	EXPECT_TRUE(renderer.compute().hiz_enable_get());
+	ASSERT_TRUE(renderer.compute().hiz_state_get(width, height, levels));
 	EXPECT_EQ(width, WINDOW_WIDTH);
 	EXPECT_EQ(height, WINDOW_HEIGHT);
 	EXPECT_EQ(levels, EXPECTED_LEVELS);
 	//关闭只置标志，资源保留
-	ASSERT_TRUE(renderer.hiz_enable_set(false));
-	EXPECT_FALSE(renderer.hiz_enable_get());
-	EXPECT_TRUE(renderer.hiz_state_get(width, height, levels));
+	ASSERT_TRUE(renderer.compute().hiz_enable_set(false));
+	EXPECT_FALSE(renderer.compute().hiz_enable_get());
+	EXPECT_TRUE(renderer.compute().hiz_state_get(width, height, levels));
 	EXPECT_EQ(levels, EXPECTED_LEVELS);
 }
 
@@ -105,13 +105,13 @@ TEST_F(Renderer_HiZ_Test, 金字塔级数与逐级尺寸)
 	config.hiz_enable = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.hiz_supported())
+	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
-	EXPECT_TRUE(renderer.hiz_enable_get());
+	EXPECT_TRUE(renderer.compute().hiz_enable_get());
 	uint32_t width = 0;
 	uint32_t height = 0;
 	uint32_t levels = 0;
-	ASSERT_TRUE(renderer.hiz_state_get(width, height, levels));
+	ASSERT_TRUE(renderer.compute().hiz_state_get(width, height, levels));
 	EXPECT_EQ(width, WINDOW_WIDTH);
 	EXPECT_EQ(height, WINDOW_HEIGHT);
 	EXPECT_EQ(levels, EXPECTED_LEVELS);
@@ -121,12 +121,12 @@ TEST_F(Renderer_HiZ_Test, 金字塔级数与逐级尺寸)
 	};
 	for (uint32_t level = 0; level < EXPECTED_LEVELS; ++level)
 	{
-		ASSERT_TRUE(renderer.hiz_level_extent(level, width, height)) << "级 " << level;
+		ASSERT_TRUE(renderer.compute().hiz_level_extent(level, width, height)) << "级 " << level;
 		EXPECT_EQ(width, expected[level][0]) << "级 " << level;
 		EXPECT_EQ(height, expected[level][1]) << "级 " << level;
 	}
 	//越界级返回假且出参归零
-	EXPECT_FALSE(renderer.hiz_level_extent(EXPECTED_LEVELS, width, height));
+	EXPECT_FALSE(renderer.compute().hiz_level_extent(EXPECTED_LEVELS, width, height));
 	EXPECT_EQ(width, 0u);
 	EXPECT_EQ(height, 0u);
 }
@@ -142,15 +142,15 @@ TEST_F(Renderer_HiZ_Test, 计算关闭时不可用)
 	config.hiz_enable = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	EXPECT_FALSE(renderer.hiz_supported());
-	EXPECT_FALSE(renderer.hiz_enable_get());
+	EXPECT_FALSE(renderer.compute().hiz_supported());
+	EXPECT_FALSE(renderer.compute().hiz_enable_get());
 	//开启被拒绝
-	EXPECT_FALSE(renderer.hiz_enable_set(true));
-	EXPECT_FALSE(renderer.hiz_enable_get());
+	EXPECT_FALSE(renderer.compute().hiz_enable_set(true));
+	EXPECT_FALSE(renderer.compute().hiz_enable_get());
 	uint32_t width = 1;
 	uint32_t height = 1;
 	uint32_t levels = 1;
-	EXPECT_FALSE(renderer.hiz_state_get(width, height, levels));
+	EXPECT_FALSE(renderer.compute().hiz_state_get(width, height, levels));
 	EXPECT_EQ(levels, 0u);
 }
 
@@ -166,7 +166,7 @@ TEST_F(Renderer_HiZ_Test, 金字塔逐帧生成)
 	config.msaa_samples = 1;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.hiz_supported())
+	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
@@ -179,10 +179,10 @@ TEST_F(Renderer_HiZ_Test, 金字塔逐帧生成)
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	//三帧均完成生成
-	EXPECT_GE(renderer.hiz_generation_count(), 3u);
+	EXPECT_GE(renderer.compute().hiz_generation_count(), 3u);
 	//两个在途帧槽均已有有效历史
 	for (uint32_t slot = 0; slot < 2; ++slot)
-		EXPECT_TRUE(renderer.hiz_history_ready(slot)) << "帧槽 " << slot;
+		EXPECT_TRUE(renderer.compute().hiz_history_ready(slot)) << "帧槽 " << slot;
 	renderer.resource().mesh_unload(mesh);
 }
 
@@ -198,14 +198,14 @@ TEST_F(Renderer_HiZ_Test, 深度历史采样句柄)
 	config.msaa_samples = 1;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.hiz_supported())
+	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//未生成前：句柄为假且出参归零
 	uint64_t view = 0;
 	uint64_t sampler = 0;
-	EXPECT_FALSE(renderer.hiz_history_sample_get(0, view, sampler));
+	EXPECT_FALSE(renderer.compute().hiz_history_sample_get(0, view, sampler));
 	EXPECT_EQ(view, 0u);
 	EXPECT_EQ(sampler, 0u);
 	//三帧后两个在途帧槽均可取句柄
@@ -219,16 +219,16 @@ TEST_F(Renderer_HiZ_Test, 深度历史采样句柄)
 	{
 		uint64_t slot_view = 0;
 		uint64_t slot_sampler = 0;
-		EXPECT_TRUE(renderer.hiz_history_sample_get(slot, slot_view, slot_sampler)) << "帧槽 " << slot;
+		EXPECT_TRUE(renderer.compute().hiz_history_sample_get(slot, slot_view, slot_sampler)) << "帧槽 " << slot;
 		EXPECT_NE(slot_view, 0u);
 		EXPECT_NE(slot_sampler, 0u);
 	}
 	//越界槽位与关闭开关后均不可取
 	uint64_t out_view = 0;
 	uint64_t out_sampler = 0;
-	EXPECT_FALSE(renderer.hiz_history_sample_get(8, out_view, out_sampler));
-	EXPECT_TRUE(renderer.hiz_enable_set(false));
-	EXPECT_FALSE(renderer.hiz_history_sample_get(0, out_view, out_sampler));
+	EXPECT_FALSE(renderer.compute().hiz_history_sample_get(8, out_view, out_sampler));
+	EXPECT_TRUE(renderer.compute().hiz_enable_set(false));
+	EXPECT_FALSE(renderer.compute().hiz_history_sample_get(0, out_view, out_sampler));
 	renderer.resource().mesh_unload(mesh);
 }
 
@@ -248,9 +248,9 @@ TEST_F(Renderer_HiZ_Test, 关闭时不生成)
 		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, identity.data(), 1));
 		ASSERT_TRUE(renderer.frame_render());
 	}
-	EXPECT_EQ(renderer.hiz_generation_count(), 0u);
-	EXPECT_FALSE(renderer.hiz_history_ready(0));
-	EXPECT_FALSE(renderer.hiz_history_ready(1));
+	EXPECT_EQ(renderer.compute().hiz_generation_count(), 0u);
+	EXPECT_FALSE(renderer.compute().hiz_history_ready(0));
+	EXPECT_FALSE(renderer.compute().hiz_history_ready(1));
 	renderer.resource().mesh_unload(mesh);
 }
 
@@ -266,7 +266,7 @@ TEST_F(Renderer_HiZ_Test, 遮挡剔除墙后实例)
 	config.msaa_samples = 1;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.hiz_supported())
+	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	//相机与朝向（沿 −Z 观察；墙在 z = 3，实例在 z = 0 / 4.5）
 	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
@@ -303,9 +303,9 @@ TEST_F(Renderer_HiZ_Test, 遮挡剔除墙后实例)
 	std::vector<std::array<float, 16>> compacted(COUNT);
 	uint32_t behind_visible = COUNT;
 	uint32_t front_visible = 0;
-	ASSERT_TRUE(renderer.gpu_instance_compact_ex(behind[0].data(), COUNT, local_min, local_max,
+	ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(behind[0].data(), COUNT, local_min, local_max,
 		camera, forward, 0.0f, false, compacted[0].data(), &behind_visible));
-	ASSERT_TRUE(renderer.gpu_instance_compact_ex(front[0].data(), COUNT, local_min, local_max,
+	ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(front[0].data(), COUNT, local_min, local_max,
 		camera, forward, 0.0f, false, compacted[0].data(), &front_visible));
 	//屏幕两侧边缘（NDC x ≈ ±0.45）的墙后实例也应被剔除（覆盖边缘的有效性检查）
 	std::vector<std::array<float, 16>> corner(COUNT);
@@ -317,7 +317,7 @@ TEST_F(Renderer_HiZ_Test, 遮挡剔除墙后实例)
 		corner[index] = matrix;
 	}
 	uint32_t corner_visible = COUNT;
-	ASSERT_TRUE(renderer.gpu_instance_compact_ex(corner[0].data(), COUNT, local_min, local_max,
+	ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(corner[0].data(), COUNT, local_min, local_max,
 		camera, forward, 0.0f, false, compacted[0].data(), &corner_visible));
 	//墙后全部剔除（含屏幕两侧边缘）、墙前全部可见
 	EXPECT_EQ(corner_visible, 0u);
@@ -327,12 +327,12 @@ TEST_F(Renderer_HiZ_Test, 遮挡剔除墙后实例)
 	without.camera_position_set(0.0f, 0.0f, 5.0f);
 	without.camera_target_set(0.0f, 0.0f, 0.0f);
 	uint32_t without_visible = 0;
-	ASSERT_TRUE(without.gpu_instance_compact_ex(behind[0].data(), COUNT, local_min, local_max,
+	ASSERT_TRUE(without.compute().gpu_instance_compact_ex(behind[0].data(), COUNT, local_min, local_max,
 		camera, forward, 0.0f, false, compacted[0].data(), &without_visible));
 	EXPECT_EQ(behind_visible, 0u);
 	EXPECT_EQ(front_visible, COUNT);
 	//生成确实发生
-	EXPECT_GE(renderer.hiz_generation_count(), 2u);
+	EXPECT_GE(renderer.compute().hiz_generation_count(), 2u);
 	EXPECT_EQ(without_visible, COUNT);
 	renderer.resource().mesh_unload(mesh);
 }
@@ -349,7 +349,7 @@ TEST_F(Renderer_HiZ_Test, 部分遮挡场景不误剔)
 	config.msaa_samples = 1;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.hiz_supported())
+	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
@@ -385,7 +385,7 @@ TEST_F(Renderer_HiZ_Test, 部分遮挡场景不误剔)
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	std::vector<std::array<float, 16>> compacted(COUNT);
 	uint32_t gap_visible = 0;
-	ASSERT_TRUE(renderer.gpu_instance_compact_ex(gap[0].data(), COUNT, local_min, local_max,
+	ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(gap[0].data(), COUNT, local_min, local_max,
 		camera, forward, 0.0f, false, compacted[0].data(), &gap_visible));
 	//缝隙内全部可见（部分遮挡场景零误剔）
 	EXPECT_EQ(gap_visible, COUNT);
@@ -415,7 +415,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config));
-		if (!renderer.hiz_supported())
+		if (!renderer.compute().hiz_supported())
 			GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 		renderer.camera_position_set(0.0f, 0.0f, camera_z);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
@@ -438,7 +438,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 			matrices[index] = matrix;
 		}
 		uint32_t behind_far = COUNT;
-		ASSERT_TRUE(renderer.gpu_instance_compact_ex(matrices[0].data(), COUNT, local_min, local_max,
+		ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(matrices[0].data(), COUNT, local_min, local_max,
 			camera, forward, 0.0f, false, compacted[0].data(), &behind_far));
 		for (uint32_t index = 0; index < COUNT; ++index)
 		{
@@ -447,7 +447,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 			matrices[index] = matrix;
 		}
 		uint32_t front_far = 0;
-		ASSERT_TRUE(renderer.gpu_instance_compact_ex(matrices[0].data(), COUNT, local_min, local_max,
+		ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(matrices[0].data(), COUNT, local_min, local_max,
 			camera, forward, 0.0f, false, compacted[0].data(), &front_far));
 		EXPECT_EQ(behind_far, 0u);
 		EXPECT_EQ(front_far, COUNT);
@@ -457,7 +457,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config));
-		if (!renderer.hiz_supported())
+		if (!renderer.compute().hiz_supported())
 			GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 		renderer.camera_position_set(0.0f, 0.0f, camera_z);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
@@ -483,7 +483,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 			matrices[index] = matrix;
 		}
 		uint32_t behind_both = COUNT;
-		ASSERT_TRUE(renderer.gpu_instance_compact_ex(matrices[0].data(), COUNT, local_min, local_max,
+		ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(matrices[0].data(), COUNT, local_min, local_max,
 			camera, forward, 0.0f, false, compacted[0].data(), &behind_both));
 		for (uint32_t index = 0; index < COUNT; ++index)
 		{
@@ -492,7 +492,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 			matrices[index] = matrix;
 		}
 		uint32_t between = 0;
-		ASSERT_TRUE(renderer.gpu_instance_compact_ex(matrices[0].data(), COUNT, local_min, local_max,
+		ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(matrices[0].data(), COUNT, local_min, local_max,
 			camera, forward, 0.0f, false, compacted[0].data(), &between));
 		EXPECT_EQ(behind_both, 0u);
 		EXPECT_EQ(between, COUNT);
@@ -512,7 +512,7 @@ TEST_F(Renderer_HiZ_Test, 开启遮挡逐帧像素稳定)
 	config.msaa_samples = 1;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.hiz_supported())
+	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
@@ -561,7 +561,7 @@ TEST_F(Renderer_HiZ_Test, MSAA路径生成与剔除)
 	config.msaa_samples = 4;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.hiz_supported())
+	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	//设备未启用 4× 时本用例不适用
 	if (renderer.msaa_samples() < 4)
@@ -581,7 +581,7 @@ TEST_F(Renderer_HiZ_Test, MSAA路径生成与剔除)
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	//生成发生
-	EXPECT_GE(renderer.hiz_generation_count(), 2u);
+	EXPECT_GE(renderer.compute().hiz_generation_count(), 2u);
 	//墙后实例全部剔除
 	constexpr uint32_t COUNT = 200;
 	std::vector<std::array<float, 16>> behind(COUNT, identity_matrix());
@@ -591,7 +591,7 @@ TEST_F(Renderer_HiZ_Test, MSAA路径生成与剔除)
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	std::vector<std::array<float, 16>> compacted(COUNT);
 	uint32_t behind_visible = COUNT;
-	ASSERT_TRUE(renderer.gpu_instance_compact_ex(behind[0].data(), COUNT, local_min, local_max,
+	ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(behind[0].data(), COUNT, local_min, local_max,
 		camera, forward, 0.0f, false, compacted[0].data(), &behind_visible));
 	EXPECT_EQ(behind_visible, 0u);
 	renderer.resource().mesh_unload(mesh);
@@ -610,7 +610,7 @@ TEST_F(Renderer_HiZ_Test, 遮挡观测与三态)
 	config.gpu_cull_enable = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.hiz_supported() || !renderer.compute_supported())
+	if (!renderer.compute().hiz_supported() || !renderer.compute().compute_supported())
 		GTEST_SKIP() << "本机不支持计算 / Hi-Z 所需能力";
 	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
@@ -722,7 +722,7 @@ TEST_F(Renderer_HiZ_Test, 性能对照)
 		off_gpu > 0.0 ? (on_gpu - off_gpu) / off_gpu * 100.0 : 0.0,
 		static_cast<unsigned long long>(occluded));
 	//自洽性：开启态确有生成与遮挡剔除
-	EXPECT_GE(on.hiz_generation_count(), FRAMES);
+	EXPECT_GE(on.compute().hiz_generation_count(), FRAMES);
 	EXPECT_GE(occluded, 1u);
 	off.resource().mesh_unload(off_mesh);
 	on.resource().mesh_unload(on_mesh);
@@ -799,8 +799,8 @@ TEST_F(Renderer_HiZ_Test, 开关切换前后出帧守恒)
 	const engine::Frame_Stats off_stats = renderer.frame_stats_get();
 	const uint64_t off_drawn = off_stats.drawn_instances;
 	//开启 Hi-Z（能力不足时保持关闭，仍须正常出帧）
-	if (renderer.hiz_supported())
-		ASSERT_TRUE(renderer.hiz_enable_set(true));
+	if (renderer.compute().hiz_supported())
+		ASSERT_TRUE(renderer.compute().hiz_enable_set(true));
 	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, matrices[0].data(), static_cast<uint32_t>(matrices.size())));
 	ASSERT_TRUE(renderer.frame_render());
 	const engine::Frame_Stats on_stats = renderer.frame_stats_get();

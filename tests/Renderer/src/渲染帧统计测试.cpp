@@ -146,7 +146,7 @@ TEST_F(Renderer_Stats_Test, GPU样本数与帧数关系符合口径)
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.frames, FRAMES);
 	//若设备支持 GPU 时间戳
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		EXPECT_EQ(stats.gpu_samples, FRAMES - OVERLAP);
 		EXPECT_GT(stats.gpu_total_ms, 0.0);

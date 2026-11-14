@@ -205,7 +205,7 @@ TEST_F(Renderer_Mipmap_Test, 启用mip过滤后仍可正常绘制)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//棋盘格纹理（64×64 → 生成 7 级 mip）
 	uint64_t texture = 0;
@@ -234,7 +234,7 @@ TEST_F(Renderer_Mipmap_Test, 缩小绘制时mip生效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//棋盘格纹理（64×64、格 8）
 	uint64_t texture = 0;
@@ -281,7 +281,7 @@ TEST_F(Renderer_Mipmap_Test, 寻址模式可配)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//左右两色纹理（左白右黑）
 	uint64_t texture = 0;
@@ -335,7 +335,7 @@ TEST_F(Renderer_Mipmap_Test, 细节层级偏置改变缩小采样)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//棋盘格纹理与小四边形（与「缩小绘制时mip生效」同一前提）
 	uint64_t texture = 0;

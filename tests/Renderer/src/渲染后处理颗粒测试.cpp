@@ -63,7 +63,7 @@ TEST_F(Renderer_Post_Chain_Test, 胶片颗粒增加高频噪声)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
@@ -80,7 +80,7 @@ TEST_F(Renderer_Post_Chain_Test, 胶片颗粒增加高频噪声)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
@@ -170,7 +170,7 @@ TEST_F(Renderer_Post_Chain_Test, 像素化形成马赛克块)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 64, 1));
@@ -187,7 +187,7 @@ TEST_F(Renderer_Post_Chain_Test, 像素化形成马赛克块)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));

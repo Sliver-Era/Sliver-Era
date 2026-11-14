@@ -177,7 +177,7 @@ TEST_F(Renderer_Multi_Pipeline_Test, 同帧两项不同管线各自正确)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载纯绿纹理并绑定（供默认场景管线采样）
 	uint64_t texture = 0;
@@ -238,7 +238,7 @@ TEST_F(Renderer_Multi_Pipeline_Test, 无效句柄回落默认管线)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载纯绿纹理并绑定
 	uint64_t texture = 0;
@@ -268,7 +268,7 @@ TEST_F(Renderer_Multi_Pipeline_Test, 卸载后句柄失效)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载纯绿纹理并绑定
 	uint64_t texture = 0;

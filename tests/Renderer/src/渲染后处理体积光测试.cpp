@@ -76,7 +76,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积光关闭原样输出)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> reference = render_shaft({ 0.0f, 0.0f, 0.0f, 0.0f });
@@ -112,7 +112,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积光天空漏光)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//强度 0.6、每步衰减 0.9、采样缩放 1（24 步）、光源 uv y = 0.9
@@ -138,7 +138,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾与体积光组合)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//两级链渲染（fog / shaft 为各自强度；任何一者为 0 都保持该级恒等）
@@ -229,7 +229,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积光采样开销)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.gpu_timestamp_supported())
+	if (!probe.compute().gpu_timestamp_supported())
 		GTEST_SKIP() << "本机不支持 GPU 时间戳";
 
 	//单次测量（分辨率 / 采样缩放 / 分辨率标称进 / 录制与 GPU 帧出）
@@ -304,7 +304,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积光光源位置可配)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//光源 x 进 / 像素出（其余参数固定：强度 0.6、衰减 0.9、24 步、光源 y 0.9）
@@ -411,7 +411,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积光接阴影图)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> off = render_shaft_shadow(false, 1.0f);

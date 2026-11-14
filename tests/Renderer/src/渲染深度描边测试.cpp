@@ -41,7 +41,7 @@ TEST_F(Renderer_Post_Chain_Test, 深度描边强度为零原样输出)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> reference = render_outline("后处理.frag.spv", { 0.0f, 0.0f, 0.0f, 0.0f });

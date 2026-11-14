@@ -42,7 +42,7 @@ TEST_F(Renderer_Scene_Test, 天空盒关闭时画面不变)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
@@ -106,7 +106,7 @@ TEST_F(Renderer_Scene_Test, 天空盒绘制背景)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
@@ -166,7 +166,7 @@ TEST_F(Renderer_Scene_Test, 天空盒环境补光)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data_with_normal(0.0f, 0.0f, 1.0f)));

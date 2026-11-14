@@ -146,7 +146,7 @@ TEST_F(Renderer_Readback_Test, 未初始化回读失败)
 	//未初始化即扩展回读参数，应失败
 	EXPECT_FALSE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()), &width, &height));
 	//能力查询为假
-	EXPECT_FALSE(renderer.readback_supported());
+	EXPECT_FALSE(renderer.compute().readback_supported());
 }
 
 //回读目标容量不足时被拒，且本帧不推进
@@ -155,7 +155,7 @@ TEST_F(Renderer_Readback_Test, 容量不足被拒且不推进帧)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机交换链不支持传输源用法则跳过（能力查询已在用例句内断言）
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//远小于所需字节数的目标缓冲
 	std::vector<uint8_t> pixels(16);
@@ -174,7 +174,7 @@ TEST_F(Renderer_Readback_Test, 回读清屏色正确)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> pixels(pixel_bytes());
 	uint32_t width = 0;
@@ -200,7 +200,7 @@ TEST_F(Renderer_Readback_Test, 白纹理四边形中心覆盖角落留空)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
 	renderer.resource().texture_bind_set(0);
@@ -224,7 +224,7 @@ TEST_F(Renderer_Readback_Test, 棋盘格纹理回读呈现多色调)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//程序生成棋盘格并绑定
 	uint64_t texture = 0;

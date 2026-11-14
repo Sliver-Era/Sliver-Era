@@ -199,7 +199,7 @@ TEST_F(Renderer_Instanced_Test, 三个实例各自可见且彼此分离)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
 	renderer.resource().texture_bind_set(0);
@@ -255,7 +255,7 @@ TEST_F(Renderer_Instanced_Test, 实例数为一与逐次绘制等价)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
 	renderer.resource().texture_bind_set(0);
@@ -300,7 +300,7 @@ TEST_F(Renderer_Instanced_Test, 实例化绘制共享同一材质)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
 	renderer.resource().texture_bind_set(0);

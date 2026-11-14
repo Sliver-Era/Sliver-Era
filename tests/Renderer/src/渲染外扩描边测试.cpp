@@ -95,7 +95,7 @@ TEST_F(Renderer_Outline_Test, 默认关闭不登记描边项)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//默认外扩宽度为 0
 	EXPECT_EQ(renderer.outline_width(), 0.0f);
@@ -117,7 +117,7 @@ TEST_F(Renderer_Outline_Test, 开启后轮廓出现描边色)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载立方体
 	engine::Mesh_Handle cube = 0;
@@ -176,7 +176,7 @@ TEST_F(Renderer_Outline_Test, 描边宽度按视距补偿)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载球体（球面法线连续，外扩轮廓在各方向一致，便于测量厚度）与纯红描边
 	engine::Mesh_Handle sphere = 0;

@@ -421,7 +421,7 @@ TEST_F(Renderer_GPU_Driven_Test, GPU剔除与CPU一致且CPU更保守)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.compute_supported())
+	if (!renderer.compute().compute_supported())
 		GTEST_SKIP() << "本机图形队列族不支持计算路径";
 	//网格局部 AABB（与 quad_data 一致）
 	const float local_min[3] = { -QUAD_HALF, -QUAD_HALF, 0.0f };
@@ -457,7 +457,7 @@ TEST_F(Renderer_GPU_Driven_Test, GPU剔除与CPU一致且CPU更保守)
 			offset_yz(generator) * 0.5f + 6.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		renderer.camera_fov_set(0.6f + 0.2f * static_cast<float>(view % 4));
-		ASSERT_TRUE(renderer.gpu_cull_mask(transforms[0].data(), INSTANCE_COUNT, local_min, local_max, mask.data()));
+		ASSERT_TRUE(renderer.compute().gpu_cull_mask(transforms[0].data(), INSTANCE_COUNT, local_min, local_max, mask.data()));
 		//CPU 参考：当前相机矩阵 → 六平面
 		float view_proj[16] = {};
 		ASSERT_TRUE(renderer.camera_view_proj(view_proj));
@@ -536,7 +536,7 @@ TEST_F(Renderer_GPU_Driven_Test, GPU压缩与CPU剔除一致)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.compute_supported())
+	if (!renderer.compute().compute_supported())
 		GTEST_SKIP() << "本机图形队列族不支持计算路径";
 	const float local_min[3] = { -QUAD_HALF, -QUAD_HALF, 0.0f };
 	const float local_max[3] = { QUAD_HALF, QUAD_HALF, 0.0f };
@@ -569,7 +569,7 @@ TEST_F(Renderer_GPU_Driven_Test, GPU压缩与CPU剔除一致)
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		renderer.camera_fov_set(0.7f + 0.15f * static_cast<float>(view % 4));
 		uint32_t visible = 0;
-		ASSERT_TRUE(renderer.gpu_instance_compact(transforms[0].data(), INSTANCE_COUNT,
+		ASSERT_TRUE(renderer.compute().gpu_instance_compact(transforms[0].data(), INSTANCE_COUNT,
 			local_min, local_max, compacted.data(), &visible));
 		float view_proj[16] = {};
 		ASSERT_TRUE(renderer.camera_view_proj(view_proj));
@@ -614,13 +614,13 @@ TEST_F(Renderer_GPU_Driven_Test, GPU剔除开关画面等价)
 	off_config.instance_capacity = 1024;
 	engine::Renderer off;
 	ASSERT_TRUE(off.init(off_config));
-	if (!off.readback_supported() || !off.compute_supported())
+	if (!off.compute().readback_supported() || !off.compute().compute_supported())
 		GTEST_SKIP() << "本机不支持像素回读或计算路径";
 	engine::Renderer_Config on_config = off_config;
 	on_config.gpu_cull_enable = true;
 	engine::Renderer on;
 	ASSERT_TRUE(on.init(on_config));
-	EXPECT_TRUE(on.gpu_cull_enable_get());
+	EXPECT_TRUE(on.compute().gpu_cull_enable_get());
 	//同一批实例（横向铺开，一部分在视锥外）
 	std::mt19937 generator(20261030u);
 	std::uniform_real_distribution<float> offset_x(-8.0f, 8.0f);
@@ -654,7 +654,7 @@ TEST_F(Renderer_GPU_Driven_Test, GPU剔除开关画面等价)
 	EXPECT_EQ(off_stats.last_instances, on_stats.last_instances);
 	EXPECT_EQ(off_stats.drawn_instances, on_stats.drawn_instances);
 	//GPU 路径确实产生了耗时或至少计数可读（不支持时间戳时为 −1）
-	if (on.compute_timestamp_supported())
+	if (on.compute().compute_timestamp_supported())
 		EXPECT_GE(on_stats.gpu_cull_ms, 0.0);
 	off.resource().mesh_unload(off_mesh);
 	on.resource().mesh_unload(on_mesh);
@@ -690,7 +690,7 @@ TEST_F(Renderer_GPU_Driven_Test, GPU距离剔除与CPU一致)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.compute_supported())
+	if (!renderer.compute().compute_supported())
 		GTEST_SKIP() << "本机图形队列族不支持计算路径";
 	const float local_min[3] = { -QUAD_HALF, -QUAD_HALF, 0.0f };
 	const float local_max[3] = { QUAD_HALF, QUAD_HALF, 0.0f };
@@ -715,7 +715,7 @@ TEST_F(Renderer_GPU_Driven_Test, GPU距离剔除与CPU一致)
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	std::vector<float> compacted(static_cast<std::size_t>(INSTANCE_COUNT) * 16, 0.0f);
 	uint32_t visible = 0;
-	ASSERT_TRUE(renderer.gpu_instance_compact_ex(transforms[0].data(), INSTANCE_COUNT,
+	ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(transforms[0].data(), INSTANCE_COUNT,
 		local_min, local_max, camera, forward, MAX_DISTANCE, true, compacted.data(), &visible));
 	float view_proj[16] = {};
 	ASSERT_TRUE(renderer.camera_view_proj(view_proj));
@@ -747,7 +747,7 @@ TEST_F(Renderer_GPU_Driven_Test, 剔除三态统计单调)
 	gpu_config.gpu_cull_enable = true;
 	engine::Renderer gpu;
 	ASSERT_TRUE(gpu.init(gpu_config));
-	if (!gpu.compute_supported())
+	if (!gpu.compute().compute_supported())
 		GTEST_SKIP() << "本机图形队列族不支持计算路径";
 	constexpr uint32_t COUNT = 512;
 	std::mt19937 generator(20261030u);
@@ -782,7 +782,7 @@ TEST_F(Renderer_GPU_Driven_Test, 剔除三态统计单调)
 	const float local_max[3] = { QUAD_HALF, QUAD_HALF, 0.0f };
 	std::vector<float> compacted(static_cast<std::size_t>(COUNT) * 16, 0.0f);
 	uint32_t visible_distance = 0;
-	ASSERT_TRUE(gpu.gpu_instance_compact_ex(transforms[0].data(), COUNT, local_min, local_max,
+	ASSERT_TRUE(gpu.compute().gpu_instance_compact_ex(transforms[0].data(), COUNT, local_min, local_max,
 		center, forward_dir, 14.0f, false, compacted.data(), &visible_distance));
 	const float* view_proj_dummy = nullptr;
 	(void)view_proj_dummy;
@@ -803,7 +803,7 @@ TEST_F(Renderer_GPU_Driven_Test, 间接绘制开关画面等价)
 	off_config.instance_capacity = 512;
 	engine::Renderer off;
 	ASSERT_TRUE(off.init(off_config));
-	if (!off.readback_supported())
+	if (!off.compute().readback_supported())
 		GTEST_SKIP() << "本机不支持像素回读";
 	engine::Renderer_Config on_config = off_config;
 	on_config.gpu_indirect_enable = true;

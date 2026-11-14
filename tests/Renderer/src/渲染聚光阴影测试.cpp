@@ -143,9 +143,9 @@ TEST(Renderer_Level_Test, 关卡Cluster八盏聚光阴影)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
-	if (!renderer.cluster_supported())
+	if (!renderer.compute().cluster_supported())
 		GTEST_SKIP() << "本机不支持 Cluster 计算路径";
 
 	engine::Level_Data 关卡;
@@ -154,7 +154,7 @@ TEST(Renderer_Level_Test, 关卡Cluster八盏聚光阴影)
 	ASSERT_EQ(关卡.light.spot_count, 8u);
 
 	//Cluster 开启：关闭聚光阴影出参照图
-	ASSERT_TRUE(renderer.cluster_enable_set(true));
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 	engine::Light_Data 灯光 = 关卡.light;
 		灯光.spot_shadow_enabled = 0;
 	renderer.scene_apply(关卡.camera, 灯光, 关卡.fog);
@@ -175,7 +175,7 @@ TEST(Renderer_Level_Test, 关卡Cluster八盏聚光阴影)
 	EXPECT_GT(簇差异, 100u) << "Cluster 路径八盏聚光阴影未生效";
 
 	//关闭 Cluster：前向路径应得到同一结果
-	ASSERT_TRUE(renderer.cluster_enable_set(false));
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(false));
 	EXPECT_EQ(level_bridge_draw(renderer, 场景), 9u);
 	std::vector<uint8_t> 前向有影(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
 	ASSERT_TRUE(renderer.frame_render(前向有影.data(), static_cast<uint32_t>(前向有影.size())));
@@ -206,7 +206,7 @@ TEST(Renderer_Level_Test, 八盏聚光阴影与MSAA组合)
 		config.msaa_samples = msaa_list[msaa_index];
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 		engine::Level_Data 关卡;
@@ -234,13 +234,13 @@ TEST(Renderer_Level_Test, 八盏聚光阴影与MSAA组合)
 		EXPECT_GT(差异, 100u) << "MSAA " << msaa_list[msaa_index] << "x 下八盏聚光阴影未生效";
 
 		//4× 档：Cluster 开 / 关两态逐字节一致
-		if (msaa_list[msaa_index] == 4u && renderer.cluster_supported())
+		if (msaa_list[msaa_index] == 4u && renderer.compute().cluster_supported())
 		{
-			ASSERT_TRUE(renderer.cluster_enable_set(true));
+			ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 			EXPECT_EQ(level_bridge_draw(renderer, 场景), 9u);
 			std::vector<uint8_t> 簇有影(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
 			ASSERT_TRUE(renderer.frame_render(簇有影.data(), static_cast<uint32_t>(簇有影.size())));
-			ASSERT_TRUE(renderer.cluster_enable_set(false));
+			ASSERT_TRUE(renderer.compute().cluster_enable_set(false));
 			EXPECT_EQ(level_bridge_draw(renderer, 场景), 9u);
 			std::vector<uint8_t> 前向有影(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
 			ASSERT_TRUE(renderer.frame_render(前向有影.data(), static_cast<uint32_t>(前向有影.size())));
@@ -310,7 +310,7 @@ TEST(Renderer_Level_Test, 八盏聚光软度开销)
 		std::cout << "[关卡] 软度开销 " << 记录键[index] << " " << 帧耗时[index] << " ms" << std::endl;
 	}
 
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		//三态均应产生非零帧耗时
 		for (std::size_t index = 0; index < 3; ++index)
@@ -484,7 +484,7 @@ TEST(Renderer_Level_Test, 八盏偏置自校准画面差异)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -543,7 +543,7 @@ TEST(Renderer_Level_Test, 八盏聚光与方向光阴影共存)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -617,7 +617,7 @@ TEST(Renderer_Level_Test, 八盏聚光阴影512档细节)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -670,7 +670,7 @@ TEST(Renderer_Level_Test, 关卡八盏聚光阴影)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -720,7 +720,7 @@ TEST(Renderer_Level_Test, 八盏聚光逐瓦片互异)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -782,16 +782,16 @@ TEST(Renderer_Level_Test, 八盏聚光逐瓦片互异_簇路径)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
-	if (!renderer.cluster_supported())
+	if (!renderer.compute().cluster_supported())
 		GTEST_SKIP() << "本机不支持 Cluster 计算路径";
 
 	engine::Level_Data 关卡;
 	engine::Asset_Scene 场景;
 	ASSERT_TRUE(level_bridge_load(renderer, 关卡, 场景, level_utf8("八盏聚光.level"), false));
 	ASSERT_EQ(关卡.light.spot_count, 8u);
-	ASSERT_TRUE(renderer.cluster_enable_set(true));
+	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 
 	//簇路径关闭聚光阴影基准
 	engine::Light_Data 灯光 = 关卡.light;
@@ -848,7 +848,7 @@ TEST(Renderer_Level_Test, 八盏聚光质量参数组合)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -933,7 +933,7 @@ TEST(Renderer_Level_Test, 关卡八盏聚光分辨率切换)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -1055,7 +1055,7 @@ TEST(Renderer_Level_Test, 八盏聚光运行期开关)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -1135,7 +1135,7 @@ TEST(Renderer_Level_Test, 关卡八盏聚光开销)
 		std::cout << "[关卡] 八盏开销 " << counts[index] << " 盏阴影耗时 " << shadow_ms[index] << " ms" << std::endl;
 	}
 
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		EXPECT_GT(shadow_ms[1], 0.0) << "8 盏聚光未产生阴影耗时";
 		EXPECT_GE(shadow_ms[1], shadow_ms[0] - 0.1) << "8 盏阴影耗时异常低于 1 盏";

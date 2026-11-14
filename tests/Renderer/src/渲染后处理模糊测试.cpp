@@ -47,7 +47,7 @@ TEST_F(Renderer_Post_Chain_Test, 模糊半径可配)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//棋盘格纹理与中等四边形
 	uint64_t texture = 0;

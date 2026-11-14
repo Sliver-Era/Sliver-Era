@@ -186,7 +186,7 @@ TEST_F(Renderer_Thread_Test, 并行剔除与单线程结果一致)
 	single_config.instance_capacity = 1024;
 	engine::Renderer single;
 	ASSERT_TRUE(single.init(single_config));
-	if (!single.readback_supported())
+	if (!single.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Renderer_Config parallel_config = single_config;
@@ -277,7 +277,7 @@ TEST_F(Renderer_Thread_Test, 并行录制场景通道与单线程一致)
 		engine::Renderer renderer;
 		if (!renderer.init(config))
 			return false;
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			return false;
 		//关闭静态合批：本用例要求 64 个独立绘制项（合批会把同管线的相邻项并成 1 项）
 		renderer.static_batching_set(false);
@@ -359,7 +359,7 @@ TEST_F(Renderer_Thread_Test, 并行录制交换链直通路径与单线程一致
 		engine::Renderer renderer;
 		if (!renderer.init(config))
 			return false;
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			return false;
 		//关闭静态合批：保持 64 个独立绘制项（≥ 32 才启用并行录制）
 		renderer.static_batching_set(false);
@@ -421,7 +421,7 @@ TEST_F(Renderer_Thread_Test, 并行录制离屏目标路径与单线程一致)
 		engine::Renderer renderer;
 		if (!renderer.init(config))
 			return false;
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			return false;
 		//关闭静态合批：保持 64 个独立绘制项（≥ 32 才启用并行录制）
 		renderer.static_batching_set(false);
@@ -491,7 +491,7 @@ TEST_F(Renderer_Thread_Test, MSAA下并行录制与单线程一致)
 		ASSERT_TRUE(probe.init(probe_config));
 		if (probe.msaa_samples() <= 1)
 			GTEST_SKIP() << "当前设备不支持 MSAA";
-		if (!probe.readback_supported())
+		if (!probe.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	}
 
@@ -582,7 +582,7 @@ TEST_F(Renderer_Thread_Test, 并行录制阈值可配)
 		engine::Renderer renderer;
 		if (!renderer.init(config))
 			return false;
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			return false;
 		renderer.static_batching_set(false);
 		engine::Mesh_Handle quad = 0;
@@ -642,7 +642,7 @@ TEST_F(Renderer_Thread_Test, 并行录制段数上限可配)
 		engine::Renderer renderer;
 		if (!renderer.init(config))
 			return false;
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			return false;
 		renderer.static_batching_set(false);
 		engine::Mesh_Handle quad = 0;
@@ -702,7 +702,7 @@ TEST_F(Renderer_Thread_Test, 实例剔除并行阈值可配)
 	force_config.cull_parallel_min_instances = 1;
 	engine::Renderer forced;
 	ASSERT_TRUE(forced.init(force_config));
-	if (!forced.readback_supported())
+	if (!forced.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//保持默认阈值（256 > 64，同批实例走单线程）
 	engine::Renderer_Config fallback_config = force_config;

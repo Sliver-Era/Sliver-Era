@@ -235,7 +235,7 @@ TEST_F(Renderer_Msaa_Test, 后处理链在MSAA下可用)
 	if (renderer.msaa_samples() <= 1)
 		GTEST_SKIP() << "当前设备不支持 MSAA";
 	//无回读能力则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//场景目标（与交换链同尺寸）＋ 旋转平面
@@ -280,7 +280,7 @@ TEST_F(Renderer_Msaa_Test, SSAA与MSAA叠加)
 	ASSERT_TRUE(renderer.init(config));
 	if (renderer.msaa_samples() <= 1)
 		GTEST_SKIP() << "当前设备不支持 MSAA";
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	EXPECT_EQ(renderer.ssaa_factor(), 2u);
 
@@ -299,7 +299,7 @@ TEST_F(Renderer_Msaa_Test, 两级后处理链在MSAA下可用)
 	ASSERT_TRUE(renderer.init(hidden_config(4)));
 	if (renderer.msaa_samples() <= 1)
 		GTEST_SKIP() << "当前设备不支持 MSAA";
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//两个同尺寸中间目标
@@ -341,7 +341,7 @@ TEST_F(Renderer_Msaa_Test, 文字在MSAA下可绘制)
 	ASSERT_TRUE(renderer.init(hidden_config(4)));
 	if (renderer.msaa_samples() <= 1)
 		GTEST_SKIP() << "当前设备不支持 MSAA";
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//加载系统等宽字体（缺失则跳过）
@@ -375,7 +375,7 @@ TEST_F(Renderer_Msaa_Test, 关闭MSAA后画面与初始一致)
 	ASSERT_TRUE(renderer.init(hidden_config(1)));
 	if (renderer.msaa_max_samples() <= 1)
 		GTEST_SKIP() << "当前设备不支持 MSAA";
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Mesh_Handle plane = 0;
@@ -591,7 +591,7 @@ TEST_F(Renderer_Msaa_Test, MSAA深度解析供深度描边采样)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config(1)));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		engine::Mesh_Handle plane = 0;
 		uint64_t scene_target = 0;
@@ -642,7 +642,7 @@ TEST_F(Renderer_Msaa_Test, MSAA深度解析供深度描边采样)
 	ASSERT_TRUE(renderer.init(hidden_config(4)));
 	if (renderer.msaa_samples() <= 1)
 		GTEST_SKIP() << "当前设备不支持 MSAA";
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle plane = 0;
 	uint64_t scene_target = 0;
@@ -710,7 +710,7 @@ TEST_F(Renderer_Msaa_Test, 关闭深度解析后仍可出帧)
 	ASSERT_TRUE(renderer.init(hidden_config(4)));
 	if (renderer.msaa_samples() <= 1)
 		GTEST_SKIP() << "当前设备不支持 MSAA";
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Mesh_Handle plane = 0;

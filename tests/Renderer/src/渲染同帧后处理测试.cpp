@@ -155,7 +155,7 @@ TEST_F(Renderer_Post_Process_Test, 无效句柄回落)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设定一个未登记的目标句柄（应关闭该路径）
 	renderer.render_target_present_set(999);
@@ -174,7 +174,7 @@ TEST_F(Renderer_Post_Process_Test, 同帧后处理呈现且画面正确)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//创建与交换链同尺寸的渲染目标
 	uint64_t target = 0;
@@ -210,7 +210,7 @@ TEST_F(Renderer_Post_Process_Test, 与交换链路径画面一致)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
@@ -222,7 +222,7 @@ TEST_F(Renderer_Post_Process_Test, 与交换链路径画面一致)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));

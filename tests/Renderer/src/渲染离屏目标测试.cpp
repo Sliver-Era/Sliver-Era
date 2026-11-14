@@ -155,7 +155,7 @@ TEST_F(Renderer_Offscreen_Test, 渲染到目标并回读)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//创建与窗口同尺寸的渲染目标
 	uint64_t target = 0;
@@ -201,7 +201,7 @@ TEST_F(Renderer_Offscreen_Test, 目标可作纹理采样闭环)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//创建渲染目标
 	uint64_t target = 0;
@@ -247,7 +247,7 @@ TEST_F(Renderer_Offscreen_Test, 无效目标句柄回落交换链)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设定一个从未创建的渲染目标句柄
 	renderer.render_target_set(9999u);

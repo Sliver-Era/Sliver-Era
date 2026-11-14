@@ -107,7 +107,7 @@ TEST(Renderer_Thread_Threshold_Test, 实例扫描并行阈值可配)
 	force_config.instance_scan_parallel_min = 1;
 	engine::Renderer forced;
 	ASSERT_TRUE(forced.init(force_config));
-	if (!forced.readback_supported())
+	if (!forced.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//默认阈值（512 > 64，同批实例走单线程）
 	engine::Renderer_Config fallback_config = force_config;

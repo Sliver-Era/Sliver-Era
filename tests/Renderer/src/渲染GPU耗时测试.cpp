@@ -60,7 +60,7 @@ class Renderer_Gpu_Test : public ::testing::Test
 TEST_F(Renderer_Gpu_Test, 未初始化不支持GPU时间戳)
 {
 	engine::Renderer renderer;
-	EXPECT_FALSE(renderer.gpu_timestamp_supported());
+	EXPECT_FALSE(renderer.compute().gpu_timestamp_supported());
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.gpu_frame_ms, 0.0);
 }
@@ -86,7 +86,7 @@ TEST_F(Renderer_Gpu_Test, 绘制帧GPU耗时随能力分支断言)
 	EXPECT_EQ(stats.draw_items, 4u);
 	EXPECT_EQ(stats.instances, 4u);
 	//若支持 GPU 时间戳
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		EXPECT_GT(stats.gpu_frame_ms, 0.0);
 		EXPECT_EQ(stats.gpu_samples, 2u);
@@ -115,7 +115,7 @@ TEST_F(Renderer_Gpu_Test, 空帧GPU耗时随能力分支断言)
 	EXPECT_EQ(stats.draw_items, 0u);
 	EXPECT_EQ(stats.instances, 0u);
 	//若支持 GPU 时间戳
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		EXPECT_GT(stats.gpu_frame_ms, 0.0);
 		EXPECT_EQ(stats.gpu_samples, 2u);
@@ -171,7 +171,7 @@ TEST_F(Renderer_Gpu_Test, 两级链GPU耗时随能力分支断言)
 	EXPECT_EQ(stats.drawn_items, stats.draw_items) << "链路径存在被跳过的后处理项";
 	EXPECT_EQ(stats.drawn_instances, stats.instances);
 	//若支持 GPU 时间戳
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		EXPECT_GT(stats.gpu_frame_ms, 0.0) << "链路径未产生 GPU 耗时（时间戳未覆盖全部 pass）";
 		EXPECT_EQ(stats.gpu_samples, 2u) << "链路径样本数须符合「帧数 − 在途帧数」";
@@ -207,7 +207,7 @@ TEST_F(Renderer_Gpu_Test, 直通路径GPU分解)
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		EXPECT_GT(stats.gpu_scene_ms, 0.0) << "场景阶段未产生 GPU 耗时";
 		EXPECT_LE(stats.gpu_post_ms, 0.05) << "直通路径不应有后处理耗时";
@@ -244,7 +244,7 @@ TEST_F(Renderer_Gpu_Test, 后处理链GPU分解)
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		EXPECT_GT(stats.gpu_scene_ms, 0.0) << "链路径场景阶段未产生耗时";
 		EXPECT_GT(stats.gpu_post_ms, 0.0) << "链路径未产生后处理耗时";
@@ -300,7 +300,7 @@ TEST_F(Renderer_Gpu_Test, 阴影pass独立计时)
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	RecordProperty("shadow_pass_gpu_ms", stats.gpu_shadow_ms);
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 		EXPECT_GT(stats.gpu_shadow_ms, 0.0) << "阴影 pass 未产生独立 GPU 耗时";
 	else
 		EXPECT_EQ(stats.gpu_shadow_ms, 0.0);
@@ -330,7 +330,7 @@ TEST_F(Renderer_Gpu_Test, GPU分解累计口径)
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	RecordProperty("gpu_scene_total_ms", stats.gpu_scene_total_ms);
 	RecordProperty("gpu_total_ms", stats.gpu_total_ms);
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		//场景累计随每次读回累加，故与总累计同为正且不超过总累计
 		EXPECT_GT(stats.gpu_scene_total_ms, 0.0) << "场景累计未随读回累加";
@@ -387,7 +387,7 @@ TEST_F(Renderer_Gpu_Test, 阴影累计随按需重绘递增)
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	RecordProperty("gpu_shadow_samples", static_cast<int>(stats.gpu_shadow_samples));
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		EXPECT_EQ(stats.gpu_shadow_samples, 1u) << "按需重绘之外的帧不应产生阴影样本";
 		EXPECT_GT(stats.gpu_shadow_total_ms, 0.0) << "阴影累计未随读回累加";

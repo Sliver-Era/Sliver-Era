@@ -725,7 +725,7 @@ TEST(Renderer_Level_Test, 关卡材质实例等价装配)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//空场景基线
@@ -789,7 +789,7 @@ TEST(Renderer_Level_Test, 关卡材质实例覆盖生效)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//甲：默认覆盖
@@ -846,7 +846,7 @@ TEST(Renderer_Level_Test, 关卡材质实例自发光生效)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//甲：emissive 0
@@ -978,7 +978,7 @@ TEST(Renderer_Level_Test, 关卡材质实例卡通生效)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//甲：无卡通
@@ -1103,7 +1103,7 @@ TEST(Renderer_Level_Test, 关卡材质实例PBR生效)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//甲：无 PBR
@@ -1235,7 +1235,7 @@ TEST(Renderer_Level_Test, 关卡材质实例清漆生效)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//甲：无清漆
@@ -1307,7 +1307,7 @@ TEST(Renderer_Level_Test, 实例清漆与PBR组合)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//甲：仅清漆
@@ -1363,7 +1363,7 @@ TEST(Renderer_Level_Test, 实例清漆状态复位)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -1407,7 +1407,7 @@ TEST(Renderer_Level_Test, 实例PBR状态复位)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -1466,7 +1466,7 @@ TEST(Renderer_Level_Test, 实例PBR与卡通组合)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//三张图：仅卡通 / 仅 PBR / 组合
@@ -1552,7 +1552,7 @@ TEST(Renderer_Level_Test, 实例PBR与MSAA组合)
 		config.msaa_samples = msaa_list[msaa_index];
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 		//甲：无 PBR
@@ -1781,7 +1781,7 @@ TEST(Renderer_Level_Test, 关卡聚光灯阴影)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -1836,7 +1836,7 @@ TEST(Renderer_Level_Test, 关卡聚光阴影强度)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -1900,7 +1900,7 @@ TEST(Renderer_Level_Test, 关卡聚光阴影软度)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -1958,7 +1958,7 @@ TEST(Renderer_Level_Test, 关卡聚光阴影序号)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -2017,7 +2017,7 @@ TEST(Renderer_Level_Test, 关卡聚光阴影序号越界)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -2073,7 +2073,7 @@ TEST(Renderer_Level_Test, 关卡聚光与方向光阴影共存)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -2139,7 +2139,7 @@ TEST(Renderer_Level_Test, 关卡聚光阴影按需重绘)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -2197,7 +2197,7 @@ TEST(Renderer_Level_Test, 关卡聚光阴影分辨率切换)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -2254,9 +2254,9 @@ TEST(Renderer_Level_Test, 关卡Cluster聚光阴影)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
-	if (!renderer.cluster_supported())
+	if (!renderer.compute().cluster_supported())
 		GTEST_SKIP() << "本机不支持 Cluster 计算路径";
 
 	engine::Level_Data 关卡;
@@ -2268,7 +2268,7 @@ TEST(Renderer_Level_Test, 关卡Cluster聚光阴影)
 	灯光.spot_shadow_index = 0;
 	renderer.scene_apply(关卡.camera, 灯光, 关卡.fog);
 	//开启 Cluster（默认网格）
-	renderer.cluster_enable_set(true);
+	renderer.compute().cluster_enable_set(true);
 
 	//关闭阴影（Cluster 路径）
 	灯光.spot_shadow_enabled = 0;
@@ -2287,7 +2287,7 @@ TEST(Renderer_Level_Test, 关卡Cluster聚光阴影)
 	const uint32_t 差异 = changed_pixels(无影, 有影);
 	std::cout << "[关卡] Cluster 聚光阴影差异 " << 差异 << std::endl;
 	EXPECT_GT(差异, 100u) << "Cluster 路径聚光阴影未生效";
-	renderer.cluster_enable_set(false);
+	renderer.compute().cluster_enable_set(false);
 	level_bridge_unload(renderer, 场景);
 }
 
@@ -2464,7 +2464,7 @@ TEST(Renderer_Level_Test, 关卡多盏聚光阴影)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -2577,7 +2577,7 @@ TEST(Renderer_Level_Test, 关卡四盏聚光阴影)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -2645,7 +2645,7 @@ TEST(Renderer_Level_Test, 聚光灯多盏运行期开关)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Level_Data 关卡;
@@ -2750,7 +2750,7 @@ TEST(Renderer_Level_Test, 关卡多盏聚光开销)
 	}
 
 	//设备支持时间戳时：4 盏必须产生阴影耗时，且不显著低于 1 盏
-	if (renderer.gpu_timestamp_supported())
+	if (renderer.compute().gpu_timestamp_supported())
 	{
 		EXPECT_GT(shadow_ms[2], 0.0) << "4 盏聚光未产生阴影耗时";
 		EXPECT_GE(shadow_ms[2], shadow_ms[0] - 0.1) << "4 盏阴影耗时异常低于 1 盏";
@@ -2804,7 +2804,7 @@ TEST(Renderer_Level_Test, 关卡装载端到端)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//基线（空场景）
@@ -2875,7 +2875,7 @@ TEST(Renderer_Level_Test, 关卡与手工构造画面一致)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//路径一：关卡装载
@@ -3015,7 +3015,7 @@ TEST(Renderer_Level_Test, 摆放旋转)
 	config.hidden = true;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//零旋转：对象字段为 0；用构造矩阵绘制与 nullptr 画面一致

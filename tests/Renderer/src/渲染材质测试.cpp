@@ -197,7 +197,7 @@ TEST_F(Renderer_Material_Test, 同一网格不同材质像素可区分)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//同一网格
 	engine::Mesh_Handle mesh = 0;
@@ -430,7 +430,7 @@ TEST_F(Renderer_Material_Test, 双面渲染使背面可见)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_color(255, 255, 255);
@@ -493,7 +493,7 @@ TEST_F(Renderer_Material_Test, 关闭深度写入使后绘制者覆盖)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	/*
 	单一白纹理 ＋ 逐物体色调区分前后两层
@@ -599,7 +599,7 @@ TEST_F(Renderer_Material_Test, 材质贴图旋转改变采样)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//四色象限纹理（左上红 / 右上绿 / 左下蓝 / 右下白；4×4）
@@ -674,7 +674,7 @@ TEST_F(Renderer_Material_Test, 材质Alpha裁剪丢弃低不透明度区域)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//左半红（不透明）/ 右半蓝（alpha 0）
@@ -761,7 +761,7 @@ TEST_F(Renderer_Material_Test, 实例化绘制保留法线贴图参数)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//反照率（白）与法线贴图（切线空间法线明显倾斜，使受光与几何法线不同）
@@ -854,7 +854,7 @@ TEST_F(Renderer_Material_Test, 清漆层增强高光)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//球体（法线连续，才有镜面高光）
 	engine::Mesh_Handle sphere = 0;
@@ -941,7 +941,7 @@ TEST_F(Renderer_Material_Test, 点光源清漆层增强高光)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle sphere = 0;
 	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 0.6f, 32, 16));
@@ -1026,7 +1026,7 @@ TEST_F(Renderer_Material_Test, 清漆参数非法值归一)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle sphere = 0;
 	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 0.6f, 32, 16));
@@ -1102,7 +1102,7 @@ TEST_F(Renderer_Material_Test, 逐物体清漆门面开关)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle sphere = 0;
 	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 0.6f, 32, 16));

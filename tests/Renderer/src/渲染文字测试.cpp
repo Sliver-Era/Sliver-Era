@@ -157,7 +157,7 @@ TEST_F(Renderer_Text_Test, 文本在指定位置产生非背景像素)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载字体
 	uint64_t font = 0;
@@ -197,7 +197,7 @@ TEST_F(Renderer_Text_Test, 不同文本产生不同像素分布)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//加载字体
 	uint64_t font = 0;
@@ -317,7 +317,7 @@ TEST_F(Renderer_Text_Test, 文字颜色着色生效)
                 GTEST_SKIP() << "本机无 " << FONT_PATH;
         engine::Renderer renderer;
         ASSERT_TRUE(renderer.init(hidden_config()));
-        if (!renderer.readback_supported())
+        if (!renderer.compute().readback_supported())
                 GTEST_SKIP() << "本机交换链图像不具备传输源用法";
         uint64_t font = 0;
         ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -380,7 +380,7 @@ TEST_F(Renderer_Text_Test, 文字透明度生效)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -508,7 +508,7 @@ TEST_F(Renderer_Text_Test, 文本网格缓存淘汰后仍可重画)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -547,7 +547,7 @@ TEST_F(Renderer_Text_Test, 覆盖率写入下文字仍可绘制)
 	config.text_alpha_to_coverage = true;
 	ASSERT_TRUE(renderer.init(config));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设备不支持多重采样则跳过（覆盖率写入仅在 > 1× 生效）
 	if (renderer.msaa_samples() < 2)
@@ -581,7 +581,7 @@ TEST_F(Renderer_Text_Test, 文字描边扩大墨迹且关闭后还原)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -628,7 +628,7 @@ TEST_F(Renderer_Text_Test, 宽描边墨迹单调增加)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));

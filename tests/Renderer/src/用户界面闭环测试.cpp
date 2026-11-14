@@ -176,7 +176,7 @@ TEST(User_Interface_Test, 面板与按钮绘制)
 {
 	Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config())) << "隐藏窗口初始化失败";
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "设备不支持像素回读";
 
 	//取原生 UI 上下文
@@ -293,7 +293,7 @@ TEST(User_Interface_Test, 文本框焦点与编辑)
 	EXPECT_EQ(content, "ab");
 
 	//有字体时校验文本框内出现墨迹
-	if (font_ready && renderer.readback_supported())
+	if (font_ready && renderer.compute().readback_supported())
 	{
 		std::vector<uint8_t> pixels(pixel_bytes());
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -428,7 +428,7 @@ TEST(User_Interface_Test, 标签绘制与裁剪)
 
 	Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "设备不支持像素回读";
 	Ui_Context* ui = renderer.ui().ui_context();
 	ASSERT_NE(ui, nullptr);

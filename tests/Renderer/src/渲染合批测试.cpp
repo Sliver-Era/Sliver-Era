@@ -23,7 +23,7 @@ TEST_F(Renderer_Scene_Test, 相邻同等绘制自动合批)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		ASSERT_TRUE(renderer.static_batching()) << "合批默认应开启";
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
@@ -76,7 +76,7 @@ TEST_F(Renderer_Scene_Test, 不同色调材质不合并)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
@@ -171,7 +171,7 @@ TEST_F(Renderer_Scene_Test, 阴影列表同样合批)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
@@ -262,7 +262,7 @@ TEST_F(Renderer_Scene_Test, 文字绘制项不参与合批)
 	{
 		engine::Renderer probe;
 		ASSERT_TRUE(probe.init(hidden_config()));
-		if (!probe.readback_supported())
+		if (!probe.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	}
 	/*

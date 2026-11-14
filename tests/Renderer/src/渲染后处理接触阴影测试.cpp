@@ -238,7 +238,7 @@ TEST_F(Renderer_Post_Chain_Test, 接触阴影关闭原样输出)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> pass_through = render_contact("后处理.frag.spv", 0.0f);
@@ -251,7 +251,7 @@ TEST_F(Renderer_Post_Chain_Test, 接触阴影开启压暗接收面)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> disabled = render_contact("接触阴影.frag.spv", 0.0f);
@@ -290,7 +290,7 @@ TEST_F(Renderer_Post_Chain_Test, 接触阴影抖动相位生效)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> fixed = render_contact("接触阴影.frag.spv", 1.0f, 0.0f);
@@ -314,7 +314,7 @@ TEST_F(Renderer_Post_Chain_Test, 接触阴影厚度上限参数化)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//关闭态参考（强度 0）
@@ -342,7 +342,7 @@ TEST_F(Renderer_Post_Chain_Test, 接触阴影聚光灯生效)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//聚光灯位于接收面右后方，传播方向指向接收面中心（-0.45, 0, 0）
@@ -363,7 +363,7 @@ TEST_F(Renderer_Post_Chain_Test, 接触阴影聚光灯空槽位与锥外原样�
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//槽位 7 未登记光源
@@ -387,7 +387,7 @@ TEST_F(Renderer_Post_Chain_Test, 接触阴影点光源生效)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> disabled = render_contact_point(0.0f, 0, false);
@@ -406,7 +406,7 @@ TEST_F(Renderer_Post_Chain_Test, 接触阴影点光模式聚光槽位原样输�
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	std::vector<uint8_t> disabled = render_contact_point(0.0f, 0, true);
@@ -423,7 +423,7 @@ TEST_F(Renderer_Post_Chain_Test, 接触阴影高段槽位点光源)
 {
 	engine::Renderer probe;
 	ASSERT_TRUE(probe.init(hidden_config()));
-	if (!probe.readback_supported())
+	if (!probe.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	//槽位 8（高段第一槽）

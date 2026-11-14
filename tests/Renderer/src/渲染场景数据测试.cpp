@@ -23,7 +23,7 @@ TEST_F(Renderer_Scene_Test, 应用场景描述相机与清屏色同时生效)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//纯红纹理 ＋ 铺满全屏四边形
 	uint64_t texture = 0;
@@ -72,7 +72,7 @@ TEST_F(Renderer_Scene_Test, 切换清屏色生效)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//先设纯绿清屏色并回读
 	const float green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
@@ -99,7 +99,7 @@ TEST_F(Renderer_Scene_Test, 非法场景描述整次拒绝)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//第一帧：应用合法场景（清屏色绿、相机背对四边形）→ 中心为纯绿
 	engine::Scene_Data valid{};
@@ -137,7 +137,7 @@ TEST_F(Renderer_Scene_Test, 清屏色越界分量被钳制)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//越界分量：外通道 2.0（应钳到 1）、绿 -1.0（应钳到 0）
 	const float out_of_range[4] = { 2.0f, -1.0f, 0.5f, 1.0f };
@@ -156,7 +156,7 @@ TEST_F(Renderer_Scene_Test, 默认场景描述与原默认画面一致)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//若本机不支持像素回读则跳过
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//纯红纹理 ＋ 铺满全屏四边形（画面随相机与清屏色变化，故对默认值敏感）
 	uint64_t texture = 0;
@@ -191,7 +191,7 @@ TEST_F(Renderer_Scene_Test, 正交投影下远近尺寸一致)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_red();
@@ -257,7 +257,7 @@ TEST_F(Renderer_Scene_Test, 三组入参与扁平场景等价)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -370,7 +370,7 @@ TEST_F(Renderer_Scene_Test, 三组入参相机非法整次拒绝)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -548,7 +548,7 @@ TEST_F(Renderer_Scene_Test, 相机上方向改变画面)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
@@ -626,7 +626,7 @@ TEST_F(Renderer_Scene_Test, 相机宽高比覆盖)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();

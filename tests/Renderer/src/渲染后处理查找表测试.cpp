@@ -52,7 +52,7 @@ TEST_F(Renderer_Post_Chain_Test, 恒等查找表不改变画面)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
@@ -64,7 +64,7 @@ TEST_F(Renderer_Post_Chain_Test, 恒等查找表不改变画面)
 	{
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
-		if (!renderer.readback_supported())
+		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		//恒等表（17³）与后处理管线
 		uint64_t lut = 0;
@@ -103,7 +103,7 @@ TEST_F(Renderer_Post_Chain_Test, 反色查找表反转颜色)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//边长 2 的反色表（2³ 足以保持端点精确）
 	const std::vector<uint8_t> lut_pixels = inverse_lut_pixels(2);
@@ -153,7 +153,7 @@ TEST_F(Renderer_Post_Chain_Test, 反色查找表半量混合)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	const std::vector<uint8_t> lut_pixels = inverse_lut_pixels(2);
 	uint64_t lut = 0;
@@ -244,7 +244,7 @@ TEST_F(Renderer_Post_Chain_Test, 查找表运行时切换)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//恒等表（边长 5）与反色表（边长 2）
 	uint64_t identity_lut = 0;
@@ -308,7 +308,7 @@ TEST_F(Renderer_Post_Chain_Test, 清除查找表绑定)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	const std::vector<uint8_t> inverse_pixels = inverse_lut_pixels(2);
 	uint64_t lut = 0;

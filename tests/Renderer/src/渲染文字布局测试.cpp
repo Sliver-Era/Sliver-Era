@@ -248,7 +248,7 @@ TEST_F(Renderer_Text_Layout_Test, 显式换行产生两行墨迹)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -278,7 +278,7 @@ TEST_F(Renderer_Text_Layout_Test, 窄宽度逐字换行)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -309,7 +309,7 @@ TEST_F(Renderer_Text_Layout_Test, 右对齐使墨迹靠右)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -351,7 +351,7 @@ TEST_F(Renderer_Text_Layout_Test, 字距增大使墨迹右移)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -389,7 +389,7 @@ TEST_F(Renderer_Text_Layout_Test, 首行缩进只影响首行)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
@@ -438,7 +438,7 @@ TEST_F(Renderer_Text_Layout_Test, 行距倍数拉伸行间步进)
 		GTEST_SKIP() << "本机无 " << FONT_PATH;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	if (!renderer.readback_supported())
+	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t font = 0;
 	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));

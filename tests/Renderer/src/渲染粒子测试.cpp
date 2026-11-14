@@ -1203,7 +1203,7 @@ TEST(Renderer_Particle_Test, 粒子模拟统计)
 	EXPECT_EQ(stats.particle_died_total, 16u);
 	EXPECT_EQ(stats.particle_born_total - stats.particle_died_total, stats.particle_active);
 	EXPECT_GE(stats.particle_sim_ms, 0.0);
-	if (gpu.compute_timestamp_supported())
+	if (gpu.compute().compute_timestamp_supported())
 		EXPECT_GE(stats.particle_gpu_ms, 0.0);
 	else
 		EXPECT_EQ(stats.particle_gpu_ms, -1.0);
@@ -2283,7 +2283,7 @@ TEST(Renderer_Particle_Test, 粒子软粒子深度淡化)
 		ASSERT_TRUE(renderer.init(config));
 		engine::Particle_Host 粒子(renderer);
 		//能力不足：交由测试体统一跳过
-		if (!renderer.hiz_supported())
+		if (!renderer.compute().hiz_supported())
 		{
 			hiz_ok = false;
 			return;
@@ -2337,9 +2337,9 @@ TEST(Renderer_Particle_Test, 粒子软粒子深度淡化)
 		//诊断口径：生成次数与两个在途帧槽的历史就绪状态
 		uint64_t debug_view = 0;
 		uint64_t debug_sampler = 0;
-		EXPECT_GT(renderer.hiz_generation_count(), 0u);
-		EXPECT_TRUE(renderer.hiz_history_ready(0));
-		EXPECT_TRUE(renderer.hiz_history_sample_get(0, debug_view, debug_sampler));
+		EXPECT_GT(renderer.compute().hiz_generation_count(), 0u);
+		EXPECT_TRUE(renderer.compute().hiz_history_ready(0));
+		EXPECT_TRUE(renderer.compute().hiz_history_sample_get(0, debug_view, debug_sampler));
 		uint64_t sum = 0;
 		for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
 			sum += pixels[index];
@@ -2380,7 +2380,7 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 		ASSERT_TRUE(renderer.init(config));
 		engine::Particle_Host 粒子(renderer);
 		//能力不足：交由测试体统一跳过
-		if (!renderer.hiz_supported())
+		if (!renderer.compute().hiz_supported())
 		{
 			hiz_ok = false;
 			return;
@@ -2428,8 +2428,8 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 			ASSERT_TRUE(renderer.frame_render());
 		}
 		//离屏路径同样生成深度历史（第三百六十八轮）
-		EXPECT_GT(renderer.hiz_generation_count(), 0u);
-		EXPECT_TRUE(renderer.hiz_history_ready(0));
+		EXPECT_GT(renderer.compute().hiz_generation_count(), 0u);
+		EXPECT_TRUE(renderer.compute().hiz_history_ready(0));
 		std::vector<uint8_t> pixels(64 * 36 * 4, 0);
 		uint32_t width = 0;
 		uint32_t height = 0;
@@ -2486,7 +2486,7 @@ TEST(Renderer_Particle_Test, 软粒子档位开销)
 		ASSERT_TRUE(renderer.init(config));
 		engine::Particle_Host 粒子(renderer);
 		//能力不足：交由测试体统一跳过
-		if (!renderer.hiz_supported())
+		if (!renderer.compute().hiz_supported())
 		{
 			hiz_ok = false;
 			return;
@@ -2599,7 +2599,7 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 		ASSERT_TRUE(renderer.init(config));
 		engine::Particle_Host 粒子(renderer);
 		//能力不足：交由测试体统一跳过
-		if (!renderer.hiz_supported())
+		if (!renderer.compute().hiz_supported())
 		{
 			hiz_ok = false;
 			return;

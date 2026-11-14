@@ -49,10 +49,10 @@ TEST(Renderer_Particle_Test, 未初始化拒绝)
 {
 	engine::Renderer renderer;
 	engine::Particle_Host 粒子(renderer);
-	EXPECT_FALSE(renderer.particle_supported());
-	EXPECT_FALSE(renderer.particle_enable_set(true));
+	EXPECT_FALSE(renderer.particle().particle_supported());
+	EXPECT_FALSE(renderer.particle().particle_enable_set(true));
 	EXPECT_FALSE(粒子.capacity_set(16));
-	EXPECT_EQ(renderer.particle_capacity_get(), 0u);
+	EXPECT_EQ(renderer.particle().particle_capacity_get(), 0u);
 	EXPECT_EQ(粒子.active_count(), 0u);
 }
 
@@ -62,9 +62,9 @@ TEST(Renderer_Particle_Test, 默认关闭)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	EXPECT_TRUE(renderer.particle_supported());
-	EXPECT_FALSE(renderer.particle_enable_get());
-	EXPECT_EQ(renderer.particle_capacity_get(), engine::PARTICLE_CAPACITY_DEFAULT);
+	EXPECT_TRUE(renderer.particle().particle_supported());
+	EXPECT_FALSE(renderer.particle().particle_enable_get());
+	EXPECT_EQ(renderer.particle().particle_capacity_get(), engine::PARTICLE_CAPACITY_DEFAULT);
 	EXPECT_EQ(粒子.active_count(), 0u);
 	//关闭时发射 / 步进返回 0
 	EXPECT_EQ(粒子.emit(8), 0u);
@@ -77,11 +77,11 @@ TEST(Renderer_Particle_Test, 容量钳制)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(0));
-	EXPECT_EQ(renderer.particle_capacity_get(), 1u);
+	EXPECT_EQ(renderer.particle().particle_capacity_get(), 1u);
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX + 1u));
-	EXPECT_EQ(renderer.particle_capacity_get(), engine::PARTICLE_CAPACITY_MAX);
+	EXPECT_EQ(renderer.particle().particle_capacity_get(), engine::PARTICLE_CAPACITY_MAX);
 }
 
 //发射器 / 参数：关闭时拒绝；开启后非法配置拒绝、合法接受
@@ -96,20 +96,20 @@ TEST(Renderer_Particle_Test, 配置校验)
 	params.restitution = 0.4f;
 	params.friction = 0.2f;
 	//关闭态拒绝
-	EXPECT_FALSE(renderer.particle_emitter_set(emitter));
-	EXPECT_FALSE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	EXPECT_FALSE(renderer.particle().particle_emitter_set(emitter));
+	EXPECT_FALSE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	//非法发射器（数量 0）
 	engine::Particle_Emitter bad_emitter = emitter;
 	bad_emitter.count = 0;
-	EXPECT_FALSE(renderer.particle_emitter_set(bad_emitter));
+	EXPECT_FALSE(renderer.particle().particle_emitter_set(bad_emitter));
 	//非法参数（阻尼 > 1）
 	engine::Particle_Params bad_params = params;
 	bad_params.damping = 2.0f;
-	EXPECT_FALSE(renderer.particle_params_set(bad_params));
+	EXPECT_FALSE(renderer.particle().particle_params_set(bad_params));
 	//合法
-	EXPECT_TRUE(renderer.particle_emitter_set(emitter));
-	EXPECT_TRUE(renderer.particle_params_set(params));
+	EXPECT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	EXPECT_TRUE(renderer.particle().particle_params_set(params));
 }
 
 //发射与步进：数量、寿命回收、关闭再开启沿用池内容
@@ -118,14 +118,14 @@ TEST(Renderer_Particle_Test, 发射与步进)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(64));
-	ASSERT_TRUE(renderer.particle_emitter_set(point_emitter()));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(point_emitter()));
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
 	params.restitution = 0.4f;
 	params.friction = 0.2f;
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	EXPECT_EQ(粒子.emit(64), 32u);
 	EXPECT_EQ(粒子.active_count(), 32u);
 	//单步：寿命未到，无死亡
@@ -139,10 +139,10 @@ TEST(Renderer_Particle_Test, 发射与步进)
 	EXPECT_EQ(粒子.active_count(), 0u);
 	//关闭不释放池内容：关态查询 / 发射为 0，重新开启恢复
 	EXPECT_EQ(粒子.emit(8), 8u);
-	ASSERT_TRUE(renderer.particle_enable_set(false));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(false));
 	EXPECT_EQ(粒子.emit(8), 0u);
 	EXPECT_EQ(粒子.active_count(), 0u);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	EXPECT_EQ(粒子.active_count(), 8u);
 }
 
@@ -153,29 +153,29 @@ TEST(Renderer_Particle_Test, GPU推进自检)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
 	//关闭态路径不可用
-	EXPECT_FALSE(renderer.particle_gpu_available());
-	EXPECT_FALSE(renderer.particle_gpu_probe());
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	EXPECT_FALSE(renderer.particle().particle_gpu_available());
+	EXPECT_FALSE(renderer.particle().particle_gpu_probe());
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(64));
-	ASSERT_TRUE(renderer.particle_emitter_set(point_emitter()));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(point_emitter()));
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
 	params.restitution = 0.4f;
 	params.friction = 0.2f;
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	//本机计算路径可用：惰性创建后即可用
-	EXPECT_TRUE(renderer.particle_gpu_available());
+	EXPECT_TRUE(renderer.particle().particle_gpu_available());
 	//空池零步自检
-	EXPECT_TRUE(renderer.particle_gpu_probe());
+	EXPECT_TRUE(renderer.particle().particle_gpu_probe());
 	//发射后零步自检逐粒子恒等（dt = 0、阻尼 1）
 	EXPECT_EQ(粒子.emit(32), 32u);
 	EXPECT_EQ(粒子.active_count(), 32u);
-	EXPECT_TRUE(renderer.particle_gpu_probe());
+	EXPECT_TRUE(renderer.particle().particle_gpu_probe());
 	//容量变化后按新容量重建
 	ASSERT_TRUE(粒子.capacity_set(128));
-	EXPECT_EQ(renderer.particle_capacity_get(), 128u);
-	EXPECT_TRUE(renderer.particle_gpu_available());
-	EXPECT_TRUE(renderer.particle_gpu_probe());
+	EXPECT_EQ(renderer.particle().particle_capacity_get(), 128u);
+	EXPECT_TRUE(renderer.particle().particle_gpu_available());
+	EXPECT_TRUE(renderer.particle().particle_gpu_probe());
 }
 
 /*
@@ -199,26 +199,26 @@ TEST(Renderer_Particle_Test, GPU推进单步对照)
 	engine::Particle_Host cpu粒子(cpu);
 	ASSERT_TRUE(gpu.init(hidden_config()));
 	engine::Particle_Host gpu粒子(gpu);
-	ASSERT_TRUE(cpu.particle_enable_set(true));
-	ASSERT_TRUE(gpu.particle_enable_set(true));
+	ASSERT_TRUE(cpu.particle().particle_enable_set(true));
+	ASSERT_TRUE(gpu.particle().particle_enable_set(true));
 	ASSERT_TRUE(cpu粒子.capacity_set(64));
 	ASSERT_TRUE(gpu粒子.capacity_set(64));
-	ASSERT_TRUE(cpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(gpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(cpu.particle_params_set(params));
-	ASSERT_TRUE(gpu.particle_params_set(params));
+	ASSERT_TRUE(cpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(gpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(cpu.particle().particle_params_set(params));
+	ASSERT_TRUE(gpu.particle().particle_params_set(params));
 	ASSERT_EQ(cpu粒子.emit(32), 32u);
 	ASSERT_EQ(gpu粒子.emit(32), 32u);
-	ASSERT_TRUE(gpu.particle_gpu_available());
+	ASSERT_TRUE(gpu.particle().particle_gpu_available());
 	//步长非法拒绝
-	EXPECT_FALSE(gpu.particle_gpu_step(0.0f));
-	EXPECT_FALSE(gpu.particle_gpu_step(-1.0f));
-	EXPECT_FALSE(gpu.particle_gpu_step(std::numeric_limits<float>::quiet_NaN()));
+	EXPECT_FALSE(gpu.particle().particle_gpu_step(0.0f));
+	EXPECT_FALSE(gpu.particle().particle_gpu_step(-1.0f));
+	EXPECT_FALSE(gpu.particle().particle_gpu_step(std::numeric_limits<float>::quiet_NaN()));
 	//十步推进（同参数同顺序）
 	for (uint32_t step = 0; step < 10; ++step)
 	{
 		cpu粒子.step(0.05f);
-		ASSERT_TRUE(gpu.particle_gpu_step(0.05f));
+		ASSERT_TRUE(gpu.particle().particle_gpu_step(0.05f));
 	}
 	//逐活跃索引比对
 	uint32_t compared = 0;
@@ -264,26 +264,26 @@ TEST(Renderer_Particle_Test, GPU生命周期与死亡同步)
 	engine::Particle_Host cpu粒子(cpu);
 	ASSERT_TRUE(gpu.init(hidden_config()));
 	engine::Particle_Host gpu粒子(gpu);
-	ASSERT_TRUE(cpu.particle_enable_set(true));
-	ASSERT_TRUE(gpu.particle_enable_set(true));
+	ASSERT_TRUE(cpu.particle().particle_enable_set(true));
+	ASSERT_TRUE(gpu.particle().particle_enable_set(true));
 	ASSERT_TRUE(cpu粒子.capacity_set(64));
 	ASSERT_TRUE(gpu粒子.capacity_set(64));
-	ASSERT_TRUE(cpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(gpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(cpu.particle_params_set(params));
-	ASSERT_TRUE(gpu.particle_params_set(params));
+	ASSERT_TRUE(cpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(gpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(cpu.particle().particle_params_set(params));
+	ASSERT_TRUE(gpu.particle().particle_params_set(params));
 	ASSERT_EQ(cpu粒子.emit(32), 32u);
 	ASSERT_EQ(gpu粒子.emit(32), 32u);
-	ASSERT_TRUE(gpu.particle_gpu_available());
+	ASSERT_TRUE(gpu.particle().particle_gpu_available());
 	//逐步比对死亡数与活跃数
 	uint32_t total_died = 0;
 	for (uint32_t step = 0; step < 10; ++step)
 	{
 		uint32_t cpu_died = cpu粒子.step(0.05f);
-		ASSERT_TRUE(gpu.particle_gpu_step(0.05f));
-		EXPECT_EQ(cpu_died, gpu.particle_gpu_died_last());
+		ASSERT_TRUE(gpu.particle().particle_gpu_step(0.05f));
+		EXPECT_EQ(cpu_died, gpu.particle().particle_gpu_died_last());
 		EXPECT_EQ(cpu粒子.active_count(), gpu粒子.active_count());
-		total_died += gpu.particle_gpu_died_last();
+		total_died += gpu.particle().particle_gpu_died_last();
 	}
 	EXPECT_EQ(total_died, 32u);
 	EXPECT_EQ(gpu粒子.active_count(), 0u);
@@ -297,8 +297,8 @@ TEST(Renderer_Particle_Test, GPU生命周期与死亡同步)
 	}
 	EXPECT_EQ(readable, 0u);
 	//全部死亡后继续推进不复活
-	ASSERT_TRUE(gpu.particle_gpu_step(0.05f));
-	EXPECT_EQ(gpu.particle_gpu_died_last(), 0u);
+	ASSERT_TRUE(gpu.particle().particle_gpu_step(0.05f));
+	EXPECT_EQ(gpu.particle().particle_gpu_died_last(), 0u);
 	EXPECT_EQ(gpu粒子.active_count(), 0u);
 	//再次发射沿用回收索引，且状态可读
 	EXPECT_EQ(gpu粒子.emit(32), 32u);
@@ -331,7 +331,7 @@ TEST(Renderer_Particle_Test, 粒子billboard定位)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[2] = -1.0f;
@@ -343,14 +343,14 @@ TEST(Renderer_Particle_Test, 粒子billboard定位)
 	emitter.count = 1;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	EXPECT_EQ(粒子.emit(1), 1u);
 	//尺寸非法拒绝
-	EXPECT_FALSE(renderer.particle_draw(0.0f));
-	EXPECT_FALSE(renderer.particle_draw(-1.0f));
+	EXPECT_FALSE(renderer.particle().particle_draw(0.0f));
+	EXPECT_FALSE(renderer.particle().particle_draw(-1.0f));
 	//登记一个实例化绘制项
-	ASSERT_TRUE(renderer.particle_draw(0.5f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.5f));
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 	renderer.render_target_set(target);
@@ -369,9 +369,9 @@ TEST(Renderer_Particle_Test, 粒子billboard定位)
 	EXPECT_GT(pixels[center + 0], 4u);
 	EXPECT_LT(pixels[corner + 2], 8u);
 	//关闭粒子后不再登记绘制项
-	ASSERT_TRUE(renderer.particle_enable_set(false));
-	EXPECT_FALSE(renderer.particle_draw(0.5f));
-	EXPECT_FALSE(renderer.particle_gpu_available());
+	ASSERT_TRUE(renderer.particle().particle_enable_set(false));
+	EXPECT_FALSE(renderer.particle().particle_draw(0.5f));
+	EXPECT_FALSE(renderer.particle().particle_gpu_available());
 	renderer.render_target_set(0);
 	renderer.render_target_destroy(target);
 }
@@ -394,7 +394,7 @@ TEST(Renderer_Particle_Test, 粒子年龄颜色曲线)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[2] = -1.0f;
@@ -406,8 +406,8 @@ TEST(Renderer_Particle_Test, 粒子年龄颜色曲线)
 	emitter.count = 1;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(1), 1u);
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
@@ -417,7 +417,7 @@ TEST(Renderer_Particle_Test, 粒子年龄颜色曲线)
 	uint32_t width = 0;
 	uint32_t height = 0;
 	//第一帧：年龄 0（暖白）
-	ASSERT_TRUE(renderer.particle_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
@@ -428,7 +428,7 @@ TEST(Renderer_Particle_Test, 粒子年龄颜色曲线)
 		粒子.step(0.1f);
 	ASSERT_EQ(粒子.active_count(), 1u);
 	//第二帧：年龄 0.8（暗红）
-	ASSERT_TRUE(renderer.particle_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
 	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
@@ -463,7 +463,7 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[2] = -1.0f;
@@ -478,8 +478,8 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	params.color_start[2] = 1.0f;
 	params.color_end[1] = 1.0f;
 	params.color_enabled = 1;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 	renderer.render_target_set(target);
@@ -489,7 +489,7 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	uint32_t height = 0;
 	//CPU 参考路径：年龄 0（新生端为蓝）
 	ASSERT_EQ(粒子.emit(1), 1u);
-	ASSERT_TRUE(renderer.particle_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
 	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
@@ -500,7 +500,7 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	for (uint32_t step = 0; step < 8; ++step)
 		粒子.step(0.1f);
 	ASSERT_EQ(粒子.active_count(), 1u);
-	ASSERT_TRUE(renderer.particle_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
 	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
@@ -508,11 +508,11 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	EXPECT_GT(pixels[center + 1], 100u);
 	EXPECT_GT(static_cast<uint32_t>(pixels[center + 1]), static_cast<uint32_t>(pixels[center + 0]) + 60u);
 	//常驻 GPU 路径：GPU 侧发射后单步推进（年龄 ≈ 0）
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, 1), 1u);
 	ASSERT_TRUE(engine::particle_gpu::step_resident(renderer, 0.01f));
 	//GPU 直接绘制
-	ASSERT_TRUE(renderer.particle_gpu_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_gpu_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
 	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
@@ -520,7 +520,7 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	EXPECT_GT(pixels[center + 0], 100u);
 	EXPECT_GT(static_cast<uint32_t>(pixels[center + 0]), static_cast<uint32_t>(pixels[center + 1]) + 60u);
 	//GPU 间接绘制
-	ASSERT_TRUE(renderer.particle_indirect_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_indirect_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
 	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
@@ -549,7 +549,7 @@ TEST(Renderer_Particle_Test, 粒子软边可配)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[2] = -1.0f;
@@ -564,8 +564,8 @@ TEST(Renderer_Particle_Test, 粒子软边可配)
 	params.color_start[2] = 1.0f;
 	params.color_end[2] = 1.0f;
 	params.color_enabled = 1;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(1), 1u);
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
@@ -585,13 +585,13 @@ TEST(Renderer_Particle_Test, 粒子软边可配)
 		return sum;
 	};
 	//硬边（软边宽度 0：内置 0.65 内半径）
-	ASSERT_TRUE(renderer.particle_draw(1.6f));
+	ASSERT_TRUE(renderer.particle().particle_draw(1.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	const uint64_t hard_sum = blue_sum();
 	//软边（宽度 0.95：内半径 0.05）
 	params.edge_softness = 0.95f;
-	ASSERT_TRUE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_draw(1.6f));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_draw(1.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	const uint64_t soft_sum = blue_sum();
 	std::cout << "[软边] 硬边蓝和=" << hard_sum << " 软边蓝和=" << soft_sum << std::endl;
@@ -620,7 +620,7 @@ TEST(Renderer_Particle_Test, 粒子颜色分桶绘制)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(16));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[2] = -1.0f;
@@ -637,16 +637,16 @@ TEST(Renderer_Particle_Test, 粒子颜色分桶绘制)
 	params.color_start[2] = 1.0f;
 	params.color_end[2] = 1.0f;
 	params.color_enabled = 1;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(8), 8u);
-	ASSERT_TRUE(renderer.particle_sort_buckets_set(4));
-	EXPECT_EQ(renderer.particle_sort_buckets_get(), 4u);
+	ASSERT_TRUE(renderer.particle().particle_sort_buckets_set(4));
+	EXPECT_EQ(renderer.particle().particle_sort_buckets_get(), 4u);
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 	renderer.render_target_set(target);
 	//分桶开启：出帧后统计蓝优像素
-	ASSERT_TRUE(renderer.particle_draw(0.4f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.4f));
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_GT(renderer.frame_stats_get().drawn_items, 0u);
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
@@ -684,7 +684,7 @@ TEST(Renderer_Particle_Test, 粒子混合档与深度写入)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[2] = -1.0f;
@@ -696,14 +696,14 @@ TEST(Renderer_Particle_Test, 粒子混合档与深度写入)
 	emitter.count = 2;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(2), 2u);
 	//默认档位
-	EXPECT_EQ(renderer.particle_blend_get(), engine::Blend_Mode::Alpha);
-	EXPECT_FALSE(renderer.particle_depth_write_get());
+	EXPECT_EQ(renderer.particle().particle_blend_get(), engine::Blend_Mode::Alpha);
+	EXPECT_FALSE(renderer.particle().particle_depth_write_get());
 	//非法档拒绝
-	EXPECT_FALSE(renderer.particle_blend_set(engine::Blend_Mode::Opaque));
+	EXPECT_FALSE(renderer.particle().particle_blend_set(engine::Blend_Mode::Opaque));
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 	renderer.render_target_set(target);
@@ -712,16 +712,16 @@ TEST(Renderer_Particle_Test, 粒子混合档与深度写入)
 	uint32_t width = 0;
 	uint32_t height = 0;
 	//Alpha 档：单层颜色
-	ASSERT_TRUE(renderer.particle_blend_set(engine::Blend_Mode::Alpha));
-	ASSERT_TRUE(renderer.particle_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_blend_set(engine::Blend_Mode::Alpha));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	uint8_t alpha_blue = pixels[center + 0];
 	//Additive 档：叠加增亮
-	ASSERT_TRUE(renderer.particle_blend_set(engine::Blend_Mode::Additive));
-	EXPECT_EQ(renderer.particle_blend_get(), engine::Blend_Mode::Additive);
-	ASSERT_TRUE(renderer.particle_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_blend_set(engine::Blend_Mode::Additive));
+	EXPECT_EQ(renderer.particle().particle_blend_get(), engine::Blend_Mode::Additive);
+	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
 	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
@@ -729,11 +729,11 @@ TEST(Renderer_Particle_Test, 粒子混合档与深度写入)
 	uint8_t additive_blue = pixels[center + 0];
 	EXPECT_GT(static_cast<uint32_t>(additive_blue), static_cast<uint32_t>(alpha_blue) + 30u);
 	//深度写入开关（切换触发重建，绘制仍可用）
-	ASSERT_TRUE(renderer.particle_depth_write_set(true));
-	EXPECT_TRUE(renderer.particle_depth_write_get());
-	ASSERT_TRUE(renderer.particle_depth_write_set(false));
-	EXPECT_FALSE(renderer.particle_depth_write_get());
-	ASSERT_TRUE(renderer.particle_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_depth_write_set(true));
+	EXPECT_TRUE(renderer.particle().particle_depth_write_get());
+	ASSERT_TRUE(renderer.particle().particle_depth_write_set(false));
+	EXPECT_FALSE(renderer.particle().particle_depth_write_get());
+	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	renderer.render_target_set(0);
 	renderer.render_target_destroy(target);
 }
@@ -756,7 +756,7 @@ TEST(Renderer_Particle_Test, 粒子深度分桶稳定性)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(32));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[2] = -1.0f;
@@ -771,13 +771,13 @@ TEST(Renderer_Particle_Test, 粒子深度分桶稳定性)
 	emitter.count = 16;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(16), 16u);
 	//默认关闭分桶
-	EXPECT_EQ(renderer.particle_sort_buckets_get(), 0u);
-	ASSERT_TRUE(renderer.particle_sort_buckets_set(4));
-	EXPECT_EQ(renderer.particle_sort_buckets_get(), 4u);
+	EXPECT_EQ(renderer.particle().particle_sort_buckets_get(), 0u);
+	ASSERT_TRUE(renderer.particle().particle_sort_buckets_set(4));
+	EXPECT_EQ(renderer.particle().particle_sort_buckets_get(), 4u);
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 	renderer.render_target_set(target);
@@ -786,22 +786,22 @@ TEST(Renderer_Particle_Test, 粒子深度分桶稳定性)
 	uint32_t width = 0;
 	uint32_t height = 0;
 	//第一帧
-	ASSERT_TRUE(renderer.particle_draw(0.25f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.25f));
 	ASSERT_TRUE(renderer.frame_render());
 	ASSERT_TRUE(renderer.render_target_readback(target, first.data(), static_cast<uint32_t>(first.size()),
 		&width, &height));
 	//第二帧（同状态）
-	ASSERT_TRUE(renderer.particle_draw(0.25f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.25f));
 	ASSERT_TRUE(renderer.frame_render());
 	ASSERT_TRUE(renderer.render_target_readback(target, second.data(), static_cast<uint32_t>(second.size()),
 		&width, &height));
 	EXPECT_EQ(first, second);
 	//桶数钳制与关闭
-	ASSERT_TRUE(renderer.particle_sort_buckets_set(100));
-	EXPECT_EQ(renderer.particle_sort_buckets_get(), 16u);
-	ASSERT_TRUE(renderer.particle_sort_buckets_set(0));
-	EXPECT_EQ(renderer.particle_sort_buckets_get(), 0u);
-	ASSERT_TRUE(renderer.particle_draw(0.25f));
+	ASSERT_TRUE(renderer.particle().particle_sort_buckets_set(100));
+	EXPECT_EQ(renderer.particle().particle_sort_buckets_get(), 16u);
+	ASSERT_TRUE(renderer.particle().particle_sort_buckets_set(0));
+	EXPECT_EQ(renderer.particle().particle_sort_buckets_get(), 0u);
+	ASSERT_TRUE(renderer.particle().particle_draw(0.25f));
 	renderer.render_target_set(0);
 	renderer.render_target_destroy(target);
 }
@@ -816,7 +816,7 @@ TEST(Renderer_Particle_Test, 力场校验与解析)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter = point_emitter();
 	emitter.speed_min = 0.0f;
@@ -831,17 +831,17 @@ TEST(Renderer_Particle_Test, 力场校验与解析)
 	params.damping = 1.0f;
 	//力场数越界
 	params.force_count = 9;
-	EXPECT_FALSE(renderer.particle_params_set(params));
+	EXPECT_FALSE(renderer.particle().particle_params_set(params));
 	//涡流方向为零
 	params.force_count = 1;
 	params.forces[0].type = static_cast<uint32_t>(engine::Force_Type::Vortex);
-	EXPECT_FALSE(renderer.particle_params_set(params));
+	EXPECT_FALSE(renderer.particle().particle_params_set(params));
 	//风场（+X、强度 2）
 	params.forces[0].type = static_cast<uint32_t>(engine::Force_Type::Wind);
 	params.forces[0].strength = 2.0f;
 	params.forces[0].direction[0] = 1.0f;
-	ASSERT_TRUE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
 	ASSERT_EQ(粒子.emit(1), 1u);
 	//十步 × 0.1 s：vx = 2.0、px = 0.5 × 2.0 × 1.0 = 1.0（离散积分与解析差 ≤ 1e-3）
 	for (uint32_t step = 0; step < 10; ++step)
@@ -895,22 +895,22 @@ TEST(Renderer_Particle_Test, 力场GPU对照)
 	engine::Particle_Host cpu粒子(cpu);
 	ASSERT_TRUE(gpu.init(hidden_config()));
 	engine::Particle_Host gpu粒子(gpu);
-	ASSERT_TRUE(cpu.particle_enable_set(true));
-	ASSERT_TRUE(gpu.particle_enable_set(true));
+	ASSERT_TRUE(cpu.particle().particle_enable_set(true));
+	ASSERT_TRUE(gpu.particle().particle_enable_set(true));
 	ASSERT_TRUE(cpu粒子.capacity_set(8));
 	ASSERT_TRUE(gpu粒子.capacity_set(8));
-	ASSERT_TRUE(cpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(gpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(cpu.particle_params_set(params));
-	ASSERT_TRUE(gpu.particle_params_set(params));
+	ASSERT_TRUE(cpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(gpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(cpu.particle().particle_params_set(params));
+	ASSERT_TRUE(gpu.particle().particle_params_set(params));
 	ASSERT_EQ(cpu粒子.emit(4), 4u);
 	ASSERT_EQ(gpu粒子.emit(4), 4u);
-	ASSERT_TRUE(gpu.particle_gpu_available());
+	ASSERT_TRUE(gpu.particle().particle_gpu_available());
 	//十步推进
 	for (uint32_t step = 0; step < 10; ++step)
 	{
 		cpu粒子.step(0.05f);
-		ASSERT_TRUE(gpu.particle_gpu_step(0.05f));
+		ASSERT_TRUE(gpu.particle().particle_gpu_step(0.05f));
 	}
 	//逐活跃索引比对
 	uint32_t compared = 0;
@@ -940,7 +940,7 @@ TEST(Renderer_Particle_Test, 碰撞地面)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
 	emitter.position[1] = 1.0f;
@@ -957,8 +957,8 @@ TEST(Renderer_Particle_Test, 碰撞地面)
 	params.restitution = 0.5f;
 	params.friction = 0.2f;
 	params.ground_enabled = 1;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(1), 1u);
 	//逐步推进并记录最低点与反弹次数
 	float lowest = 1e9f;
@@ -994,7 +994,7 @@ TEST(Renderer_Particle_Test, 碰撞球体)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
 	emitter.position[2] = 1.0f;
@@ -1015,8 +1015,8 @@ TEST(Renderer_Particle_Test, 碰撞球体)
 	params.forces[0].type = static_cast<uint32_t>(engine::Force_Type::Wind);
 	params.forces[0].strength = 20.0f;
 	params.forces[0].direction[2] = -1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(1), 1u);
 	//逐步推进并记录最小球心距与撞后法向速度
 	float minimum_distance = 1e9f;
@@ -1069,21 +1069,21 @@ TEST(Renderer_Particle_Test, 碰撞GPU对照)
 	engine::Particle_Host cpu粒子(cpu);
 	ASSERT_TRUE(gpu.init(hidden_config()));
 	engine::Particle_Host gpu粒子(gpu);
-	ASSERT_TRUE(cpu.particle_enable_set(true));
-	ASSERT_TRUE(gpu.particle_enable_set(true));
+	ASSERT_TRUE(cpu.particle().particle_enable_set(true));
+	ASSERT_TRUE(gpu.particle().particle_enable_set(true));
 	ASSERT_TRUE(cpu粒子.capacity_set(8));
 	ASSERT_TRUE(gpu粒子.capacity_set(8));
-	ASSERT_TRUE(cpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(gpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(cpu.particle_params_set(params));
-	ASSERT_TRUE(gpu.particle_params_set(params));
+	ASSERT_TRUE(cpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(gpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(cpu.particle().particle_params_set(params));
+	ASSERT_TRUE(gpu.particle().particle_params_set(params));
 	ASSERT_EQ(cpu粒子.emit(4), 4u);
 	ASSERT_EQ(gpu粒子.emit(4), 4u);
-	ASSERT_TRUE(gpu.particle_gpu_available());
+	ASSERT_TRUE(gpu.particle().particle_gpu_available());
 	for (uint32_t step = 0; step < 20; ++step)
 	{
 		cpu粒子.step(0.05f);
-		ASSERT_TRUE(gpu.particle_gpu_step(0.05f));
+		ASSERT_TRUE(gpu.particle().particle_gpu_step(0.05f));
 	}
 	uint32_t compared = 0;
 	for (uint32_t index = 0; index < 8; ++index)
@@ -1113,38 +1113,38 @@ TEST(Renderer_Particle_Test, 超大容量与重建)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	//未创建资源时为 0
-	EXPECT_EQ(renderer.particle_gpu_bytes(), 0u);
+	EXPECT_EQ(renderer.particle().particle_gpu_bytes(), 0u);
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX));
-	EXPECT_EQ(renderer.particle_capacity_get(), engine::PARTICLE_CAPACITY_MAX);
-	ASSERT_TRUE(renderer.particle_gpu_available());
+	EXPECT_EQ(renderer.particle().particle_capacity_get(), engine::PARTICLE_CAPACITY_MAX);
+	ASSERT_TRUE(renderer.particle().particle_gpu_available());
 	const uint64_t expected_maximum = static_cast<uint64_t>(engine::PARTICLE_CAPACITY_MAX)
 		* engine::PARTICLE_STRIDE * 2u + static_cast<uint64_t>(engine::PARTICLE_FORCE_MAX) * engine::PARTICLE_FORCE_STRIDE
 		+ (8u + (static_cast<uint64_t>(engine::PARTICLE_CAPACITY_MAX) + 31u) / 32u * 4u)
 		+ static_cast<uint64_t>(engine::PARTICLE_CAPACITY_MAX) * 4u + 4u
 		//间接命令缓冲：在途帧数 2 × 20 B（第三百五十二轮）
 		+ 2u * 20u;
-	EXPECT_EQ(renderer.particle_gpu_bytes(), expected_maximum);
-	EXPECT_TRUE(renderer.particle_gpu_probe());
+	EXPECT_EQ(renderer.particle().particle_gpu_bytes(), expected_maximum);
+	EXPECT_TRUE(renderer.particle().particle_gpu_probe());
 	//同值重复设置：不重建、字节不变
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX));
-	EXPECT_EQ(renderer.particle_capacity_get(), engine::PARTICLE_CAPACITY_MAX);
-	EXPECT_EQ(renderer.particle_gpu_bytes(), expected_maximum);
+	EXPECT_EQ(renderer.particle().particle_capacity_get(), engine::PARTICLE_CAPACITY_MAX);
+	EXPECT_EQ(renderer.particle().particle_gpu_bytes(), expected_maximum);
 	//超上限钳到上限
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX + 1u));
-	EXPECT_EQ(renderer.particle_capacity_get(), engine::PARTICLE_CAPACITY_MAX);
+	EXPECT_EQ(renderer.particle().particle_capacity_get(), engine::PARTICLE_CAPACITY_MAX);
 	//收缩重建
 	ASSERT_TRUE(粒子.capacity_set(64));
-	EXPECT_EQ(renderer.particle_capacity_get(), 64u);
-	ASSERT_TRUE(renderer.particle_gpu_available());
+	EXPECT_EQ(renderer.particle().particle_capacity_get(), 64u);
+	ASSERT_TRUE(renderer.particle().particle_gpu_available());
 	const uint64_t expected_small = static_cast<uint64_t>(64) * engine::PARTICLE_STRIDE * 2u
 		+ static_cast<uint64_t>(engine::PARTICLE_FORCE_MAX) * engine::PARTICLE_FORCE_STRIDE
 		+ (8u + (64u + 31u) / 32u * 4u) + static_cast<uint64_t>(64) * 4u + 4u
 		//间接命令缓冲：在途帧数 2 × 20 B（第三百五十二轮）
 		+ 2u * 20u;
-	EXPECT_EQ(renderer.particle_gpu_bytes(), expected_small);
-	EXPECT_TRUE(renderer.particle_gpu_probe());
+	EXPECT_EQ(renderer.particle().particle_gpu_bytes(), expected_small);
+	EXPECT_TRUE(renderer.particle().particle_gpu_probe());
 }
 
 /*
@@ -1164,10 +1164,10 @@ TEST(Renderer_Particle_Test, 粒子模拟统计)
 	engine::Renderer cpu;
 	ASSERT_TRUE(cpu.init(hidden_config()));
 	engine::Particle_Host cpu粒子(cpu);
-	ASSERT_TRUE(cpu.particle_enable_set(true));
+	ASSERT_TRUE(cpu.particle().particle_enable_set(true));
 	ASSERT_TRUE(cpu粒子.capacity_set(64));
-	ASSERT_TRUE(cpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(cpu.particle_params_set(params));
+	ASSERT_TRUE(cpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(cpu.particle().particle_params_set(params));
 	engine::Frame_Stats stats = cpu.frame_stats_get();
 	EXPECT_EQ(stats.particle_active, 0u);
 	EXPECT_EQ(stats.particle_born_total, 0u);
@@ -1189,14 +1189,14 @@ TEST(Renderer_Particle_Test, 粒子模拟统计)
 	engine::Renderer gpu;
 	ASSERT_TRUE(gpu.init(hidden_config()));
 	engine::Particle_Host gpu粒子(gpu);
-	ASSERT_TRUE(gpu.particle_enable_set(true));
+	ASSERT_TRUE(gpu.particle().particle_enable_set(true));
 	ASSERT_TRUE(gpu粒子.capacity_set(64));
-	ASSERT_TRUE(gpu.particle_emitter_set(emitter));
-	ASSERT_TRUE(gpu.particle_params_set(params));
+	ASSERT_TRUE(gpu.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(gpu.particle().particle_params_set(params));
 	ASSERT_EQ(gpu粒子.emit(16), 16u);
-	ASSERT_TRUE(gpu.particle_gpu_available());
+	ASSERT_TRUE(gpu.particle().particle_gpu_available());
 	for (uint32_t step = 0; step < 12; ++step)
-		ASSERT_TRUE(gpu.particle_gpu_step(0.05f));
+		ASSERT_TRUE(gpu.particle().particle_gpu_step(0.05f));
 	stats = gpu.frame_stats_get();
 	EXPECT_EQ(stats.particle_active, 0u);
 	EXPECT_EQ(stats.particle_born_total, 16u);
@@ -1228,7 +1228,7 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		renderer.mesh_draw(plane, transform);
 		//可选的粒子绘制
 		if (with_particle)
-			renderer.particle_draw(0.4f);
+			renderer.particle().particle_draw(0.4f);
 		EXPECT_TRUE(renderer.frame_render());
 		out.assign(64 * 64 * 4, 0);
 		uint32_t width = 0;
@@ -1269,7 +1269,7 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config_off));
 		engine::Particle_Host 粒子(renderer);
-		ASSERT_TRUE(renderer.particle_enable_set(true));
+		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.mesh_plane_load(plane, 1.0f, 1.0f));
 		uint64_t target = 0;
@@ -1311,15 +1311,15 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config_off));
 		engine::Particle_Host 粒子(renderer);
-		ASSERT_TRUE(renderer.particle_enable_set(true));
+		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(8));
-		ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-		ASSERT_TRUE(renderer.particle_params_set(params));
+		ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+		ASSERT_TRUE(renderer.particle().particle_params_set(params));
 		ASSERT_EQ(粒子.emit(1), 1u);
 		//计算不可用：GPU 路径关闭，CPU 镜像仍可用
-		EXPECT_FALSE(renderer.particle_gpu_available());
-		EXPECT_FALSE(renderer.particle_gpu_step(0.1f));
-		EXPECT_FALSE(renderer.particle_supported());
+		EXPECT_FALSE(renderer.particle().particle_gpu_available());
+		EXPECT_FALSE(renderer.particle().particle_gpu_step(0.1f));
+		EXPECT_FALSE(renderer.particle().particle_supported());
 		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle plane = 0;
@@ -1335,12 +1335,12 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config_on));
 		engine::Particle_Host 粒子(renderer);
-		ASSERT_TRUE(renderer.particle_enable_set(true));
+		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(8));
-		ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-		ASSERT_TRUE(renderer.particle_params_set(params));
+		ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+		ASSERT_TRUE(renderer.particle().particle_params_set(params));
 		ASSERT_EQ(粒子.emit(1), 1u);
-		EXPECT_TRUE(renderer.particle_supported());
+		EXPECT_TRUE(renderer.particle().particle_supported());
 		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle plane = 0;
@@ -1379,7 +1379,7 @@ TEST(Renderer_Particle_Test, 粒子性能基线)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(65536));
 	engine::Particle_Emitter emitter = point_emitter();
 	emitter.count = 10000;
@@ -1390,8 +1390,8 @@ TEST(Renderer_Particle_Test, 粒子性能基线)
 	engine::Particle_Params params{};
 	params.gravity[1] = -0.8f;
 	params.damping = 0.99f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(10000), 10000u);
 	//CPU 参考单步（十步平均）
 	const auto cpu_begin = std::chrono::high_resolution_clock::now();
@@ -1400,23 +1400,23 @@ TEST(Renderer_Particle_Test, 粒子性能基线)
 	const auto cpu_end = std::chrono::high_resolution_clock::now();
 	double cpu_step_ms = std::chrono::duration<double, std::milli>(cpu_end - cpu_begin).count() / 10.0;
 	//GPU 同步链单步（十步平均）
-	ASSERT_TRUE(renderer.particle_gpu_available());
+	ASSERT_TRUE(renderer.particle().particle_gpu_available());
 	const auto gpu_begin = std::chrono::high_resolution_clock::now();
 	for (uint32_t step = 0; step < 10; ++step)
-		ASSERT_TRUE(renderer.particle_gpu_step(1.0f / 60.0f));
+		ASSERT_TRUE(renderer.particle().particle_gpu_step(1.0f / 60.0f));
 	const auto gpu_end = std::chrono::high_resolution_clock::now();
 	double gpu_step_ms = std::chrono::duration<double, std::milli>(gpu_end - gpu_begin).count() / 10.0;
 	//整帧绘制（1 万 billboard）
-	ASSERT_TRUE(renderer.particle_draw(0.06f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.06f));
 	ASSERT_TRUE(renderer.frame_render());
 	const engine::Frame_Stats draw_stats = renderer.frame_stats_get();
 	//1M 容量资源分配与零步自检
 	const auto alloc_begin = std::chrono::high_resolution_clock::now();
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX));
-	ASSERT_TRUE(renderer.particle_gpu_available());
+	ASSERT_TRUE(renderer.particle().particle_gpu_available());
 	const auto alloc_end = std::chrono::high_resolution_clock::now();
 	double alloc_ms = std::chrono::duration<double, std::milli>(alloc_end - alloc_begin).count();
-	EXPECT_EQ(renderer.particle_gpu_bytes(),
+	EXPECT_EQ(renderer.particle().particle_gpu_bytes(),
 		static_cast<uint64_t>(engine::PARTICLE_CAPACITY_MAX) * engine::PARTICLE_STRIDE * 2u
 			+ static_cast<uint64_t>(engine::PARTICLE_FORCE_MAX) * engine::PARTICLE_FORCE_STRIDE
 			+ (8u + (static_cast<uint64_t>(engine::PARTICLE_CAPACITY_MAX) + 31u) / 32u * 4u)
@@ -1424,7 +1424,7 @@ TEST(Renderer_Particle_Test, 粒子性能基线)
 			//间接命令缓冲：在途帧数 2 × 20 B（第三百五十二轮）
 			+ 2u * 20u);
 	const auto probe_begin = std::chrono::high_resolution_clock::now();
-	EXPECT_TRUE(renderer.particle_gpu_probe());
+	EXPECT_TRUE(renderer.particle().particle_gpu_probe());
 	const auto probe_end = std::chrono::high_resolution_clock::now();
 	double probe_ms = std::chrono::duration<double, std::milli>(probe_end - probe_begin).count();
 	std::cout << "[粒子基线] CPU步进=" << cpu_step_ms << " ms  GPU同步步进=" << gpu_step_ms
@@ -1447,7 +1447,7 @@ TEST(Renderer_Particle_Test, 常驻GPU发射)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(64));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -1459,14 +1459,14 @@ TEST(Renderer_Particle_Test, 常驻GPU发射)
 	emitter.count = 10;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	//常驻关闭：GPU 发射不生效
-	EXPECT_FALSE(renderer.particle_resident_get());
+	EXPECT_FALSE(renderer.particle().particle_resident_get());
 	EXPECT_EQ(engine::particle_gpu::emit(renderer, 5), 0u);
 	//开启常驻
-	ASSERT_TRUE(renderer.particle_resident_set(true));
-	EXPECT_TRUE(renderer.particle_resident_get());
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
+	EXPECT_TRUE(renderer.particle().particle_resident_get());
 	EXPECT_EQ(粒子.active_count(), 0u);
 	//三次发射
 	EXPECT_EQ(engine::particle_gpu::emit(renderer, 10), 10u);
@@ -1480,7 +1480,7 @@ TEST(Renderer_Particle_Test, 常驻GPU发射)
 	EXPECT_EQ(engine::particle_gpu::emit(renderer, 8), 0u);
 	EXPECT_EQ(renderer.frame_stats_get().particle_born_total, 64u);
 	//关闭常驻：回到 CPU 镜像（未发射 → 0）
-	ASSERT_TRUE(renderer.particle_resident_set(false));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(false));
 	EXPECT_EQ(粒子.active_count(), 0u);
 	//计算不可用：拒绝常驻与 GPU 发射
 	engine::Renderer_Config config_off;
@@ -1490,9 +1490,9 @@ TEST(Renderer_Particle_Test, 常驻GPU发射)
 	config_off.compute_enable = false;
 	engine::Renderer renderer_off;
 	ASSERT_TRUE(renderer_off.init(config_off));
-	ASSERT_TRUE(renderer_off.particle_enable_set(true));
-	EXPECT_FALSE(renderer_off.particle_resident_set(true));
-	EXPECT_FALSE(renderer_off.particle_resident_get());
+	ASSERT_TRUE(renderer_off.particle().particle_enable_set(true));
+	EXPECT_FALSE(renderer_off.particle().particle_resident_set(true));
+	EXPECT_FALSE(renderer_off.particle().particle_resident_get());
 	EXPECT_EQ(engine::particle_gpu::emit(renderer_off, 4), 0u);
 }
 
@@ -1506,7 +1506,7 @@ TEST(Renderer_Particle_Test, 常驻推进与死亡压缩)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(64));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -1518,9 +1518,9 @@ TEST(Renderer_Particle_Test, 常驻推进与死亡压缩)
 	emitter.count = 32;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	//常驻发射 32
 	EXPECT_EQ(engine::particle_gpu::emit(renderer, 32), 32u);
 	EXPECT_EQ(粒子.active_count(), 32u);
@@ -1530,7 +1530,7 @@ TEST(Renderer_Particle_Test, 常驻推进与死亡压缩)
 	for (uint32_t step = 0; step < 12; ++step)
 	{
 		ASSERT_TRUE(engine::particle_gpu::step_resident(renderer, 0.05f));
-		died_total += renderer.particle_gpu_died_last();
+		died_total += renderer.particle().particle_gpu_died_last();
 	}
 	const auto end = std::chrono::high_resolution_clock::now();
 	double per_step_ms = std::chrono::duration<double, std::milli>(end - begin).count() / 12.0;
@@ -1541,11 +1541,11 @@ TEST(Renderer_Particle_Test, 常驻推进与死亡压缩)
 	EXPECT_EQ(engine::particle_gpu::emit(renderer, 8), 8u);
 	EXPECT_EQ(粒子.active_count(), 8u);
 	//常驻下同步链推进 / 自检被拒
-	EXPECT_FALSE(renderer.particle_gpu_step(0.05f));
-	EXPECT_FALSE(renderer.particle_gpu_probe());
+	EXPECT_FALSE(renderer.particle().particle_gpu_step(0.05f));
+	EXPECT_FALSE(renderer.particle().particle_gpu_probe());
 	//关闭常驻：同步链恢复可用
-	ASSERT_TRUE(renderer.particle_resident_set(false));
-	EXPECT_TRUE(renderer.particle_gpu_probe());
+	ASSERT_TRUE(renderer.particle().particle_resident_set(false));
+	EXPECT_TRUE(renderer.particle().particle_gpu_probe());
 	//常驻单步主机耗时上限（提交 + 围栏 + 两次 4 B 回读）
 	std::cout << "[常驻推进] 单步主机耗时=" << per_step_ms << " ms" << std::endl;
 	EXPECT_LT(per_step_ms, 5.0);
@@ -1561,7 +1561,7 @@ TEST(Renderer_Particle_Test, 常驻百万粒子基线)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -1575,9 +1575,9 @@ TEST(Renderer_Particle_Test, 常驻百万粒子基线)
 	engine::Particle_Params params{};
 	params.gravity[1] = -0.5f;
 	params.damping = 0.99f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	//一次发射 1 048 576（分 16 批，每批 ≤ 65536 上限）
 	const auto emit_begin = std::chrono::high_resolution_clock::now();
 	uint32_t total = 0;
@@ -1595,7 +1595,7 @@ TEST(Renderer_Particle_Test, 常驻百万粒子基线)
 	double per_step_ms = std::chrono::duration<double, std::milli>(step_end - step_begin).count() / 5.0;
 	//寿命 100 s 内不死亡 → 活跃守恒
 	EXPECT_EQ(粒子.active_count(), engine::PARTICLE_CAPACITY_MAX);
-	EXPECT_EQ(renderer.particle_gpu_died_last(), 0u);
+	EXPECT_EQ(renderer.particle().particle_gpu_died_last(), 0u);
 	std::cout << "[常驻百万] 发射16批=" << emit_ms << " ms  单步=" << per_step_ms << " ms" << std::endl;
 	//百万粒子单步为 GPU 吞吐口径（实测约 100 ms 量级，见性能基线）
 	EXPECT_LT(per_step_ms, 1000.0);
@@ -1617,7 +1617,7 @@ TEST(Renderer_Particle_Test, 粒子GPU绘制)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(256));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -1630,11 +1630,11 @@ TEST(Renderer_Particle_Test, 粒子GPU绘制)
 	emitter.count = 256;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	//未开启常驻：拒绝
-	EXPECT_FALSE(renderer.particle_gpu_draw(0.1f));
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	EXPECT_FALSE(renderer.particle().particle_gpu_draw(0.1f));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, 256), 256u);
 	for (uint32_t step = 0; step < 5; ++step)
 		ASSERT_TRUE(engine::particle_gpu::step_resident(renderer, 0.05f));
@@ -1643,7 +1643,7 @@ TEST(Renderer_Particle_Test, 粒子GPU绘制)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_gpu_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_gpu_draw(0.6f));
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 	renderer.render_target_set(target);
@@ -1688,7 +1688,7 @@ TEST(Renderer_Particle_Test, 粒子间接绘制)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(256));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -1701,11 +1701,11 @@ TEST(Renderer_Particle_Test, 粒子间接绘制)
 	emitter.count = 256;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	//未开启常驻：拒绝
-	EXPECT_FALSE(renderer.particle_indirect_draw(0.1f));
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	EXPECT_FALSE(renderer.particle().particle_indirect_draw(0.1f));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, 256), 256u);
 	for (uint32_t step = 0; step < 5; ++step)
 		ASSERT_TRUE(engine::particle_gpu::step_resident(renderer, 0.05f));
@@ -1714,10 +1714,10 @@ TEST(Renderer_Particle_Test, 粒子间接绘制)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_indirect_draw(0.6f));
+	ASSERT_TRUE(renderer.particle().particle_indirect_draw(0.6f));
 	//命令内容：索引数 = 四边形 6、实例数 = 紧凑计数、其余为 0
 	uint32_t command[5] = {};
-	ASSERT_TRUE(renderer.particle_indirect_command_get(command));
+	ASSERT_TRUE(renderer.particle().particle_indirect_command_get(command));
 	EXPECT_EQ(command[0], 6u);
 	EXPECT_EQ(command[1], 256u);
 	EXPECT_EQ(command[2], 0u);
@@ -1757,7 +1757,7 @@ TEST(Renderer_Particle_Test, 百万粒子间接命令基线)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -1770,9 +1770,9 @@ TEST(Renderer_Particle_Test, 百万粒子间接命令基线)
 	emitter.count = engine::PARTICLE_EMIT_COUNT_MAX;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	//分 16 批发射满池
 	uint32_t total = 0;
 	for (uint32_t batch = 0; batch < 16; ++batch)
@@ -1783,12 +1783,12 @@ TEST(Renderer_Particle_Test, 百万粒子间接命令基线)
 	for (uint32_t pass = 0; pass < 3; ++pass)
 	{
 		const auto begin = std::chrono::high_resolution_clock::now();
-		ASSERT_TRUE(renderer.particle_indirect_draw(0.05f));
+		ASSERT_TRUE(renderer.particle().particle_indirect_draw(0.05f));
 		const auto end = std::chrono::high_resolution_clock::now();
 		draw_ms = std::chrono::duration<double, std::milli>(end - begin).count();
 	}
 	uint32_t command[5] = {};
-	ASSERT_TRUE(renderer.particle_indirect_command_get(command));
+	ASSERT_TRUE(renderer.particle().particle_indirect_command_get(command));
 	EXPECT_EQ(command[1], engine::PARTICLE_CAPACITY_MAX);
 	const engine::Frame_Stats stats = renderer.frame_stats_get();
 	std::cout << "[百万间接命令] 生成=" << draw_ms << " ms  实例数=" << command[1]
@@ -1821,14 +1821,14 @@ TEST(Renderer_Particle_Test, 常驻绘制统计等价)
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
 		engine::Particle_Host 粒子(renderer);
-		ASSERT_TRUE(renderer.particle_enable_set(true));
+		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(256));
-		ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-		ASSERT_TRUE(renderer.particle_params_set(params));
+		ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+		ASSERT_TRUE(renderer.particle().particle_params_set(params));
 		ASSERT_EQ(粒子.emit(64), 64u);
 		for (uint32_t step = 0; step < 5; ++step)
 			(void)粒子.step(0.05f);
-		ASSERT_TRUE(renderer.particle_draw(0.1f));
+		ASSERT_TRUE(renderer.particle().particle_draw(0.1f));
 		ASSERT_TRUE(renderer.frame_render());
 		cpu_stats = renderer.frame_stats_get();
 	}
@@ -1838,16 +1838,16 @@ TEST(Renderer_Particle_Test, 常驻绘制统计等价)
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(hidden_config()));
 		engine::Particle_Host 粒子(renderer);
-		ASSERT_TRUE(renderer.particle_enable_set(true));
+		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(256));
-		ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-		ASSERT_TRUE(renderer.particle_params_set(params));
-		ASSERT_TRUE(renderer.particle_resident_set(true));
+		ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+		ASSERT_TRUE(renderer.particle().particle_params_set(params));
+		ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 		ASSERT_EQ(engine::particle_gpu::emit(renderer, 64), 64u);
 		for (uint32_t step = 0; step < 5; ++step)
 			ASSERT_TRUE(engine::particle_gpu::step_resident(renderer, 0.05f));
 		EXPECT_EQ(粒子.active_count(), 64u);
-		ASSERT_TRUE(renderer.particle_draw(0.1f));
+		ASSERT_TRUE(renderer.particle().particle_draw(0.1f));
 		ASSERT_TRUE(renderer.frame_render());
 		resident_stats = renderer.frame_stats_get();
 	}
@@ -1867,7 +1867,7 @@ TEST(Renderer_Particle_Test, 常驻紧凑百万基线)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -1880,9 +1880,9 @@ TEST(Renderer_Particle_Test, 常驻紧凑百万基线)
 	emitter.count = engine::PARTICLE_EMIT_COUNT_MAX;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	//分 16 批发射满池
 	uint32_t total = 0;
 	for (uint32_t batch = 0; batch < 16; ++batch)
@@ -1893,19 +1893,19 @@ TEST(Renderer_Particle_Test, 常驻紧凑百万基线)
 	for (uint32_t pass = 0; pass < 3; ++pass)
 	{
 		const auto begin = std::chrono::high_resolution_clock::now();
-		ASSERT_TRUE(renderer.particle_gpu_compact());
+		ASSERT_TRUE(renderer.particle().particle_gpu_compact());
 		const auto end = std::chrono::high_resolution_clock::now();
 		compact_ms = std::chrono::duration<double, std::milli>(end - begin).count();
 	}
-	EXPECT_EQ(renderer.particle_compact_count_get(), engine::PARTICLE_CAPACITY_MAX);
+	EXPECT_EQ(renderer.particle().particle_compact_count_get(), engine::PARTICLE_CAPACITY_MAX);
 	//抽样校验索引取值（紧凑顺序不保证升序，仅校验范围）
 	uint32_t samples[4] = {};
-	ASSERT_EQ(renderer.particle_compact_indices_get(samples, 4), 4u);
+	ASSERT_EQ(renderer.particle().particle_compact_indices_get(samples, 4), 4u);
 	for (uint32_t slot = 0; slot < 4; ++slot)
 		EXPECT_LT(samples[slot], engine::PARTICLE_CAPACITY_MAX);
 	const engine::Frame_Stats compact_stats = renderer.frame_stats_get();
 	std::cout << "[常驻紧凑百万] 紧凑=" << compact_ms << " ms  索引数="
-		<< renderer.particle_compact_count_get() << "  统计紧凑=" << compact_stats.particle_compact_ms
+		<< renderer.particle().particle_compact_count_get() << "  统计紧凑=" << compact_stats.particle_compact_ms
 		<< " ms  统计活跃=" << compact_stats.particle_active << std::endl;
 //帧统计的紧凑耗时与活跃数同口径（第三百四十轮）
 EXPECT_GT(compact_stats.particle_compact_ms, 0.0);
@@ -1924,7 +1924,7 @@ TEST(Renderer_Particle_Test, 紧凑索引环形回绕)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(128));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -1935,9 +1935,9 @@ TEST(Renderer_Particle_Test, 紧凑索引环形回绕)
 	emitter.count = 128;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	//满池发射
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, 128), 128u);
 	EXPECT_EQ(粒子.active_count(), 128u);
@@ -1952,10 +1952,10 @@ TEST(Renderer_Particle_Test, 紧凑索引环形回绕)
 	const uint32_t active_after = 粒子.active_count();
 	EXPECT_LE(active_after, 128u);
 	//紧凑：计数 = 活跃数（位图基数），索引互异且全部落在 [0, 128)
-	ASSERT_TRUE(renderer.particle_gpu_compact());
-	EXPECT_EQ(renderer.particle_compact_count_get(), active_after);
+	ASSERT_TRUE(renderer.particle().particle_gpu_compact());
+	EXPECT_EQ(renderer.particle().particle_compact_count_get(), active_after);
 	std::vector<uint32_t> indices(active_after, 0xFFFFFFFFu);
-	ASSERT_EQ(renderer.particle_compact_indices_get(indices.data(), active_after), active_after);
+	ASSERT_EQ(renderer.particle().particle_compact_indices_get(indices.data(), active_after), active_after);
 	std::vector<uint8_t> seen(128, 0u);
 	for (uint32_t slot = 0; slot < active_after; ++slot)
 	{
@@ -1979,7 +1979,7 @@ TEST(Renderer_Particle_Test, 常驻绘制)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(4096));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -1992,9 +1992,9 @@ TEST(Renderer_Particle_Test, 常驻绘制)
 	emitter.count = 256;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, 256), 256u);
 	EXPECT_EQ(粒子.active_count(), 256u);
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -2005,7 +2005,7 @@ TEST(Renderer_Particle_Test, 常驻绘制)
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 	renderer.render_target_set(target);
 	//常驻绘制与出帧
-	ASSERT_TRUE(renderer.particle_draw(0.1f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.1f));
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_GT(renderer.frame_stats_get().drawn_items, 0u);
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
@@ -2023,7 +2023,7 @@ TEST(Renderer_Particle_Test, 常驻绘制)
 	EXPECT_GT(visible, 0u);
 	//超过 65536 容量：常驻绘制返回假（留待间接绘制）
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX));
-	EXPECT_FALSE(renderer.particle_draw(0.1f));
+	EXPECT_FALSE(renderer.particle().particle_draw(0.1f));
 	renderer.render_target_set(0);
 	renderer.render_target_destroy(target);
 }
@@ -2038,7 +2038,7 @@ TEST(Renderer_Particle_Test, 常驻紧凑索引)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(1024));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -2049,19 +2049,19 @@ TEST(Renderer_Particle_Test, 常驻紧凑索引)
 	emitter.count = 96;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	//未开启常驻：紧凑被拒
-	EXPECT_FALSE(renderer.particle_gpu_compact());
-	EXPECT_EQ(renderer.particle_compact_count_get(), 0u);
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	EXPECT_FALSE(renderer.particle().particle_gpu_compact());
+	EXPECT_EQ(renderer.particle().particle_compact_count_get(), 0u);
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, 96), 96u);
 	//紧凑：索引数与活跃数一致
-	ASSERT_TRUE(renderer.particle_gpu_compact());
-	EXPECT_EQ(renderer.particle_compact_count_get(), 96u);
-	EXPECT_EQ(renderer.particle_compact_count_get(), 粒子.active_count());
+	ASSERT_TRUE(renderer.particle().particle_gpu_compact());
+	EXPECT_EQ(renderer.particle().particle_compact_count_get(), 96u);
+	EXPECT_EQ(renderer.particle().particle_compact_count_get(), 粒子.active_count());
 	std::vector<uint32_t> indices(96, 0xFFFFFFFFu);
-	ASSERT_EQ(renderer.particle_compact_indices_get(indices.data(), 96), 96u);
+	ASSERT_EQ(renderer.particle().particle_compact_indices_get(indices.data(), 96), 96u);
 	//互异且恰好覆盖 0..95（原子取位顺序不保证与池索引顺序一致）
 	std::vector<uint8_t> seen(96, 0u);
 	for (uint32_t slot = 0; slot < 96; ++slot)
@@ -2075,8 +2075,8 @@ TEST(Renderer_Particle_Test, 常驻紧凑索引)
 	for (uint32_t step = 0; step < 14; ++step)
 		ASSERT_TRUE(engine::particle_gpu::step_resident(renderer, 0.05f));
 	EXPECT_EQ(粒子.active_count(), 0u);
-	ASSERT_TRUE(renderer.particle_gpu_compact());
-	EXPECT_EQ(renderer.particle_compact_count_get(), 0u);
+	ASSERT_TRUE(renderer.particle().particle_gpu_compact());
+	EXPECT_EQ(renderer.particle().particle_compact_count_get(), 0u);
 }
 
 
@@ -2097,7 +2097,7 @@ TEST(Renderer_Particle_Test, 粒子绘制路径观测)
 	engine::Particle_Host 粒子(renderer);
 	//未开启粒子：未登记
 	EXPECT_EQ(renderer.frame_stats_get().particle_draw_path, 0u);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(256));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -2110,8 +2110,8 @@ TEST(Renderer_Particle_Test, 粒子绘制路径观测)
 	emitter.count = 64;
 	engine::Particle_Params params{};
 	params.damping = 1.0f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(64), 64u);
 	(void)粒子.step(0.05f);
 	//CPU 参考路径
@@ -2119,17 +2119,17 @@ TEST(Renderer_Particle_Test, 粒子绘制路径观测)
 	renderer.clear_color_set(clear);
 	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.particle_draw(0.2f));
+	ASSERT_TRUE(renderer.particle().particle_draw(0.2f));
 	EXPECT_EQ(renderer.frame_stats_get().particle_draw_path, 1u);
 	//GPU 直接路径（常驻）
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, 64), 64u);
 	for (uint32_t step = 0; step < 3; ++step)
 		ASSERT_TRUE(engine::particle_gpu::step_resident(renderer, 0.05f));
-	ASSERT_TRUE(renderer.particle_gpu_draw(0.2f));
+	ASSERT_TRUE(renderer.particle().particle_gpu_draw(0.2f));
 	EXPECT_EQ(renderer.frame_stats_get().particle_draw_path, 2u);
 	//GPU 间接路径
-	ASSERT_TRUE(renderer.particle_indirect_draw(0.2f));
+	ASSERT_TRUE(renderer.particle().particle_indirect_draw(0.2f));
 	EXPECT_EQ(renderer.frame_stats_get().particle_draw_path, 3u);
 	ASSERT_TRUE(renderer.frame_render());
 }
@@ -2150,7 +2150,7 @@ TEST(Renderer_Particle_Test, 粒子三路径绘制对照)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_EMIT_COUNT_MAX));
 	engine::Particle_Emitter emitter{};
 	emitter.direction[1] = 1.0f;
@@ -2164,9 +2164,9 @@ TEST(Renderer_Particle_Test, 粒子三路径绘制对照)
 	engine::Particle_Params params{};
 	params.gravity[1] = -0.5f;
 	params.damping = 0.99f;
-	ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-	ASSERT_TRUE(renderer.particle_params_set(params));
-	ASSERT_TRUE(renderer.particle_resident_set(true));
+	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, engine::PARTICLE_EMIT_COUNT_MAX), engine::PARTICLE_EMIT_COUNT_MAX);
 	//相机与清屏
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -2219,9 +2219,9 @@ TEST(Renderer_Particle_Test, 粒子三路径绘制对照)
 		return 结果;
 	};
 	//三路径（同一帧内容：常驻状态未推进，绘制输入一致；边长 0.2 保证在 320×180 下可见）
-	路径结果 CPU路径 = 测量([](engine::Renderer& 渲染器) { return 渲染器.particle_draw(0.2f); });
-	路径结果 GPU路径 = 测量([](engine::Renderer& 渲染器) { return 渲染器.particle_gpu_draw(0.2f); });
-	路径结果 间接路径 = 测量([](engine::Renderer& 渲染器) { return 渲染器.particle_indirect_draw(0.2f); });
+	路径结果 CPU路径 = 测量([](engine::Renderer& 渲染器) { return 渲染器.particle().particle_draw(0.2f); });
+	路径结果 GPU路径 = 测量([](engine::Renderer& 渲染器) { return 渲染器.particle().particle_gpu_draw(0.2f); });
+	路径结果 间接路径 = 测量([](engine::Renderer& 渲染器) { return 渲染器.particle().particle_indirect_draw(0.2f); });
 	EXPECT_TRUE(CPU路径.ok);
 	EXPECT_TRUE(GPU路径.ok);
 	EXPECT_TRUE(间接路径.ok);
@@ -2291,7 +2291,7 @@ TEST(Renderer_Particle_Test, 粒子软粒子深度淡化)
 		renderer.clear_color_set(clear);
 		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-		ASSERT_TRUE(renderer.particle_enable_set(true));
+		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(8));
 		engine::Particle_Emitter emitter{};
 		emitter.position[2] = 0.6f;
@@ -2308,8 +2308,8 @@ TEST(Renderer_Particle_Test, 粒子软粒子深度淡化)
 		params.color_end[2] = 1.0f;
 		params.color_enabled = 1;
 		params.soft_depth_range = soft_range;
-		ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-		ASSERT_TRUE(renderer.particle_params_set(params));
+		ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+		ASSERT_TRUE(renderer.particle().particle_params_set(params));
 		ASSERT_EQ(粒子.emit(1), 1u);
 		//墙面（4×4，向相机方向平移到 z=0.58；染黑避免其蓝通道遮挡比较）
 		engine::Mesh_Handle wall = 0;
@@ -2327,7 +2327,7 @@ TEST(Renderer_Particle_Test, 粒子软粒子深度淡化)
 			float transform[16] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 				0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.58f, 1.0f };
 			ASSERT_TRUE(renderer.mesh_draw(wall, transform));
-			ASSERT_TRUE(renderer.particle_draw(1.0f));
+			ASSERT_TRUE(renderer.particle().particle_draw(1.0f));
 			if (frame + 1 == 3)
 				ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()),
 					&width, &height));
@@ -2388,7 +2388,7 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 		renderer.clear_color_set(clear);
 		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-		ASSERT_TRUE(renderer.particle_enable_set(true));
+		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(8));
 		engine::Particle_Emitter emitter{};
 		emitter.position[2] = 0.6f;
@@ -2405,10 +2405,10 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 		params.color_end[2] = 1.0f;
 		params.color_enabled = 1;
 		params.soft_depth_range = soft_range;
-		ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-		ASSERT_TRUE(renderer.particle_params_set(params));
+		ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+		ASSERT_TRUE(renderer.particle().particle_params_set(params));
 		//GPU 路径须常驻；发射一枚后不推进（粒子停在发射点 z=0.6）
-		ASSERT_TRUE(renderer.particle_resident_set(true));
+		ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 		ASSERT_EQ(engine::particle_gpu::emit(renderer, 1), 1u);
 		//墙面（4×4，向相机方向平移到 z=0.58；染黑避免其蓝通道遮挡比较）
 		engine::Mesh_Handle wall = 0;
@@ -2424,7 +2424,7 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 			float transform[16] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 				0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.58f, 1.0f };
 			ASSERT_TRUE(renderer.mesh_draw(wall, transform));
-			ASSERT_TRUE(indirect ? renderer.particle_indirect_draw(1.0f) : renderer.particle_gpu_draw(1.0f));
+			ASSERT_TRUE(indirect ? renderer.particle().particle_indirect_draw(1.0f) : renderer.particle().particle_gpu_draw(1.0f));
 			ASSERT_TRUE(renderer.frame_render());
 		}
 		//离屏路径同样生成深度历史（第三百六十八轮）
@@ -2494,7 +2494,7 @@ TEST(Renderer_Particle_Test, 软粒子档位开销)
 		renderer.clear_color_set(clear);
 		renderer.camera_position_set(0.0f, 0.0f, 4.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-		ASSERT_TRUE(renderer.particle_enable_set(true));
+		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(16384));
 		engine::Particle_Emitter emitter{};
 		emitter.direction[1] = 1.0f;
@@ -2509,9 +2509,9 @@ TEST(Renderer_Particle_Test, 软粒子档位开销)
 		params.gravity[1] = -0.5f;
 		params.damping = 0.99f;
 		params.soft_depth_range = soft_range;
-		ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-		ASSERT_TRUE(renderer.particle_params_set(params));
-		ASSERT_TRUE(renderer.particle_resident_set(true));
+		ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+		ASSERT_TRUE(renderer.particle().particle_params_set(params));
+		ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 		ASSERT_EQ(engine::particle_gpu::emit(renderer, 10000), 10000u);
 		//八帧：前两帧建历史（第 1 帧无历史、档位自动清零），取第 3..8 帧稳定段
 		double record_sum = 0.0;
@@ -2519,7 +2519,7 @@ TEST(Renderer_Particle_Test, 软粒子档位开销)
 		uint32_t samples = 0;
 		for (uint32_t frame = 0; frame < 8; ++frame)
 		{
-			ASSERT_TRUE(renderer.particle_gpu_draw(0.04f));
+			ASSERT_TRUE(renderer.particle().particle_gpu_draw(0.04f));
 			ASSERT_TRUE(renderer.frame_render());
 			//稳定段采样（此时 GPU 时间戳与历史均已就绪）
 			if (frame >= 2)
@@ -2553,27 +2553,27 @@ TEST(Renderer_Particle_Test, 粒子参数快照读取)
 {
 	//未初始化：全零默认
 	engine::Renderer renderer;
-	const engine::Particle_Params empty = renderer.particle_params_get();
+	const engine::Particle_Params empty = renderer.particle().particle_params_get();
 	EXPECT_FLOAT_EQ(empty.soft_depth_range, 0.0f);
 	EXPECT_EQ(empty.color_enabled, 0u);
 	//初始化并开启粒子
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Particle_Host 粒子(renderer);
-	ASSERT_TRUE(renderer.particle_enable_set(true));
+	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	engine::Particle_Params params{};
 	params.soft_depth_range = 0.01f;
 	params.color_start[2] = 1.0f;
 	params.color_enabled = 1;
-	ASSERT_TRUE(renderer.particle_params_set(params));
+	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	//快照与设置值一致
-	const engine::Particle_Params applied = renderer.particle_params_get();
+	const engine::Particle_Params applied = renderer.particle().particle_params_get();
 	EXPECT_FLOAT_EQ(applied.soft_depth_range, 0.01f);
 	EXPECT_EQ(applied.color_enabled, 1u);
 	//非法档位整次拒绝：快照保持既有值
 	engine::Particle_Params invalid = params;
 	invalid.soft_depth_range = 2.0f;
-	EXPECT_FALSE(renderer.particle_params_set(invalid));
-	EXPECT_FLOAT_EQ(renderer.particle_params_get().soft_depth_range, 0.01f);
+	EXPECT_FALSE(renderer.particle().particle_params_set(invalid));
+	EXPECT_FLOAT_EQ(renderer.particle().particle_params_get().soft_depth_range, 0.01f);
 }
 
 /*
@@ -2607,7 +2607,7 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 		renderer.clear_color_set(clear);
 		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-		ASSERT_TRUE(renderer.particle_enable_set(true));
+		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(8));
 		engine::Particle_Emitter emitter{};
 		emitter.position[2] = 0.6f;
@@ -2624,9 +2624,9 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 		params.color_end[2] = 1.0f;
 		params.color_enabled = 1;
 		params.soft_depth_range = soft_range;
-		ASSERT_TRUE(renderer.particle_emitter_set(emitter));
-		ASSERT_TRUE(renderer.particle_params_set(params));
-		ASSERT_TRUE(renderer.particle_resident_set(true));
+		ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
+		ASSERT_TRUE(renderer.particle().particle_params_set(params));
+		ASSERT_TRUE(renderer.particle().particle_resident_set(true));
 		ASSERT_EQ(engine::particle_gpu::emit(renderer, 1), 1u);
 		//墙面（4×4，向相机方向平移到 z=0.58；染黑避免其蓝通道遮挡比较）
 		engine::Mesh_Handle wall = 0;
@@ -2641,7 +2641,7 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 			float transform[16] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 				0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.58f, 1.0f };
 			ASSERT_TRUE(renderer.mesh_draw(wall, transform));
-			ASSERT_TRUE(renderer.particle_gpu_draw(1.0f));
+			ASSERT_TRUE(renderer.particle().particle_gpu_draw(1.0f));
 			ASSERT_TRUE(renderer.frame_render());
 		}
 		std::vector<uint8_t> pixels(64 * 36 * 4, 0);

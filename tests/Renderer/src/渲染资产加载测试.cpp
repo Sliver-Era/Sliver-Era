@@ -286,9 +286,9 @@ TEST(Renderer_Asset_Load_Test, OBJ端到端绘制)
 
 	//加载 OBJ 并绘制
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load_obj(mesh, asset_utf8("四边形.obj")));
+	ASSERT_TRUE(renderer.resource().mesh_load_obj(mesh, asset_utf8("四边形.obj")));
 	ASSERT_NE(mesh, 0u);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 
 	std::vector<uint8_t> shown(ASSET_WIDTH * ASSET_HEIGHT * 4);
 	ASSERT_TRUE(renderer.frame_render(shown.data(), static_cast<uint32_t>(shown.size())));
@@ -298,7 +298,7 @@ TEST(Renderer_Asset_Load_Test, OBJ端到端绘制)
 	std::cout << "[资产加载] 端到端覆盖 " << covered << " 亮度 " << luma << std::endl;
 	EXPECT_GE(covered, ASSET_MIN_PIXELS) << "OBJ 网格没有真正画出来";
 	EXPECT_GT(luma, 0.0f);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -412,7 +412,7 @@ TEST(Renderer_Asset_Load_Test, MTL端到端创建材质)
 	ASSERT_TRUE(renderer.init(config));
 
 	std::vector<engine::Material_Handle> 材质;
-	ASSERT_TRUE(renderer.material_load_mtl(材质, asset_utf8("贴图材质.mtl")));
+	ASSERT_TRUE(renderer.resource().material_load_mtl(材质, asset_utf8("贴图材质.mtl")));
 	ASSERT_EQ(材质.size(), 2u);
 	EXPECT_NE(材质[0], 0u);
 	EXPECT_NE(材质[1], 0u);
@@ -420,7 +420,7 @@ TEST(Renderer_Asset_Load_Test, MTL端到端创建材质)
 
 	//卸载（含贴图）后再次查询材质数量应递减
 	for (engine::Material_Handle 句柄 : 材质)
-		renderer.material_unload(句柄);
+		renderer.resource().material_unload(句柄);
 }
 
 /*
@@ -530,7 +530,7 @@ TEST(Renderer_Asset_Load_Test, 场景清单端到端装载)
 
 	//用带材质对象绘制（逐段绑材质入口）
 	const engine::Material_Handle* 材质 = 场景.objects[0].materials.data();
-	ASSERT_TRUE(renderer.mesh_draw_sections(场景.objects[0].mesh, nullptr,
+	ASSERT_TRUE(renderer.resource().mesh_draw_sections(场景.objects[0].mesh, nullptr,
 		材质, static_cast<uint32_t>(场景.objects[0].materials.size())));
 	std::vector<uint8_t> shown(ASSET_WIDTH * ASSET_HEIGHT * 4);
 	ASSERT_TRUE(renderer.frame_render(shown.data(), static_cast<uint32_t>(shown.size())));
@@ -577,13 +577,13 @@ TEST(Renderer_Asset_Load_Test, 共享网格复用与引用计数)
 	//释放一次：仍可绘制
 	asset_mesh_release(renderer, 甲);
 	EXPECT_EQ(asset_cache_count(renderer), 1u);
-	EXPECT_TRUE(renderer.mesh_draw(乙, nullptr));
+	EXPECT_TRUE(renderer.resource().mesh_draw(乙, nullptr));
 
 	//释放归零：真正卸载，缓存条目清零
 	asset_mesh_release(renderer, 乙);
 	asset_mesh_release(renderer, 丙);
 	EXPECT_EQ(asset_cache_count(renderer), 0u);
-	EXPECT_FALSE(renderer.mesh_draw(丙, nullptr)) << "引用计数归零后网格仍可用";
+	EXPECT_FALSE(renderer.resource().mesh_draw(丙, nullptr)) << "引用计数归零后网格仍可用";
 	std::cout << "[资产加载] 共享网格：复用 3 次、释放归零后条目 0" << std::endl;
 }
 
@@ -670,9 +670,9 @@ TEST(Renderer_Asset_Load_Test, 纹理中文目录加载)
 
 	//普通入口
 	uint64_t 句柄 = 0;
-	ASSERT_TRUE(renderer.texture_load_file(句柄, asset_utf8("中文贴图.bmp")));
+	ASSERT_TRUE(renderer.resource().texture_load_file(句柄, asset_utf8("中文贴图.bmp")));
 	ASSERT_NE(句柄, 0u);
-	renderer.texture_unload(句柄);
+	renderer.resource().texture_unload(句柄);
 
 	//共享入口（同一中文路径）
 	uint64_t 共享 = 0;
@@ -754,13 +754,13 @@ TEST(Renderer_Asset_Load_Test, 异步加载完成后可绘制)
 	}
 	ASSERT_TRUE(就绪) << "异步解析在 5 秒内未完成";
 	ASSERT_NE(句柄, 0u);
-	EXPECT_TRUE(renderer.mesh_draw(句柄, nullptr));
+	EXPECT_TRUE(renderer.resource().mesh_draw(句柄, nullptr));
 	//幂等：再次轮询同一句柄
 	engine::Mesh_Handle 再次 = 0;
 	EXPECT_TRUE(asset_mesh_async_poll(renderer, 任务, 再次));
 	EXPECT_EQ(再次, 句柄);
 	std::cout << "[资产加载] 异步加载就绪，句柄 " << 句柄 << std::endl;
-	renderer.mesh_unload(句柄);
+	renderer.resource().mesh_unload(句柄);
 }
 
 /*

@@ -45,7 +45,7 @@ TEST_F(Renderer_Scene_Test, 天空盒关闭时画面不变)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//场景：单方向光满照（正交方向光默认朝 -Z），环境光 0
 	engine::Camera_Data camera{};
@@ -64,26 +64,26 @@ TEST_F(Renderer_Scene_Test, 天空盒关闭时画面不变)
 	};
 
 	//基线帧（天空盒默认关闭）
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	std::vector<uint8_t> baseline = render_frame();
 
 	//载入蓝色立方体并启用天空盒
 	uint64_t cube = 0;
 	std::vector<uint8_t> faces = solid_cube_faces(30, 120, 255);
-	ASSERT_TRUE(renderer.texture_cube_load(cube, faces.data(), 1, 1));
+	ASSERT_TRUE(renderer.resource().texture_cube_load(cube, faces.data(), 1, 1));
 	ASSERT_NE(cube, 0u);
-	ASSERT_EQ(renderer.sky_texture(), 0u) << "天空盒贴图默认应为内置立方体";
-	renderer.sky_texture_set(cube);
-	EXPECT_EQ(renderer.sky_texture(), cube);
-	renderer.sky_enable_set(true);
-	ASSERT_TRUE(renderer.sky_enabled());
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	ASSERT_EQ(renderer.resource().sky_texture(), 0u) << "天空盒贴图默认应为内置立方体";
+	renderer.resource().sky_texture_set(cube);
+	EXPECT_EQ(renderer.resource().sky_texture(), cube);
+	renderer.resource().sky_enable_set(true);
+	ASSERT_TRUE(renderer.resource().sky_enabled());
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	std::vector<uint8_t> enabled = render_frame();
 
 	//关闭天空盒
-	renderer.sky_enable_set(false);
-	ASSERT_FALSE(renderer.sky_enabled());
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().sky_enable_set(false);
+	ASSERT_FALSE(renderer.resource().sky_enabled());
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	std::vector<uint8_t> restored = render_frame();
 
 	const uint32_t baseline_background = brightness_of(background_pixel(baseline));
@@ -94,8 +94,8 @@ TEST_F(Renderer_Scene_Test, 天空盒关闭时画面不变)
 	EXPECT_GT(enabled_background, baseline_background + 10u) << "启用天空盒后背景未变化（启用未生效）";
 	EXPECT_EQ(restored, baseline) << "关闭天空盒后画面未与基线逐字节一致";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(cube);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(cube);
 }
 
 /*
@@ -109,7 +109,7 @@ TEST_F(Renderer_Scene_Test, 天空盒绘制背景)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -126,16 +126,16 @@ TEST_F(Renderer_Scene_Test, 天空盒绘制背景)
 	};
 
 	//基线帧
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	std::vector<uint8_t> baseline = render_frame();
 
 	//启用蓝色天空盒（面为 0/200/255：绿通道可区分于纯红背景）
 	uint64_t cube = 0;
 	std::vector<uint8_t> faces = solid_cube_faces(0, 200, 255);
-	ASSERT_TRUE(renderer.texture_cube_load(cube, faces.data(), 1, 1));
-	renderer.sky_texture_set(cube);
-	renderer.sky_enable_set(true);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	ASSERT_TRUE(renderer.resource().texture_cube_load(cube, faces.data(), 1, 1));
+	renderer.resource().sky_texture_set(cube);
+	renderer.resource().sky_enable_set(true);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	std::vector<uint8_t> sky_pixels = render_frame();
 
 	const std::array<uint8_t, 4> baseline_background = background_pixel(baseline);
@@ -153,8 +153,8 @@ TEST_F(Renderer_Scene_Test, 天空盒绘制背景)
 	//几何覆盖处：天空项被深度测试挡住，中心像素不变
 	EXPECT_EQ(sky_center, baseline_center) << "天空盒覆盖了场景几何：" << pixel_text(sky_center);
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(cube);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(cube);
 }
 
 /*
@@ -169,7 +169,7 @@ TEST_F(Renderer_Scene_Test, 天空盒环境补光)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//场景：无方向光、环境光 0
 	engine::Camera_Data camera{};
@@ -187,40 +187,40 @@ TEST_F(Renderer_Scene_Test, 天空盒环境补光)
 	};
 
 	//基线帧（应为黑）
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	std::vector<uint8_t> baseline = render_frame();
 	const uint32_t baseline_center = center_brightness(baseline);
 
 	//白色天空盒（六面 255）
 	uint64_t cube = 0;
 	std::vector<uint8_t> faces = solid_cube_faces(255, 255, 255);
-	ASSERT_TRUE(renderer.texture_cube_load(cube, faces.data(), 1, 1));
-	renderer.sky_texture_set(cube);
-	renderer.sky_enable_set(true);
+	ASSERT_TRUE(renderer.resource().texture_cube_load(cube, faces.data(), 1, 1));
+	renderer.resource().sky_texture_set(cube);
+	renderer.resource().sky_enable_set(true);
 
 	//强度 0.25
-	renderer.sky_params_set(0.25f, 0.0f);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().sky_params_set(0.25f, 0.0f);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	const uint32_t dim_center = center_brightness(render_frame());
 	//强度 0.5
-	renderer.sky_params_set(0.5f, 0.0f);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().sky_params_set(0.5f, 0.0f);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	const uint32_t bright_center = center_brightness(render_frame());
 
 	//参数读回与负值钳制
 	float ambient = -1.0f;
 	float specular = -1.0f;
-	renderer.sky_params_get(&ambient, &specular);
+	renderer.resource().sky_params_get(&ambient, &specular);
 	EXPECT_FLOAT_EQ(ambient, 0.5f) << "漫反射强度读回不一致";
 	EXPECT_FLOAT_EQ(specular, 0.0f) << "镜面强度读回不一致";
-	renderer.sky_params_set(-1.0f, -2.0f);
-	renderer.sky_params_get(&ambient, &specular);
+	renderer.resource().sky_params_set(-1.0f, -2.0f);
+	renderer.resource().sky_params_get(&ambient, &specular);
 	EXPECT_FLOAT_EQ(ambient, 0.0f) << "负漫反射强度未被钳制";
 	EXPECT_FLOAT_EQ(specular, 0.0f) << "负镜面强度未被钳制";
 
 	//关闭天空盒后恢复基线
-	renderer.sky_enable_set(false);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().sky_enable_set(false);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	const uint32_t restored_center = center_brightness(render_frame());
 
 	RecordProperty("sky_ibl_baseline", static_cast<int>(baseline_center));
@@ -233,6 +233,6 @@ TEST_F(Renderer_Scene_Test, 天空盒环境补光)
 	EXPECT_GT(bright_center, dim_center + 10u) << "提高漫反射强度未继续提亮";
 	EXPECT_NEAR(restored_center, baseline_center, 3u) << "关闭天空盒后中心亮度未恢复";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(cube);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(cube);
 }

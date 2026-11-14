@@ -75,10 +75,10 @@ TEST_F(Renderer_Scene_Test, 级联默认配置不破坏复用)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -91,20 +91,20 @@ TEST_F(Renderer_Scene_Test, 级联默认配置不破坏复用)
 		0.0f, 0.0f, -1.0f, 1.0f,
 	};
 	//首帧重绘
-	EXPECT_TRUE(renderer.mesh_draw(occluder, model.data()));
+	EXPECT_TRUE(renderer.resource().mesh_draw(occluder, model.data()));
 	EXPECT_TRUE(renderer.frame_render());
 	const uint32_t first_passes = renderer.frame_stats_get().shadow_passes;
 
 	//再次应用默认数据（值未变 → 不应重建）后绘制
 	renderer.scene_apply(camera, light, empty_fog());
 	renderer.shadow_enable_set(true);
-	EXPECT_TRUE(renderer.mesh_draw(occluder, model.data()));
+	EXPECT_TRUE(renderer.resource().mesh_draw(occluder, model.data()));
 	EXPECT_TRUE(renderer.frame_render());
 	EXPECT_EQ(first_passes, 1u);
 	EXPECT_EQ(renderer.frame_stats_get().shadow_passes, 0u) << "默认级联字段触发了阴影重建";
 
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*

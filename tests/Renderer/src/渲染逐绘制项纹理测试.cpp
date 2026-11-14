@@ -92,7 +92,7 @@ namespace
 			texels[offset + 3] = 255;
 		}
 		uint64_t handle = 0;
-		renderer.texture_load(handle, texels.data(), 2, 2);
+		renderer.resource().texture_load(handle, texels.data(), 2, 2);
 		return handle;
 	}
 
@@ -205,14 +205,14 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 同帧两个四边形各自贴图)
 	ASSERT_NE(black_texture, 0u);
 	//同一网格，左右两块（覆盖左右半屏）
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
 	const std::array<float, 16> left = make_transform(-2.9f, 0.0f, 0.0f, 2.6f, 3.0f);
 	const std::array<float, 16> right = make_transform(2.9f, 0.0f, 0.0f, 2.6f, 3.0f);
 	//同一帧：两块各用自己的纹理（最后一次绑定为黑）
-	renderer.texture_bind_set(white_texture);
-	ASSERT_TRUE(renderer.mesh_draw(quad, left.data()));
-	renderer.texture_bind_set(black_texture);
-	ASSERT_TRUE(renderer.mesh_draw(quad, right.data()));
+	renderer.resource().texture_bind_set(white_texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, left.data()));
+	renderer.resource().texture_bind_set(black_texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, right.data()));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 
@@ -228,9 +228,9 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 同帧两个四边形各自贴图)
 		<< "暗色侧未采到黑纹理：左 " << pixel_text(left_pixel)
 		<< "，右 " << pixel_text(right_pixel);
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(white_texture);
-	renderer.texture_unload(black_texture);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(white_texture);
+	renderer.resource().texture_unload(black_texture);
 }
 
 /*
@@ -251,14 +251,14 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 静态合批不跨纹理合并)
 	ASSERT_NE(white_texture, 0u);
 	ASSERT_NE(black_texture, 0u);
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
 	//左右两块紧邻（实例区首尾相接，满足旧合批条件）
 	const std::array<float, 16> left = make_transform(-2.9f, 0.0f, 0.0f, 2.6f, 3.0f);
 	const std::array<float, 16> right = make_transform(2.9f, 0.0f, 0.0f, 2.6f, 3.0f);
-	renderer.texture_bind_set(white_texture);
-	ASSERT_TRUE(renderer.mesh_draw(quad, left.data()));
-	renderer.texture_bind_set(black_texture);
-	ASSERT_TRUE(renderer.mesh_draw(quad, right.data()));
+	renderer.resource().texture_bind_set(white_texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, left.data()));
+	renderer.resource().texture_bind_set(black_texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, right.data()));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 
@@ -273,9 +273,9 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 静态合批不跨纹理合并)
 	//纹理不同则不可合并
 	EXPECT_EQ(renderer.frame_stats_get().last_merged_items, 0u) << "不同纹理的相邻项被错误合批";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(white_texture);
-	renderer.texture_unload(black_texture);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(white_texture);
+	renderer.resource().texture_unload(black_texture);
 }
 
 /*
@@ -291,12 +291,12 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 棋盘格四边形可见)
 	apply_scene(renderer);
 	uint64_t checker = 0;
 	//格边长 2 像素 → 满屏约 32 格（每格约 9 像素），中心邻域内必含明暗两档
-	ASSERT_TRUE(renderer.texture_load_checkerboard(checker, 64, 64, 2));
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(checker, 64, 64, 2));
 	//先确认棋盘纹理本身确有两档灰度（排除纹理生成本身只有一档的可能）
 	std::vector<uint8_t> texels(64 * 64 * 4, 0);
 	uint32_t texel_width = 0;
 	uint32_t texel_height = 0;
-	ASSERT_TRUE(renderer.texture_readback(checker, texels.data(), static_cast<uint32_t>(texels.size()),
+	ASSERT_TRUE(renderer.resource().texture_readback(checker, texels.data(), static_cast<uint32_t>(texels.size()),
 		&texel_width, &texel_height));
 	uint32_t dark_texels = 0;
 	uint32_t light_texels = 0;
@@ -310,10 +310,10 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 棋盘格四边形可见)
 	ASSERT_GT(dark_texels, 0u) << "棋盘纹理缺少暗格";
 	ASSERT_GT(light_texels, 0u) << "棋盘纹理缺少亮格";
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
 	const std::array<float, 16> full = make_transform(0.0f, 0.0f, 0.0f, 5.2f, 3.0f);
-	renderer.texture_bind_set(checker);
-	ASSERT_TRUE(renderer.mesh_draw(quad, full.data()));
+	renderer.resource().texture_bind_set(checker);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, full.data()));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 
@@ -324,8 +324,8 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 棋盘格四边形可见)
 	EXPECT_LT(minimum, 250u) << "棋盘中心缺少暗格";
 	EXPECT_GT(maximum, 500u) << "棋盘中心缺少亮格";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(checker);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(checker);
 }
 
 /*
@@ -349,13 +349,13 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 文字绘制不覆盖场景纹理)
 	//满屏棋盘格四边形
 	uint64_t checker = 0;
 	//格边长 2 像素 → 满屏约 32 格（每格约 9 像素），中心邻域内必含明暗两档
-	ASSERT_TRUE(renderer.texture_load_checkerboard(checker, 64, 64, 2));
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(checker, 64, 64, 2));
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
 	const std::array<float, 16> full = make_transform(0.0f, 0.0f, 0.0f, 5.2f, 3.0f);
 	//对照帧：只画棋盘四边形
-	renderer.texture_bind_set(checker);
-	ASSERT_TRUE(renderer.mesh_draw(quad, full.data()));
+	renderer.resource().texture_bind_set(checker);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, full.data()));
 	std::vector<uint8_t> control_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(control_pixels.data(), static_cast<std::uint32_t>(control_pixels.size())));
 	uint32_t control_minimum = 0;
@@ -366,8 +366,8 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 文字绘制不覆盖场景纹理)
 	ASSERT_GT(control_maximum, 500u) << "对照帧棋盘中心缺少亮格（用例前提不成立）";
 
 	//第二帧：棋盘四边形 ＋ 同帧文字（文字会把字体图集绑定为当前纹理）
-	renderer.texture_bind_set(checker);
-	ASSERT_TRUE(renderer.mesh_draw(quad, full.data()));
+	renderer.resource().texture_bind_set(checker);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, full.data()));
 	ASSERT_TRUE(renderer.ui().text_draw(font, "ABC", 8.0f, 8.0f));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
@@ -379,7 +379,7 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 文字绘制不覆盖场景纹理)
 	EXPECT_LT(minimum, 250u) << "加入文字后棋盘中心失去暗格";
 	EXPECT_GT(maximum, 500u) << "加入文字后棋盘中心失去亮格";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(checker);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(checker);
 	renderer.ui().font_unload(font);
 }

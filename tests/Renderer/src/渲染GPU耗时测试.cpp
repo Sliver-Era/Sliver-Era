@@ -74,10 +74,10 @@ TEST_F(Renderer_Gpu_Test, 绘制帧GPU耗时随能力分支断言)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 4; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -98,7 +98,7 @@ TEST_F(Renderer_Gpu_Test, 绘制帧GPU耗时随能力分支断言)
 		EXPECT_EQ(stats.gpu_total_ms, 0.0);
 		EXPECT_EQ(stats.gpu_samples, 0u);
 	}
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -148,8 +148,8 @@ TEST_F(Renderer_Gpu_Test, 两级链GPU耗时随能力分支断言)
 	//登记两条后处理管线并设两级链
 	uint64_t invert = 0;
 	uint64_t threshold = 0;
-	ASSERT_TRUE(renderer.pipeline_load(invert, "后处理.vert.spv", "反色.frag.spv"));
-	ASSERT_TRUE(renderer.pipeline_load(threshold, "后处理.vert.spv", "亮度阈值.frag.spv"));
+	ASSERT_TRUE(renderer.resource().pipeline_load(invert, "后处理.vert.spv", "反色.frag.spv"));
+	ASSERT_TRUE(renderer.resource().pipeline_load(threshold, "后处理.vert.spv", "亮度阈值.frag.spv"));
 	uint64_t chain[2] = { invert, threshold };
 	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
 	//设定同帧后处理呈现目标组（场景目标 ＋ 中间目标）
@@ -157,10 +157,10 @@ TEST_F(Renderer_Gpu_Test, 两级链GPU耗时随能力分支断言)
 	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 2));
 	//登记场景绘制
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 4; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -183,9 +183,9 @@ TEST_F(Renderer_Gpu_Test, 两级链GPU耗时随能力分支断言)
 		EXPECT_EQ(stats.gpu_total_ms, 0.0);
 		EXPECT_EQ(stats.gpu_samples, 0u);
 	}
-	renderer.mesh_unload(mesh);
-	renderer.pipeline_unload(invert);
-	renderer.pipeline_unload(threshold);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().pipeline_unload(invert);
+	renderer.resource().pipeline_unload(threshold);
 	renderer.render_target_destroy(second_target);
 	renderer.render_target_destroy(scene_target);
 }
@@ -200,10 +200,10 @@ TEST_F(Renderer_Gpu_Test, 直通路径GPU分解)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 4; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -219,7 +219,7 @@ TEST_F(Renderer_Gpu_Test, 直通路径GPU分解)
 		EXPECT_EQ(stats.gpu_post_ms, 0.0);
 	}
 	EXPECT_EQ(stats.gpu_shadow_ms, 0.0) << "未启用阴影时阴影耗时须为 0";
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -233,14 +233,14 @@ TEST_F(Renderer_Gpu_Test, 后处理链GPU分解)
 	uint64_t scene_target = 0;
 	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	uint64_t invert = 0;
-	ASSERT_TRUE(renderer.pipeline_load(invert, "后处理.vert.spv", "反色.frag.spv"));
+	ASSERT_TRUE(renderer.resource().pipeline_load(invert, "后处理.vert.spv", "反色.frag.spv"));
 	ASSERT_TRUE(renderer.post_chain_set(&invert, 1));
 	renderer.render_target_present_set(scene_target);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 4; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -256,8 +256,8 @@ TEST_F(Renderer_Gpu_Test, 后处理链GPU分解)
 		EXPECT_EQ(stats.gpu_scene_ms, 0.0);
 		EXPECT_EQ(stats.gpu_post_ms, 0.0);
 	}
-	renderer.mesh_unload(mesh);
-	renderer.pipeline_unload(invert);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().pipeline_unload(invert);
 	renderer.render_target_destroy(scene_target);
 }
 
@@ -271,8 +271,8 @@ TEST_F(Renderer_Gpu_Test, 阴影pass独立计时)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, normal_quad()));
-	ASSERT_TRUE(renderer.mesh_load(occluder, normal_quad()));
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, normal_quad()));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, normal_quad()));
 
 	//场景：方向光沿 +Z（光源在 -Z 侧），强度 1
 	engine::Camera_Data camera{};
@@ -294,8 +294,8 @@ TEST_F(Renderer_Gpu_Test, 阴影pass独立计时)
 	transform[15] = 1.0f;
 	for (uint32_t index = 0; index < 4; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(occluder, transform));
-		ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(occluder, transform));
+		ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -306,8 +306,8 @@ TEST_F(Renderer_Gpu_Test, 阴影pass独立计时)
 		EXPECT_EQ(stats.gpu_shadow_ms, 0.0);
 
 	renderer.shadow_enable_set(false);
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
 }
 
 /*
@@ -321,10 +321,10 @@ TEST_F(Renderer_Gpu_Test, GPU分解累计口径)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 4; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -349,7 +349,7 @@ TEST_F(Renderer_Gpu_Test, GPU分解累计口径)
 	EXPECT_EQ(stats.gpu_shadow_total_ms, 0.0);
 	EXPECT_EQ(stats.gpu_shadow_samples, 0u);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -362,8 +362,8 @@ TEST_F(Renderer_Gpu_Test, 阴影累计随按需重绘递增)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, normal_quad()));
-	ASSERT_TRUE(renderer.mesh_load(occluder, normal_quad()));
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, normal_quad()));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, normal_quad()));
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	light.direction[2] = 1.0f;
@@ -381,8 +381,8 @@ TEST_F(Renderer_Gpu_Test, 阴影累计随按需重绘递增)
 	//场景与变换完全不变 → 阴影签名不变 → 仅首帧重绘
 	for (uint32_t index = 0; index < 4; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(occluder, transform));
-		ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(occluder, transform));
+		ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -399,8 +399,8 @@ TEST_F(Renderer_Gpu_Test, 阴影累计随按需重绘递增)
 	}
 
 	renderer.shadow_enable_set(false);
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
 }
 
 /*
@@ -412,10 +412,10 @@ TEST_F(Renderer_Gpu_Test, 清零含分段累计)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 4; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	const double last_scene_ms = renderer.frame_stats_get().gpu_scene_ms;
@@ -432,5 +432,5 @@ TEST_F(Renderer_Gpu_Test, 清零含分段累计)
 	//最近一帧即时量不受清零影响
 	EXPECT_EQ(stats.gpu_scene_ms, last_scene_ms);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }

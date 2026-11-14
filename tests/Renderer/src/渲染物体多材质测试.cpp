@@ -45,7 +45,7 @@ namespace
 		data.tint[2] = b;
 		data.tint[3] = 1.0f;
 		engine::Material_Handle material = 0;
-		EXPECT_TRUE(renderer.material_load(material, data));
+		EXPECT_TRUE(renderer.resource().material_load(material, data));
 		return material;
 	}
 }
@@ -59,10 +59,10 @@ TEST_F(Renderer_Scene_Test, 索引区间只画该区间)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//离屏目标（保证每帧附加清屏，避免跨帧残留干扰覆盖统计）
 	uint64_t scene_target = 0;
 	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -77,12 +77,12 @@ TEST_F(Renderer_Scene_Test, 索引区间只画该区间)
 	ASSERT_TRUE(renderer.frame_render(empty.data(), static_cast<uint32_t>(empty.size())));
 
 	//整段
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> full(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(full.data(), static_cast<uint32_t>(full.size())));
 
 	//仅前 3 个索引（第一个三角形）
-	ASSERT_TRUE(renderer.mesh_draw_range(mesh, nullptr, nullptr, 0u, 3u));
+	ASSERT_TRUE(renderer.resource().mesh_draw_range(mesh, nullptr, nullptr, 0u, 3u));
 	std::vector<uint8_t> half(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(half.data(), static_cast<uint32_t>(half.size())));
 
@@ -120,9 +120,9 @@ TEST_F(Renderer_Scene_Test, 索引区间只画该区间)
 		<< " / 整段 " << full_lit << "）";
 	EXPECT_GT(half_lit, full_lit / 4) << "半段几乎未绘制（半段 " << half_lit << " / 整段 " << full_lit << "）";
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 	renderer.render_target_destroy(scene_target);
-	renderer.texture_unload(texture);
+	renderer.resource().texture_unload(texture);
 }
 
 //索引区间越界被拒绝：返回假，且不登记任何绘制项（画面与空场景一致）
@@ -134,10 +134,10 @@ TEST_F(Renderer_Scene_Test, 索引区间越界被拒绝)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//离屏目标（保证每帧附加清屏，避免跨帧残留干扰覆盖统计）
 	uint64_t scene_target = 0;
 	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -152,8 +152,8 @@ TEST_F(Renderer_Scene_Test, 索引区间越界被拒绝)
 	ASSERT_TRUE(renderer.frame_render(empty.data(), static_cast<uint32_t>(empty.size())));
 
 	//首索引超出总数 / 区间长度溢出：两次都应被拒绝
-	EXPECT_FALSE(renderer.mesh_draw_range(mesh, nullptr, nullptr, 6u, 3u));
-	EXPECT_FALSE(renderer.mesh_draw_range(mesh, nullptr, nullptr, 4u, 4u));
+	EXPECT_FALSE(renderer.resource().mesh_draw_range(mesh, nullptr, nullptr, 6u, 3u));
+	EXPECT_FALSE(renderer.resource().mesh_draw_range(mesh, nullptr, nullptr, 4u, 4u));
 	std::vector<uint8_t> rejected(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(rejected.data(), static_cast<uint32_t>(rejected.size())));
 	int difference = 0;
@@ -168,9 +168,9 @@ TEST_F(Renderer_Scene_Test, 索引区间越界被拒绝)
 	RecordProperty("range_rejected_max_diff", difference);
 	EXPECT_LE(difference, 2) << "越界区间未被拒绝（最大差 " << difference << "）";
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 	renderer.render_target_destroy(scene_target);
-	renderer.texture_unload(texture);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -185,10 +185,10 @@ TEST_F(Renderer_Scene_Test, 多材质分段使用两个材质)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//离屏目标（保证每帧附加清屏，避免跨帧残留干扰覆盖统计）
 	uint64_t scene_target = 0;
 	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
@@ -205,7 +205,7 @@ TEST_F(Renderer_Scene_Test, 多材质分段使用两个材质)
 	ASSERT_TRUE(renderer.frame_render(empty.data(), static_cast<uint32_t>(empty.size())));
 	//分段绘制（两段各一个三角形，材质红 / 蓝）
 	engine::Material_Handle materials[2] = { red, blue };
-	ASSERT_TRUE(renderer.mesh_draw_sections(mesh, nullptr, materials, 2));
+	ASSERT_TRUE(renderer.resource().mesh_draw_sections(mesh, nullptr, materials, 2));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 
@@ -246,11 +246,11 @@ TEST_F(Renderer_Scene_Test, 多材质分段使用两个材质)
 	EXPECT_GT(blue_pixels, 20u) << "蓝段未绘制（第二段材质未生效）";
 
 
-	renderer.material_unload(red);
-	renderer.material_unload(blue);
-	renderer.mesh_unload(mesh);
+	renderer.resource().material_unload(red);
+	renderer.resource().material_unload(blue);
+	renderer.resource().mesh_unload(mesh);
 	renderer.render_target_destroy(scene_target);
-	renderer.texture_unload(texture);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -264,10 +264,10 @@ TEST_F(Renderer_Scene_Test, 多材质分段绘制项数与实例字节)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
@@ -278,7 +278,7 @@ TEST_F(Renderer_Scene_Test, 多材质分段绘制项数与实例字节)
 	engine::Material_Handle materials[2] = { red, blue };
 	//首个帧槽的实例上传增量（本帧两段各一个实例）
 	uint64_t before = renderer.instance_upload_bytes();
-	ASSERT_TRUE(renderer.mesh_draw_sections(mesh, nullptr, materials, 2));
+	ASSERT_TRUE(renderer.resource().mesh_draw_sections(mesh, nullptr, materials, 2));
 	ASSERT_TRUE(renderer.frame_render());
 	uint64_t after = renderer.instance_upload_bytes();
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -287,10 +287,10 @@ TEST_F(Renderer_Scene_Test, 多材质分段绘制项数与实例字节)
 	EXPECT_EQ(stats.last_draw_items, 2u) << "两段应登记两个绘制项";
 	EXPECT_EQ(after - before, 2u * 112u) << "两段实例数据应为 2 × 112 字节";
 
-	renderer.material_unload(red);
-	renderer.material_unload(blue);
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(red);
+	renderer.resource().material_unload(blue);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -307,8 +307,8 @@ TEST_F(Renderer_Scene_Test, 网格分段按描述绘制)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
@@ -319,8 +319,8 @@ TEST_F(Renderer_Scene_Test, 网格分段按描述绘制)
 
 	//均分帧（网格无分段）
 	engine::Mesh_Handle plain_mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(plain_mesh, quad_data()));
-	ASSERT_TRUE(renderer.mesh_draw_sections(plain_mesh, nullptr, materials, 2));
+	ASSERT_TRUE(renderer.resource().mesh_load(plain_mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw_sections(plain_mesh, nullptr, materials, 2));
 	std::vector<uint8_t> even(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(even.data(), static_cast<uint32_t>(even.size())));
 
@@ -328,8 +328,8 @@ TEST_F(Renderer_Scene_Test, 网格分段按描述绘制)
 	engine::Mesh_Data sectioned = quad_data();
 	const engine::Mesh_Section 段描述[2] = { { 0u, 3u, 1u }, { 3u, 3u, 0u } };
 	engine::Mesh_Handle section_mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load_sections(section_mesh, sectioned, 段描述, 2));
-	ASSERT_TRUE(renderer.mesh_draw_sections(section_mesh, nullptr, materials, 2));
+	ASSERT_TRUE(renderer.resource().mesh_load_sections(section_mesh, sectioned, 段描述, 2));
+	ASSERT_TRUE(renderer.resource().mesh_draw_sections(section_mesh, nullptr, materials, 2));
 	std::vector<uint8_t> swapped(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(swapped.data(), static_cast<uint32_t>(swapped.size())));
 
@@ -337,11 +337,11 @@ TEST_F(Renderer_Scene_Test, 网格分段按描述绘制)
 	RecordProperty("section_described_changed_pixels", static_cast<int>(changes));
 	EXPECT_GT(changes, 100u) << "分段描述未生效（两帧差异仅 " << changes << " 像素）";
 
-	renderer.mesh_unload(plain_mesh);
-	renderer.mesh_unload(section_mesh);
-	renderer.material_unload(red);
-	renderer.material_unload(blue);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(plain_mesh);
+	renderer.resource().mesh_unload(section_mesh);
+	renderer.resource().material_unload(red);
+	renderer.resource().material_unload(blue);
+	renderer.resource().texture_unload(texture);
 }
 
 //分段区间越界（first 4 / count 3 超过 6 个索引）应在网格创建时被拒绝
@@ -352,7 +352,7 @@ TEST_F(Renderer_Scene_Test, 网格分段越界被拒绝)
 	engine::Mesh_Data bad = quad_data();
 	const engine::Mesh_Section 段描述[1] = { { 4u, 3u, 0u } };
 	engine::Mesh_Handle mesh = 0;
-	EXPECT_FALSE(renderer.mesh_load_sections(mesh, bad, 段描述, 1)) << "越界分段未被拒绝";
+	EXPECT_FALSE(renderer.resource().mesh_load_sections(mesh, bad, 段描述, 1)) << "越界分段未被拒绝";
 	EXPECT_EQ(mesh, 0u);
 }
 
@@ -364,7 +364,7 @@ TEST_F(Renderer_Scene_Test, 网格分段非三角形被拒绝)
 	engine::Mesh_Data bad = quad_data();
 	const engine::Mesh_Section 段描述[1] = { { 0u, 2u, 0u } };
 	engine::Mesh_Handle mesh = 0;
-	EXPECT_FALSE(renderer.mesh_load_sections(mesh, bad, 段描述, 1)) << "非三角形分段未被拒绝";
+	EXPECT_FALSE(renderer.resource().mesh_load_sections(mesh, bad, 段描述, 1)) << "非三角形分段未被拒绝";
 	EXPECT_EQ(mesh, 0u);
 }
 
@@ -378,7 +378,7 @@ TEST_F(Renderer_Scene_Test, 实例化上传字节按步长计算)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
@@ -396,11 +396,11 @@ TEST_F(Renderer_Scene_Test, 实例化上传字节按步长计算)
 		matrix[15] = 1.0f;
 	}
 	uint64_t before = renderer.instance_upload_bytes();
-	ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, transforms.data(), 200u));
+	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, transforms.data(), 200u));
 	ASSERT_TRUE(renderer.frame_render());
 	uint64_t after = renderer.instance_upload_bytes();
 	RecordProperty("instanced_upload_bytes", static_cast<int>(after - before));
 	EXPECT_EQ(after - before, 200u * 112u) << "实例上传字节与步长不符";
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }

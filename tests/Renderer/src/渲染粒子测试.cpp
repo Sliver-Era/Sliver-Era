@@ -1225,7 +1225,7 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		renderer.render_target_set(target);
 		float transform[16] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 			0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
-		renderer.mesh_draw(plane, transform);
+		renderer.resource().mesh_draw(plane, transform);
 		//可选的粒子绘制
 		if (with_particle)
 			renderer.particle().particle_draw(0.4f);
@@ -1257,12 +1257,12 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		ASSERT_TRUE(renderer.init(config_off));
 		engine::Particle_Host 粒子(renderer);
 		engine::Mesh_Handle plane = 0;
-		ASSERT_TRUE(renderer.mesh_plane_load(plane, 1.0f, 1.0f));
+		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, false, plain_off);
 		renderer.render_target_destroy(target);
-		renderer.mesh_unload(plane);
+		renderer.resource().mesh_unload(plane);
 	}
 	//(2) 计算关闭 ＋ 粒子开启（不绘制）
 	{
@@ -1271,12 +1271,12 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		engine::Particle_Host 粒子(renderer);
 		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		engine::Mesh_Handle plane = 0;
-		ASSERT_TRUE(renderer.mesh_plane_load(plane, 1.0f, 1.0f));
+		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, false, plain_off_particles_enabled);
 		renderer.render_target_destroy(target);
-		renderer.mesh_unload(plane);
+		renderer.resource().mesh_unload(plane);
 	}
 	EXPECT_EQ(plain_off, plain_off_particles_enabled);
 	//(3) 计算开启 ＋ 粒子关闭
@@ -1285,12 +1285,12 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		ASSERT_TRUE(renderer.init(config_on));
 		engine::Particle_Host 粒子(renderer);
 		engine::Mesh_Handle plane = 0;
-		ASSERT_TRUE(renderer.mesh_plane_load(plane, 1.0f, 1.0f));
+		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, false, plain_on);
 		renderer.render_target_destroy(target);
-		renderer.mesh_unload(plane);
+		renderer.resource().mesh_unload(plane);
 	}
 	EXPECT_EQ(plain_off, plain_on);
 	//参数：单粒子（原点、速度 0、寿命 1）
@@ -1323,12 +1323,12 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle plane = 0;
-		ASSERT_TRUE(renderer.mesh_plane_load(plane, 4.0f, 4.0f));
+		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 4.0f, 4.0f));
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, true, particle_off);
 		renderer.render_target_destroy(target);
-		renderer.mesh_unload(plane);
+		renderer.resource().mesh_unload(plane);
 	}
 	//(5) 计算开启 ＋ 粒子开启 ＋ 绘制（同一 CPU 状态）
 	{
@@ -1344,12 +1344,12 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle plane = 0;
-		ASSERT_TRUE(renderer.mesh_plane_load(plane, 4.0f, 4.0f));
+		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 4.0f, 4.0f));
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, true, particle_on);
 		renderer.render_target_destroy(target);
-		renderer.mesh_unload(plane);
+		renderer.resource().mesh_unload(plane);
 	}
 	//(6) 计算开关不影响 CPU 绘制结果；粒子确实改变画面
 	EXPECT_EQ(particle_off, particle_on);
@@ -2313,8 +2313,8 @@ TEST(Renderer_Particle_Test, 粒子软粒子深度淡化)
 		ASSERT_EQ(粒子.emit(1), 1u);
 		//墙面（4×4，向相机方向平移到 z=0.58；染黑避免其蓝通道遮挡比较）
 		engine::Mesh_Handle wall = 0;
-		ASSERT_TRUE(renderer.mesh_plane_load(wall, 4.0f, 4.0f));
-		ASSERT_TRUE(renderer.material_tint_set(0.0f, 0.0f, 0.0f, 1.0f));
+		ASSERT_TRUE(renderer.resource().mesh_plane_load(wall, 4.0f, 4.0f));
+		ASSERT_TRUE(renderer.resource().material_tint_set(0.0f, 0.0f, 0.0f, 1.0f));
 		/*
 		走交换链路径（Hi-Z 生成只挂在交换链场景退场上；离屏目标不生成历史）；
 		最后一帧顺带回读像素（隐藏窗口回读，BGRA）。
@@ -2326,7 +2326,7 @@ TEST(Renderer_Particle_Test, 粒子软粒子深度淡化)
 		{
 			float transform[16] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 				0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.58f, 1.0f };
-			ASSERT_TRUE(renderer.mesh_draw(wall, transform));
+			ASSERT_TRUE(renderer.resource().mesh_draw(wall, transform));
 			ASSERT_TRUE(renderer.particle().particle_draw(1.0f));
 			if (frame + 1 == 3)
 				ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()),
@@ -2344,7 +2344,7 @@ TEST(Renderer_Particle_Test, 粒子软粒子深度淡化)
 		for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
 			sum += pixels[index];
 		blue_sum_out = sum;
-		renderer.mesh_unload(wall);
+		renderer.resource().mesh_unload(wall);
 	};
 	uint64_t off_sum = 0;
 	uint64_t on_sum = 0;
@@ -2412,8 +2412,8 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 		ASSERT_EQ(engine::particle_gpu::emit(renderer, 1), 1u);
 		//墙面（4×4，向相机方向平移到 z=0.58；染黑避免其蓝通道遮挡比较）
 		engine::Mesh_Handle wall = 0;
-		ASSERT_TRUE(renderer.mesh_plane_load(wall, 4.0f, 4.0f));
-		ASSERT_TRUE(renderer.material_tint_set(0.0f, 0.0f, 0.0f, 1.0f));
+		ASSERT_TRUE(renderer.resource().mesh_plane_load(wall, 4.0f, 4.0f));
+		ASSERT_TRUE(renderer.resource().material_tint_set(0.0f, 0.0f, 0.0f, 1.0f));
 		//离屏目标与交换链同尺寸（Hi-Z 按交换链范围构建，尺寸不一致时回调跳过）
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, 64, 36));
@@ -2423,7 +2423,7 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 		{
 			float transform[16] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 				0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.58f, 1.0f };
-			ASSERT_TRUE(renderer.mesh_draw(wall, transform));
+			ASSERT_TRUE(renderer.resource().mesh_draw(wall, transform));
 			ASSERT_TRUE(indirect ? renderer.particle().particle_indirect_draw(1.0f) : renderer.particle().particle_gpu_draw(1.0f));
 			ASSERT_TRUE(renderer.frame_render());
 		}
@@ -2442,7 +2442,7 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 		blue_sum_out = sum;
 		renderer.render_target_set(0);
 		renderer.render_target_destroy(target);
-		renderer.mesh_unload(wall);
+		renderer.resource().mesh_unload(wall);
 	};
 	uint64_t direct_off = 0;
 	uint64_t direct_on = 0;
@@ -2630,8 +2630,8 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 		ASSERT_EQ(engine::particle_gpu::emit(renderer, 1), 1u);
 		//墙面（4×4，向相机方向平移到 z=0.58；染黑避免其蓝通道遮挡比较）
 		engine::Mesh_Handle wall = 0;
-		ASSERT_TRUE(renderer.mesh_plane_load(wall, 4.0f, 4.0f));
-		ASSERT_TRUE(renderer.material_tint_set(0.0f, 0.0f, 0.0f, 1.0f));
+		ASSERT_TRUE(renderer.resource().mesh_plane_load(wall, 4.0f, 4.0f));
+		ASSERT_TRUE(renderer.resource().material_tint_set(0.0f, 0.0f, 0.0f, 1.0f));
 		uint64_t target = 0;
 		ASSERT_TRUE(renderer.render_target_create(target, 64, 36));
 		renderer.render_target_set(target);
@@ -2640,7 +2640,7 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 		{
 			float transform[16] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 				0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.58f, 1.0f };
-			ASSERT_TRUE(renderer.mesh_draw(wall, transform));
+			ASSERT_TRUE(renderer.resource().mesh_draw(wall, transform));
 			ASSERT_TRUE(renderer.particle().particle_gpu_draw(1.0f));
 			ASSERT_TRUE(renderer.frame_render());
 		}
@@ -2655,7 +2655,7 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 			sum += pixels[index] > pixels[index + 2] ? pixels[index] : pixels[index + 2];
 		renderer.render_target_set(0);
 		renderer.render_target_destroy(target);
-		renderer.mesh_unload(wall);
+		renderer.resource().mesh_unload(wall);
 		sum_out = sum;
 	};
 	uint64_t off = 0;

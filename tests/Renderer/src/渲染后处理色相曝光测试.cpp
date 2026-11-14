@@ -49,14 +49,14 @@ TEST_F(Renderer_Post_Chain_Test, 色相旋转改变主通道)
 		if (!renderer.readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
 	}
 	//对照帧：色相 +120°
 	std::vector<uint8_t> rotated(pixel_bytes());
@@ -73,16 +73,16 @@ TEST_F(Renderer_Post_Chain_Test, 色相旋转改变主通道)
 		//偏移 90°（红 → 黄绿；注意门面逐级参数要求 intensity < 100）
 		renderer.post_stage_param_set(0, 1.0f, 0.0f, 90.0f);
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		renderer.render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(rotated.data(), static_cast<uint32_t>(rotated.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(target);
 	}
 
@@ -118,16 +118,16 @@ TEST_F(Renderer_Post_Chain_Test, 曝光倍数单调改变亮度)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	//参考帧（直通）
 	std::vector<uint8_t> reference(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 
 	//单级曝光链
 	uint64_t target = 0;
@@ -137,15 +137,15 @@ TEST_F(Renderer_Post_Chain_Test, 曝光倍数单调改变亮度)
 	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
 	renderer.render_target_present_set(target);
 	uint64_t texture2 = 0;
-	ASSERT_TRUE(renderer.texture_load(texture2, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture2, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture2);
 	engine::Mesh_Handle handle2 = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle2, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle2, quad_data()));
 
 	auto render_with_multiplier = [&](float multiplier, std::vector<uint8_t>& pixels)
 	{
 		renderer.post_stage_param_set(0, 1.0f, 0.0f, multiplier);
-		ASSERT_TRUE(renderer.mesh_draw(handle2, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle2, nullptr));
 		pixels.assign(pixel_bytes(), 0);
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	};
@@ -168,8 +168,8 @@ TEST_F(Renderer_Post_Chain_Test, 曝光倍数单调改变亮度)
 	EXPECT_LE(std::abs(unchanged_value - reference_value), 6)
 		<< "倍数 1 与直通不一致：" << unchanged_value << " vs " << reference_value;
 
-	renderer.mesh_unload(handle2);
-	renderer.texture_unload(texture2);
-	renderer.pipeline_unload(pass);
+	renderer.resource().mesh_unload(handle2);
+	renderer.resource().texture_unload(texture2);
+	renderer.resource().pipeline_unload(pass);
 	renderer.render_target_destroy(target);
 }

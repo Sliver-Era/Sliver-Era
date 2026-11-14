@@ -45,13 +45,13 @@ namespace
 		//无网格组：只留天空（深度恒 1，法线无效，应原样输出）
 		if (!without_mesh)
 		{
-			EXPECT_TRUE(renderer.mesh_load(folded, folded_data()));
-			EXPECT_TRUE(renderer.mesh_draw(folded, nullptr));
-			renderer.mesh_unload(folded);
+			EXPECT_TRUE(renderer.resource().mesh_load(folded, folded_data()));
+			EXPECT_TRUE(renderer.resource().mesh_draw(folded, nullptr));
+			renderer.resource().mesh_unload(folded);
 		}
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.pipeline_unload(pass);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return pixels;
 	}

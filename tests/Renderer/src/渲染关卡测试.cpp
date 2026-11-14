@@ -798,8 +798,8 @@ TEST(Renderer_Level_Test, 关卡材质实例覆盖生效)
 	ASSERT_TRUE(level_bridge_load(renderer, 甲, 场景甲, level_utf8("覆盖甲.level")));
 	EXPECT_EQ(level_bridge_draw(renderer, 场景甲), 1u);
 	//绘制后吸附状态复位
-	EXPECT_FALSE(renderer.material_tint_active());
-	EXPECT_EQ(renderer.material_emissive(), 0.0f);
+	EXPECT_FALSE(renderer.resource().material_tint_active());
+	EXPECT_EQ(renderer.resource().material_emissive(), 0.0f);
 	std::vector<uint8_t> 帧甲(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
 	ASSERT_TRUE(renderer.frame_render(帧甲.data(), static_cast<uint32_t>(帧甲.size())));
 	level_bridge_unload(renderer, 场景甲);
@@ -1370,17 +1370,17 @@ TEST(Renderer_Level_Test, 实例清漆状态复位)
 	engine::Asset_Scene 场景;
 	ASSERT_TRUE(level_bridge_load(renderer, 关卡, 场景, level_utf8("清漆复位.level")));
 	//绘制前状态（关卡装配不改变全局清漆状态）
-	const bool 前激活 = renderer.material_clear_coat_active();
-	const float 前强度 = renderer.material_clear_coat_strength();
-	const float 前粗糙 = renderer.material_clear_coat_roughness();
+	const bool 前激活 = renderer.resource().material_clear_coat_active();
+	const float 前强度 = renderer.resource().material_clear_coat_strength();
+	const float 前粗糙 = renderer.resource().material_clear_coat_roughness();
 
 	//绘制：实例覆盖生效后应复位
 	EXPECT_EQ(level_bridge_draw(renderer, 场景), 1u);
 	std::vector<uint8_t> 帧(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
 	ASSERT_TRUE(renderer.frame_render(帧.data(), static_cast<uint32_t>(帧.size())));
-	EXPECT_EQ(renderer.material_clear_coat_active(), 前激活) << "实例清漆状态在绘制后泄漏";
-	EXPECT_TRUE(bit_equal(renderer.material_clear_coat_strength(), 前强度)) << "清漆强度状态泄漏";
-	EXPECT_TRUE(bit_equal(renderer.material_clear_coat_roughness(), 前粗糙)) << "清漆粗糙度状态泄漏";
+	EXPECT_EQ(renderer.resource().material_clear_coat_active(), 前激活) << "实例清漆状态在绘制后泄漏";
+	EXPECT_TRUE(bit_equal(renderer.resource().material_clear_coat_strength(), 前强度)) << "清漆强度状态泄漏";
+	EXPECT_TRUE(bit_equal(renderer.resource().material_clear_coat_roughness(), 前粗糙)) << "清漆粗糙度状态泄漏";
 	level_bridge_unload(renderer, 场景);
 }
 
@@ -1414,17 +1414,17 @@ TEST(Renderer_Level_Test, 实例PBR状态复位)
 	engine::Asset_Scene 场景;
 	ASSERT_TRUE(level_bridge_load(renderer, 关卡, 场景, level_utf8("PBR复位.level")));
 	//绘制前状态（关卡装配不改变全局材质状态）
-	const bool 前激活 = renderer.material_pbr_active();
-	const float 前粗糙 = renderer.material_pbr_roughness();
-	const float 前金属 = renderer.material_pbr_metallic();
+	const bool 前激活 = renderer.resource().material_pbr_active();
+	const float 前粗糙 = renderer.resource().material_pbr_roughness();
+	const float 前金属 = renderer.resource().material_pbr_metallic();
 
 	//绘制：实例覆盖生效后应复位
 	EXPECT_EQ(level_bridge_draw(renderer, 场景), 1u);
 	std::vector<uint8_t> 帧(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
 	ASSERT_TRUE(renderer.frame_render(帧.data(), static_cast<uint32_t>(帧.size())));
-	EXPECT_EQ(renderer.material_pbr_active(), 前激活) << "实例 PBR 状态在绘制后泄漏";
-	EXPECT_TRUE(bit_equal(renderer.material_pbr_roughness(), 前粗糙)) << "粗糙度状态泄漏";
-	EXPECT_TRUE(bit_equal(renderer.material_pbr_metallic(), 前金属)) << "金属度状态泄漏";
+	EXPECT_EQ(renderer.resource().material_pbr_active(), 前激活) << "实例 PBR 状态在绘制后泄漏";
+	EXPECT_TRUE(bit_equal(renderer.resource().material_pbr_roughness(), 前粗糙)) << "粗糙度状态泄漏";
+	EXPECT_TRUE(bit_equal(renderer.resource().material_pbr_metallic(), 前金属)) << "金属度状态泄漏";
 	level_bridge_unload(renderer, 场景);
 }
 
@@ -2894,7 +2894,7 @@ TEST(Renderer_Level_Test, 关卡与手工构造画面一致)
 	engine::Asset_Scene 场景乙;
 	ASSERT_TRUE(scene_bundle_load(renderer, 场景乙, level_utf8("等价清单.txt")));
 	ASSERT_EQ(场景乙.objects.size(), 1u);
-	ASSERT_TRUE(renderer.mesh_draw_sections(场景乙.objects[0].mesh, nullptr,
+	ASSERT_TRUE(renderer.resource().mesh_draw_sections(场景乙.objects[0].mesh, nullptr,
 		场景乙.objects[0].materials.data(), static_cast<uint32_t>(场景乙.objects[0].materials.size())));
 	std::vector<uint8_t> 手工帧(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
 	ASSERT_TRUE(renderer.frame_render(手工帧.data(), static_cast<uint32_t>(手工帧.size())));
@@ -3025,7 +3025,7 @@ TEST(Renderer_Level_Test, 摆放旋转)
 	ASSERT_EQ(零场景.objects.size(), 1u);
 	EXPECT_EQ(零场景.objects[0].rotation_deg[1], 0.0f);
 	std::vector<uint8_t> 旧画面(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
-	ASSERT_TRUE(renderer.mesh_draw_sections(零场景.objects[0].mesh, nullptr,
+	ASSERT_TRUE(renderer.resource().mesh_draw_sections(零场景.objects[0].mesh, nullptr,
 		零场景.objects[0].materials.data(), static_cast<uint32_t>(零场景.objects[0].materials.size())));
 	ASSERT_TRUE(renderer.frame_render(旧画面.data(), static_cast<uint32_t>(旧画面.size())));
 	level_bridge_unload(renderer, 零场景);
@@ -3036,7 +3036,7 @@ TEST(Renderer_Level_Test, 摆放旋转)
 	float 矩阵[16] = {};
 	engine::level_transform_build(零场景.objects[0].position, 零场景.objects[0].rotation_deg,
 		零场景.objects[0].scale, 矩阵);
-	ASSERT_TRUE(renderer.mesh_draw_sections(零场景.objects[0].mesh, 矩阵,
+	ASSERT_TRUE(renderer.resource().mesh_draw_sections(零场景.objects[0].mesh, 矩阵,
 		零场景.objects[0].materials.data(), static_cast<uint32_t>(零场景.objects[0].materials.size())));
 	std::vector<uint8_t> 矩阵画面(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
 	ASSERT_TRUE(renderer.frame_render(矩阵画面.data(), static_cast<uint32_t>(矩阵画面.size())));
@@ -3052,7 +3052,7 @@ TEST(Renderer_Level_Test, 摆放旋转)
 	float 旋转矩阵[16] = {};
 	engine::level_transform_build(旋转场景.objects[0].position, 旋转场景.objects[0].rotation_deg,
 		旋转场景.objects[0].scale, 旋转矩阵);
-	ASSERT_TRUE(renderer.mesh_draw_sections(旋转场景.objects[0].mesh, 旋转矩阵,
+	ASSERT_TRUE(renderer.resource().mesh_draw_sections(旋转场景.objects[0].mesh, 旋转矩阵,
 		旋转场景.objects[0].materials.data(), static_cast<uint32_t>(旋转场景.objects[0].materials.size())));
 	std::vector<uint8_t> 旋转画面(LEVEL_WIDTH * LEVEL_HEIGHT * 4);
 	ASSERT_TRUE(renderer.frame_render(旋转画面.data(), static_cast<uint32_t>(旋转画面.size())));
@@ -3078,45 +3078,45 @@ TEST(Renderer_Level_Test, 材质实例数据校验)
 	//模板材质（默认描述）
 	engine::Material_Data 描述;
 	engine::Material_Handle 模板 = 0;
-	ASSERT_TRUE(renderer.material_load(模板, 描述));
+	ASSERT_TRUE(renderer.resource().material_load(模板, 描述));
 	ASSERT_NE(模板, 0u);
 
 	//合法实例（不覆盖 / 覆盖 tint / 覆盖自发光）
 	engine::Material_Instance_Data 实例;
 	实例.模板 = 模板;
-	EXPECT_TRUE(renderer.material_instance_validate(实例));
+	EXPECT_TRUE(renderer.resource().material_instance_validate(实例));
 	实例.use_tint = true;
 	实例.tint[0] = 0.2f;
 	实例.tint[1] = 0.4f;
 	实例.tint[2] = 0.6f;
 	实例.tint[3] = 1.0f;
-	EXPECT_TRUE(renderer.material_instance_validate(实例));
+	EXPECT_TRUE(renderer.resource().material_instance_validate(实例));
 	实例.use_emissive = true;
 	实例.emissive = 0.8f;
-	EXPECT_TRUE(renderer.material_instance_validate(实例));
+	EXPECT_TRUE(renderer.resource().material_instance_validate(实例));
 
 	//模板非法
 	engine::Material_Instance_Data 坏模板 = 实例;
 	坏模板.模板 = 0;
-	EXPECT_FALSE(renderer.material_instance_validate(坏模板));
+	EXPECT_FALSE(renderer.resource().material_instance_validate(坏模板));
 	坏模板.模板 = 9999;
-	EXPECT_FALSE(renderer.material_instance_validate(坏模板));
+	EXPECT_FALSE(renderer.resource().material_instance_validate(坏模板));
 
 	//覆盖越界 / 非有限
 	engine::Material_Instance_Data 坏色 = 实例;
 	坏色.tint[0] = 1.5f;
-	EXPECT_FALSE(renderer.material_instance_validate(坏色));
+	EXPECT_FALSE(renderer.resource().material_instance_validate(坏色));
 	坏色.tint[0] = -0.1f;
-	EXPECT_FALSE(renderer.material_instance_validate(坏色));
+	EXPECT_FALSE(renderer.resource().material_instance_validate(坏色));
 	坏色.tint[0] = std::nanf("");
-	EXPECT_FALSE(renderer.material_instance_validate(坏色));
+	EXPECT_FALSE(renderer.resource().material_instance_validate(坏色));
 	engine::Material_Instance_Data 坏光 = 实例;
 	坏光.emissive = -0.2f;
-	EXPECT_FALSE(renderer.material_instance_validate(坏光));
+	EXPECT_FALSE(renderer.resource().material_instance_validate(坏光));
 	坏光.emissive = std::numeric_limits<float>::infinity();
-	EXPECT_FALSE(renderer.material_instance_validate(坏光));
+	EXPECT_FALSE(renderer.resource().material_instance_validate(坏光));
 
-	renderer.material_unload(模板);
+	renderer.resource().material_unload(模板);
 }
 
 /*

@@ -28,12 +28,12 @@ TEST_F(Renderer_Scene_Test, 应用场景描述相机与清屏色同时生效)
 	//纯红纹理 ＋ 铺满全屏四边形
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_red();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
+	renderer.resource().texture_bind_set(texture);
 	//第一帧：默认相机（机位 +Z 3、注视原点）→ 四边形可见，中心为纹理红（绿通道低）
-	ASSERT_TRUE(renderer.mesh_draw(mesh, full_screen_matrix().data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, full_screen_matrix().data()));
 	std::vector<uint8_t> before(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(before.data(), static_cast<uint32_t>(before.size())));
 	std::array<uint8_t, 4> center_before = pixel_get(before, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -53,7 +53,7 @@ TEST_F(Renderer_Scene_Test, 应用场景描述相机与清屏色同时生效)
 	scene.clear_color[2] = 0.0f;
 	scene.clear_color[3] = 1.0f;
 	renderer.scene_apply(scene);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, full_screen_matrix().data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, full_screen_matrix().data()));
 	std::vector<uint8_t> after(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(after.data(), static_cast<uint32_t>(after.size())));
 	std::array<uint8_t, 4> center_after = pixel_get(after, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -62,8 +62,8 @@ TEST_F(Renderer_Scene_Test, 应用场景描述相机与清屏色同时生效)
 	EXPECT_LT(center_after[0], 60) << "清屏色未被应用（绿通道旁分量偏高）：" << pixel_text(center_after);
 	EXPECT_LT(center_after[2], 60) << "清屏色未被应用（绿通道旁分量偏高）：" << pixel_text(center_after);
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 //clear_color_set 切换清屏色生效：由绿改为红后中心变为饱和外色且非绿
@@ -161,24 +161,24 @@ TEST_F(Renderer_Scene_Test, 默认场景描述与原默认画面一致)
 	//纯红纹理 ＋ 铺满全屏四边形（画面随相机与清屏色变化，故对默认值敏感）
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_red();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
+	renderer.resource().texture_bind_set(texture);
 	//第一帧：不调用 scene_apply（使用本层既有默认）
-	ASSERT_TRUE(renderer.mesh_draw(mesh, full_screen_matrix().data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, full_screen_matrix().data()));
 	std::vector<uint8_t> baseline(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(baseline.data(), static_cast<std::uint32_t>(baseline.size())));
 	//第二帧：应用默认构造的 Scene_Data（其默认值应与本层既有默认一致）
 	engine::Scene_Data defaults{};
 	renderer.scene_apply(defaults);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, full_screen_matrix().data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, full_screen_matrix().data()));
 	std::vector<uint8_t> applied(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(applied.data(), static_cast<std::uint32_t>(applied.size())));
 	//两帧画面应完全一致（默认值已收敛为单一来源）
 	EXPECT_EQ(baseline, applied) << "应用默认 Scene_Data 后画面改变，默认值未收敛为单一来源";
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -195,10 +195,10 @@ TEST_F(Renderer_Scene_Test, 正交投影下远近尺寸一致)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_red();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
+	renderer.resource().texture_bind_set(texture);
 
 	//红色像素计数（外通道饱和即视为四边形覆盖）
 	auto red_count = [](const std::vector<uint8_t>& pixels)
@@ -218,7 +218,7 @@ TEST_F(Renderer_Scene_Test, 正交投影下远近尺寸一致)
 		scene.ortho = ortho;
 		scene.ortho_height = 2.0f;
 		renderer.scene_apply(scene);
-		renderer.mesh_draw(mesh, nullptr);
+		renderer.resource().mesh_draw(mesh, nullptr);
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return red_count(pixels);
@@ -243,8 +243,8 @@ TEST_F(Renderer_Scene_Test, 正交投影下远近尺寸一致)
 	EXPECT_LE(std::abs(static_cast<int>(ortho_far) - static_cast<int>(ortho_near)), static_cast<int>(tolerance))
 		<< "正交投影下远距画面占比改变（正交" << ortho_near << " / " << ortho_far << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -261,15 +261,15 @@ TEST_F(Renderer_Scene_Test, 三组入参与扁平场景等价)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.5f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.5f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return pixels;
@@ -356,8 +356,8 @@ TEST_F(Renderer_Scene_Test, 三组入参与扁平场景等价)
 	//场景确有可见几何（排除「两帧都是纯清屏色」的空等价）
 	EXPECT_GT(center_brightness(flat_pixels), 0u) << "等价性用例的两帧均为空白，未覆盖光照与雾";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -374,15 +374,15 @@ TEST_F(Renderer_Scene_Test, 三组入参相机非法整次拒绝)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return pixels;
@@ -413,8 +413,8 @@ TEST_F(Renderer_Scene_Test, 三组入参相机非法整次拒绝)
 	EXPECT_EQ(after, baseline) << "非法相机未整次拒绝（清屏色或相机被部分应用）";
 	EXPECT_GE(pixel_get(after, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[1], 200u) << "绿色清屏色丢失";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -492,17 +492,17 @@ TEST_F(Renderer_Scene_Test, 实例缓冲按需写入)
 	ASSERT_TRUE(renderer.init(config));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
+	renderer.resource().texture_bind_set(texture);
 
 	//逐帧累计上传字节的增量（transform 为空表示单位矩阵）
 	auto upload_delta = [&](std::vector<uint64_t>& deltas, uint64_t& previous, int frames, const float* transform)
 	{
 		for (int frame = 0; frame < frames; ++frame)
 		{
-			EXPECT_TRUE(renderer.mesh_draw(mesh, transform));
+			EXPECT_TRUE(renderer.resource().mesh_draw(mesh, transform));
 			EXPECT_TRUE(renderer.frame_render());
 			uint64_t current = renderer.instance_upload_bytes();
 			deltas.push_back(current - previous);
@@ -535,8 +535,8 @@ TEST_F(Renderer_Scene_Test, 实例缓冲按需写入)
 	EXPECT_GT(*std::max_element(moved.begin(), moved.end()), 0u) << "模型矩阵变化后未上传";
 	EXPECT_EQ(moved.back(), 0u) << "静止后仍上传（按需写入未生效）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -552,10 +552,10 @@ TEST_F(Renderer_Scene_Test, 相机上方向改变画面)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.6f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.6f)));
 	//绕 Y 轴偏转的立方体（避免正面正视时的旋转对称性使滚转不可见）
 	const std::array<float, 16> tilted = rotation_y_matrix(0.6f);
 
@@ -564,7 +564,7 @@ TEST_F(Renderer_Scene_Test, 相机上方向改变画面)
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, light, fog);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, tilted.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, tilted.data()));
 	std::vector<uint8_t> base(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(base.data(), static_cast<uint32_t>(base.size())));
 
@@ -572,7 +572,7 @@ TEST_F(Renderer_Scene_Test, 相机上方向改变画面)
 	camera.up[0] = 1.0f;
 	camera.up[1] = 0.0f;
 	renderer.scene_apply(camera, light, fog);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, tilted.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, tilted.data()));
 	std::vector<uint8_t> rolled(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(rolled.data(), static_cast<uint32_t>(rolled.size())));
 
@@ -599,7 +599,7 @@ TEST_F(Renderer_Scene_Test, 相机上方向改变画面)
 	camera.up[0] = 0.0f;
 	camera.up[1] = 1.0f;
 	renderer.scene_apply(camera, light, fog);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, tilted.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, tilted.data()));
 	std::vector<uint8_t> restored(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(restored.data(), static_cast<uint32_t>(restored.size())));
 	int restore_delta = 0;
@@ -613,8 +613,8 @@ TEST_F(Renderer_Scene_Test, 相机上方向改变画面)
 	}
 	EXPECT_LE(restore_delta, 2) << "恢复默认上方向后画面未复原（最大差 " << restore_delta << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -630,16 +630,16 @@ TEST_F(Renderer_Scene_Test, 相机宽高比覆盖)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.6f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.6f)));
 
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, light, fog);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> base(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(base.data(), static_cast<uint32_t>(base.size())));
 
@@ -647,7 +647,7 @@ TEST_F(Renderer_Scene_Test, 相机宽高比覆盖)
 	camera.aspect = 1.0f;
 	renderer.scene_apply(camera, light, fog);
 	EXPECT_FLOAT_EQ(renderer.camera_aspect_get(), 1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> square(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(square.data(), static_cast<uint32_t>(square.size())));
 
@@ -674,7 +674,7 @@ TEST_F(Renderer_Scene_Test, 相机宽高比覆盖)
 	camera.aspect = 0.0f;
 	renderer.scene_apply(camera, light, fog);
 	EXPECT_GT(renderer.camera_aspect_get(), 1.7f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> restored(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(restored.data(), static_cast<uint32_t>(restored.size())));
 	int restore_delta = 0;
@@ -688,8 +688,8 @@ TEST_F(Renderer_Scene_Test, 相机宽高比覆盖)
 	}
 	EXPECT_LE(restore_delta, 2) << "恢复跟随窗口后画面未复原（最大差 " << restore_delta << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*

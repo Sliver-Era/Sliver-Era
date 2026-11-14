@@ -40,22 +40,22 @@ TEST_F(Renderer_Scene_Test, 覆盖率写入单采样下画面不变)
 	ASSERT_EQ(renderer.msaa_samples(), 1u) << "本用例要求 1×（未开 MSAA）";
 
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = half_alpha_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 
 	//材质 A：Alpha 混合（不启用覆盖率）
 	engine::Material_Data plain{};
 	plain.texture = texture;
 	plain.blend = engine::Blend_Mode::Alpha;
 	engine::Material_Handle material_plain = 0;
-	ASSERT_TRUE(renderer.material_load(material_plain, plain));
+	ASSERT_TRUE(renderer.resource().material_load(material_plain, plain));
 	//材质 B：Alpha 混合 ＋ 覆盖率写入
 	engine::Material_Data coverage = plain;
 	coverage.alpha_to_coverage = true;
 	engine::Material_Handle material_coverage = 0;
-	ASSERT_TRUE(renderer.material_load(material_coverage, coverage));
+	ASSERT_TRUE(renderer.resource().material_load(material_coverage, coverage));
 
 	//渲染一帧并返回整帧像素
 	auto render_frame = [&]()
@@ -66,23 +66,23 @@ TEST_F(Renderer_Scene_Test, 覆盖率写入单采样下画面不变)
 	};
 
 	//基线帧（纯 alpha 混合）
-	renderer.material_bind_set(material_plain);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().material_bind_set(material_plain);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	std::vector<uint8_t> baseline = render_frame();
 
 	//覆盖率帧（1× 下应自动关闭，与基线逐字节一致）
-	renderer.material_bind_set(material_coverage);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().material_bind_set(material_coverage);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	std::vector<uint8_t> covered = render_frame();
 
 	RecordProperty("coverage_1x_baseline", static_cast<int>(center_luma(baseline)));
 	RecordProperty("coverage_1x_covered", static_cast<int>(center_luma(covered)));
 	EXPECT_EQ(covered, baseline) << "1× 下覆盖率写入改变了画面";
 
-	renderer.material_unload(material_plain);
-	renderer.material_unload(material_coverage);
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(material_plain);
+	renderer.resource().material_unload(material_coverage);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -103,22 +103,22 @@ TEST_F(Renderer_Scene_Test, 多重采样下覆盖率降低透明覆盖)
 		GTEST_SKIP() << "本机不支持多重采样";
 
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = half_alpha_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 
 	//材质 A：Alpha 混合
 	engine::Material_Data plain{};
 	plain.texture = texture;
 	plain.blend = engine::Blend_Mode::Alpha;
 	engine::Material_Handle material_plain = 0;
-	ASSERT_TRUE(renderer.material_load(material_plain, plain));
+	ASSERT_TRUE(renderer.resource().material_load(material_plain, plain));
 	//材质 B：Alpha 混合 ＋ 覆盖率写入
 	engine::Material_Data coverage = plain;
 	coverage.alpha_to_coverage = true;
 	engine::Material_Handle material_coverage = 0;
-	ASSERT_TRUE(renderer.material_load(material_coverage, coverage));
+	ASSERT_TRUE(renderer.resource().material_load(material_coverage, coverage));
 
 	auto render_frame = [&]()
 	{
@@ -127,17 +127,17 @@ TEST_F(Renderer_Scene_Test, 多重采样下覆盖率降低透明覆盖)
 		return pixels;
 	};
 
-	renderer.material_bind_set(material_plain);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().material_bind_set(material_plain);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	const uint32_t mixed_center = center_luma(render_frame());
 
-	renderer.material_bind_set(material_coverage);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().material_bind_set(material_coverage);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	const uint32_t covered_center = center_luma(render_frame());
 
 	//切回材质 A，确认可逆
-	renderer.material_bind_set(material_plain);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().material_bind_set(material_plain);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	const uint32_t restored_center = center_luma(render_frame());
 
 	RecordProperty("coverage_msaa_mixed", static_cast<int>(mixed_center));
@@ -149,10 +149,10 @@ TEST_F(Renderer_Scene_Test, 多重采样下覆盖率降低透明覆盖)
 	EXPECT_LE(covered_center, mixed_center - 25u) << "覆盖率写入未减少透明覆盖";
 	EXPECT_NEAR(restored_center, mixed_center, 3u) << "切回无覆盖率材质后画面未恢复";
 
-	renderer.material_unload(material_plain);
-	renderer.material_unload(material_coverage);
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(material_plain);
+	renderer.resource().material_unload(material_coverage);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -172,22 +172,22 @@ TEST_F(Renderer_Scene_Test, 覆盖率写入不透明档产生覆盖)
 		GTEST_SKIP() << "本机不支持多重采样";
 
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = half_alpha_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 
 	//材质 A：Opaque（alpha 被忽略 → 纯白）
 	engine::Material_Data opaque{};
 	opaque.texture = texture;
 	opaque.blend = engine::Blend_Mode::Opaque;
 	engine::Material_Handle material_opaque = 0;
-	ASSERT_TRUE(renderer.material_load(material_opaque, opaque));
+	ASSERT_TRUE(renderer.resource().material_load(material_opaque, opaque));
 	//材质 B：Opaque ＋ 覆盖率写入
 	engine::Material_Data coverage = opaque;
 	coverage.alpha_to_coverage = true;
 	engine::Material_Handle material_coverage = 0;
-	ASSERT_TRUE(renderer.material_load(material_coverage, coverage));
+	ASSERT_TRUE(renderer.resource().material_load(material_coverage, coverage));
 
 	auto render_frame = [&]()
 	{
@@ -196,12 +196,12 @@ TEST_F(Renderer_Scene_Test, 覆盖率写入不透明档产生覆盖)
 		return pixels;
 	};
 
-	renderer.material_bind_set(material_opaque);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().material_bind_set(material_opaque);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	const uint32_t opaque_center = center_luma(render_frame());
 
-	renderer.material_bind_set(material_coverage);
-	ASSERT_TRUE(renderer.mesh_draw(quad, nullptr));
+	renderer.resource().material_bind_set(material_coverage);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
 	const uint32_t covered_center = center_luma(render_frame());
 
 	RecordProperty("coverage_opaque_plain", static_cast<int>(opaque_center));
@@ -211,8 +211,8 @@ TEST_F(Renderer_Scene_Test, 覆盖率写入不透明档产生覆盖)
 	EXPECT_LE(covered_center, opaque_center - 40u) << "不透明档的覆盖率写入未生效";
 	EXPECT_GE(covered_center, 100u) << "覆盖率写入过度（中心接近清屏色）";
 
-	renderer.material_unload(material_opaque);
-	renderer.material_unload(material_coverage);
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(material_opaque);
+	renderer.resource().material_unload(material_coverage);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }

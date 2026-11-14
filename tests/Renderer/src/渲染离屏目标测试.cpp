@@ -163,15 +163,15 @@ TEST_F(Renderer_Offscreen_Test, 渲染到目标并回读)
 	//加载纯绿纹理与四边形
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 
 	//本帧渲染到目标
 	renderer.render_target_set(target);
-	renderer.texture_bind_set(texture);
+	renderer.resource().texture_bind_set(texture);
 	std::array<float, 16> full = full_screen_matrix();
-	ASSERT_TRUE(renderer.mesh_draw(handle, full.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	//回读来源为目标颜色附件
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -185,14 +185,14 @@ TEST_F(Renderer_Offscreen_Test, 渲染到目标并回读)
 
 	//渲染到目标不改变交换链路径的可用性：切回交换链再渲染一帧应正常
 	renderer.render_target_set(0);
-	ASSERT_TRUE(renderer.mesh_draw(handle, full.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	std::vector<uint8_t> swapchain_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(swapchain_pixels.data(), static_cast<uint32_t>(swapchain_pixels.size())));
 	EXPECT_TRUE(pixel_is_green(pixel_get(swapchain_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)))
 		<< "切回交换链路径后中心非纯绿";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 	renderer.render_target_destroy(target);
 }
 
@@ -209,15 +209,15 @@ TEST_F(Renderer_Offscreen_Test, 目标可作纹理采样闭环)
 	//加载纯绿纹理与四边形
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	std::array<float, 16> full = full_screen_matrix();
 
 	//第一帧：把纯绿场景渲染进离屏目标（不呈现、不回读）
 	renderer.render_target_set(target);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, full.data()));
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	ASSERT_TRUE(renderer.frame_render());
 
 	/*
@@ -226,9 +226,9 @@ TEST_F(Renderer_Offscreen_Test, 目标可作纹理采样闭环)
 	故本用例能真正区分「采样到目标」与「回落默认纹理」。
 	*/
 	renderer.render_target_set(0);
-	renderer.texture_bind_set(0);
+	renderer.resource().texture_bind_set(0);
 	renderer.texture_bind_target(target);
-	ASSERT_TRUE(renderer.mesh_draw(handle, full.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	//交换链内容应为目标的绿（若采样失败则回落为默认白，绿通道判定会失败）
@@ -237,8 +237,8 @@ TEST_F(Renderer_Offscreen_Test, 目标可作纹理采样闭环)
 	//角落同样为目标的绿（全屏铺满）
 	EXPECT_TRUE(pixel_is_green(pixel_get(pixels, 2, 2))) << "采样合成后角落非目标绿";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 	renderer.render_target_destroy(target);
 }
 
@@ -254,20 +254,20 @@ TEST_F(Renderer_Offscreen_Test, 无效目标句柄回落交换链)
 	//加载纯绿纹理与四边形
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	std::array<float, 16> full = full_screen_matrix();
-	ASSERT_TRUE(renderer.mesh_draw(handle, full.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	//应回落交换链路径：回读到交换链的绿
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	EXPECT_TRUE(pixel_is_green(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)))
 		<< "无效目标句柄未回落交换链路径";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -285,13 +285,13 @@ TEST_F(Renderer_Offscreen_Test, 读回离屏目标内容)
 	//绿纹理与全屏四边形
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	std::array<float, 16> full = full_screen_matrix();
 	renderer.render_target_set(target);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, full.data()));
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	ASSERT_TRUE(renderer.frame_render());
 
 	//读回目标内容
@@ -311,8 +311,8 @@ TEST_F(Renderer_Offscreen_Test, 读回离屏目标内容)
 	ASSERT_TRUE(renderer.render_target_readback(target, again.data(), static_cast<uint32_t>(again.size()), nullptr, nullptr));
 	EXPECT_EQ(pixels, again);
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 	renderer.render_target_destroy(target);
 }
 
@@ -329,13 +329,13 @@ TEST_F(Renderer_Offscreen_Test, 子区域读回与整幅一致)
 	ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	std::array<float, 16> full = full_screen_matrix();
 	renderer.render_target_set(target);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, full.data()));
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	ASSERT_TRUE(renderer.frame_render());
 
 	//整幅读回（基准）
@@ -377,8 +377,8 @@ TEST_F(Renderer_Offscreen_Test, 子区域读回与整幅一致)
 	EXPECT_EQ(width, 0u);
 	EXPECT_EQ(height, 0u);
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 	renderer.render_target_destroy(target);
 }
 
@@ -419,13 +419,13 @@ TEST_F(Renderer_Offscreen_Test, 深度读回区分几何与清屏)
         ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
         uint64_t texture = 0;
         std::vector<uint8_t> texels = solid_green(2, 2);
-        ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+        ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
         engine::Mesh_Handle handle = 0;
-        ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+        ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
         //用单位矩阵（四边形不放大）：中心被覆盖、四角仍为清屏背景
         renderer.render_target_set(target);
-        renderer.texture_bind_set(texture);
-        ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+        renderer.resource().texture_bind_set(texture);
+        ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
         ASSERT_TRUE(renderer.frame_render());
 
         //读回深度（宽×高 个 32 位值）
@@ -457,8 +457,8 @@ TEST_F(Renderer_Offscreen_Test, 深度读回区分几何与清屏)
         EXPECT_EQ(small_width, 0u);
         EXPECT_EQ(small_height, 0u);
 
-        renderer.mesh_unload(handle);
-        renderer.texture_unload(texture);
+        renderer.resource().mesh_unload(handle);
+        renderer.resource().texture_unload(texture);
         renderer.render_target_destroy(target);
 }
 
@@ -520,11 +520,11 @@ TEST_F(Renderer_Offscreen_Test, 深度子区域读回)
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	//渲染一帧（四边形覆盖中心）
 	renderer.render_target_set(target);
-	renderer.texture_bind_set(0);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_bind_set(0);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 
 	//整幅读回作为基准
@@ -573,6 +573,6 @@ TEST_F(Renderer_Offscreen_Test, 深度子区域读回)
 	EXPECT_FALSE(renderer.render_target_readback_depth_region(9999u, 0, 0,
 		region_w, region_h, region.data(), static_cast<uint32_t>(region.size()), nullptr, nullptr));
 
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 	renderer.render_target_destroy(target);
 }

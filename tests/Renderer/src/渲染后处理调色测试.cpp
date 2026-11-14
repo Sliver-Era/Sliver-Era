@@ -26,8 +26,8 @@ TEST_F(Renderer_Post_Chain_Test, 暗角压暗边角)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 	//对照帧：暗角
@@ -46,8 +46,8 @@ TEST_F(Renderer_Post_Chain_Test, 暗角压暗边角)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(vignetted.data(), static_cast<uint32_t>(vignetted.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(vignette);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(vignette);
 		renderer.render_target_destroy(scene_target);
 	}
 
@@ -80,7 +80,7 @@ TEST_F(Renderer_Post_Chain_Test, 对比度放大明暗差)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
+		renderer.resource().mesh_unload(handle);
 	}
 	//对照帧：单级对比度链
 	std::vector<uint8_t> adjusted(pixel_bytes());
@@ -98,8 +98,8 @@ TEST_F(Renderer_Post_Chain_Test, 对比度放大明暗差)
 		scene_register(renderer, handle);
 		renderer.render_target_present_set(scene_target);
 		ASSERT_TRUE(renderer.frame_render(adjusted.data(), static_cast<uint32_t>(adjusted.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(contrast);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(contrast);
 		renderer.render_target_destroy(scene_target);
 	}
 
@@ -133,7 +133,7 @@ TEST_F(Renderer_Post_Chain_Test, 饱和度放大通道差)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
+		renderer.resource().mesh_unload(handle);
 	}
 	//对照帧：单级饱和度链
 	std::vector<uint8_t> adjusted(pixel_bytes());
@@ -151,8 +151,8 @@ TEST_F(Renderer_Post_Chain_Test, 饱和度放大通道差)
 		scene_register(renderer, handle);
 		renderer.render_target_present_set(scene_target);
 		ASSERT_TRUE(renderer.frame_render(adjusted.data(), static_cast<uint32_t>(adjusted.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(saturation);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(saturation);
 		renderer.render_target_destroy(scene_target);
 	}
 
@@ -204,9 +204,9 @@ TEST_F(Renderer_Post_Chain_Test, 后处理级数可观测)
 	//链路径：级数 = 链长
 	EXPECT_EQ(renderer.frame_stats_get().post_stages, 2u);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(invert);
-	renderer.pipeline_unload(threshold);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(invert);
+	renderer.resource().pipeline_unload(threshold);
 	renderer.render_target_destroy(second_target);
 	renderer.render_target_destroy(scene_target);
 }
@@ -251,8 +251,8 @@ TEST_F(Renderer_Post_Chain_Test, 逐级参数可读)
 	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
 	EXPECT_EQ(renderer.post_stage_param_get(0, probe), 0u);
 
-	renderer.pipeline_unload(invert);
-	renderer.pipeline_unload(threshold);
+	renderer.resource().pipeline_unload(invert);
+	renderer.resource().pipeline_unload(threshold);
 }
 
 /*
@@ -277,15 +277,15 @@ TEST_F(Renderer_Post_Chain_Test, 级序压缩清除逐级参数)
 	ASSERT_EQ(renderer.post_stage_param_get(2, probe), 1u);
 
 	//卸载中间级 → 级序压缩 → 全部逐级参数清除
-	renderer.pipeline_unload(threshold);
+	renderer.resource().pipeline_unload(threshold);
 	EXPECT_EQ(renderer.post_chain_count(), 2u);
 	float first[4] = {};
 	float second[4] = {};
 	EXPECT_EQ(renderer.post_stage_param_get(0, first), 0u);
 	EXPECT_EQ(renderer.post_stage_param_get(1, second), 0u);
 
-	renderer.pipeline_unload(invert_b);
-	renderer.pipeline_unload(invert_a);
+	renderer.resource().pipeline_unload(invert_b);
+	renderer.resource().pipeline_unload(invert_a);
 }
 
 /*
@@ -395,9 +395,9 @@ TEST_F(Renderer_Post_Chain_Test, 文字经后处理链保持)
 	//文字仍可见（比背景亮）
 	EXPECT_GE(static_cast<int>(grayed[brightest + 1]), 160) << "文字在灰度链下消失";
 
-	renderer.pipeline_unload(gray);
-	renderer.pipeline_unload(invert_a);
-        renderer.pipeline_unload(invert_b);
+	renderer.resource().pipeline_unload(gray);
+	renderer.resource().pipeline_unload(invert_a);
+        renderer.resource().pipeline_unload(invert_b);
         renderer.render_target_destroy(target1);
         renderer.render_target_destroy(target0);
         renderer.ui().font_unload(font);
@@ -447,14 +447,14 @@ TEST_F(Renderer_Post_Chain_Test, 锐化放大边缘对比)
 		if (!renderer.readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 4, 4));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 4, 4));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
 	}
 	//对照帧：单级锐化链
 	std::vector<uint8_t> sharpened(pixel_bytes());
@@ -470,15 +470,15 @@ TEST_F(Renderer_Post_Chain_Test, 锐化放大边缘对比)
 		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
 		renderer.render_target_present_set(target);
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 4, 4));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 4, 4));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render(sharpened.data(), static_cast<uint32_t>(sharpened.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(target);
 	}
 
@@ -547,14 +547,14 @@ TEST_F(Renderer_Post_Chain_Test, 色差分离红蓝通道)
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		renderer.clear_color_set(black);
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 4, 4));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 4, 4));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
 	}
 	//对照帧：单级色差链（该级强度专设 6 像素）
 	std::vector<uint8_t> separated(pixel_bytes());
@@ -572,16 +572,16 @@ TEST_F(Renderer_Post_Chain_Test, 色差分离红蓝通道)
 		renderer.post_stage_param_set(0, 1.0f, 0.0f, 6.0f);
 		renderer.clear_color_set(black);
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 4, 4));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 4, 4));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		renderer.render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(separated.data(), static_cast<uint32_t>(separated.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
-		renderer.pipeline_unload(aberration);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
+		renderer.resource().pipeline_unload(aberration);
 		renderer.render_target_destroy(target);
 	}
 
@@ -657,14 +657,14 @@ TEST_F(Renderer_Post_Chain_Test, 色调分离产生色带)
 		if (!renderer.readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 64, 1));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 64, 1));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
 	}
 	//对照帧：单级色调分离链（色阶数 4）
 	std::vector<uint8_t> posterized(pixel_bytes());
@@ -681,16 +681,16 @@ TEST_F(Renderer_Post_Chain_Test, 色调分离产生色带)
 		//色阶数专设（阈值 / 软膝由校验规则要求合法，本片元不使用）
 		renderer.post_stage_param_set(0, 1.0f, 0.0f, 4.0f);
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 64, 1));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 64, 1));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		renderer.render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(posterized.data(), static_cast<uint32_t>(posterized.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(target);
 	}
 

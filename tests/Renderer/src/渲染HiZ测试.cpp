@@ -169,13 +169,13 @@ TEST_F(Renderer_HiZ_Test, 金字塔逐帧生成)
 	if (!renderer.hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//三个实例（同一网格三批）
 	std::array<float, 16> identity = identity_matrix();
 	std::vector<std::array<float, 16>> matrices = { identity, identity, identity };
 	for (uint32_t frame = 0; frame < 3; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, matrices[0].data(), static_cast<uint32_t>(matrices.size())));
+		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, matrices[0].data(), static_cast<uint32_t>(matrices.size())));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	//三帧均完成生成
@@ -183,7 +183,7 @@ TEST_F(Renderer_HiZ_Test, 金字塔逐帧生成)
 	//两个在途帧槽均已有有效历史
 	for (uint32_t slot = 0; slot < 2; ++slot)
 		EXPECT_TRUE(renderer.hiz_history_ready(slot)) << "帧槽 " << slot;
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -201,7 +201,7 @@ TEST_F(Renderer_HiZ_Test, 深度历史采样句柄)
 	if (!renderer.hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//未生成前：句柄为假且出参归零
 	uint64_t view = 0;
 	uint64_t sampler = 0;
@@ -212,7 +212,7 @@ TEST_F(Renderer_HiZ_Test, 深度历史采样句柄)
 	std::array<float, 16> identity = identity_matrix();
 	for (uint32_t frame = 0; frame < 3; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, identity.data(), 1));
+		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, identity.data(), 1));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	for (uint32_t slot = 0; slot < 2; ++slot)
@@ -229,7 +229,7 @@ TEST_F(Renderer_HiZ_Test, 深度历史采样句柄)
 	EXPECT_FALSE(renderer.hiz_history_sample_get(8, out_view, out_sampler));
 	EXPECT_TRUE(renderer.hiz_enable_set(false));
 	EXPECT_FALSE(renderer.hiz_history_sample_get(0, out_view, out_sampler));
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -241,17 +241,17 @@ TEST_F(Renderer_HiZ_Test, 关闭时不生成)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	std::array<float, 16> identity = identity_matrix();
 	for (uint32_t frame = 0; frame < 3; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, identity.data(), 1));
+		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, identity.data(), 1));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	EXPECT_EQ(renderer.hiz_generation_count(), 0u);
 	EXPECT_FALSE(renderer.hiz_history_ready(0));
 	EXPECT_FALSE(renderer.hiz_history_ready(1));
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -272,7 +272,7 @@ TEST_F(Renderer_HiZ_Test, 遮挡剔除墙后实例)
 	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//近墙：放大 30 倍并平移到 z = 3
 	std::array<float, 16> wall = identity_matrix();
 	wall[0] = 30.0f;
@@ -281,7 +281,7 @@ TEST_F(Renderer_HiZ_Test, 遮挡剔除墙后实例)
 	//两帧：第 0 帧写深度并生成金字塔，第 1 帧再次生成（保证在途槽就绪）
 	for (uint32_t frame = 0; frame < 2; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, wall.data(), 1));
+		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, wall.data(), 1));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	//实例批次（墙后 z = 0 / 墙前 z = 4.5）
@@ -334,7 +334,7 @@ TEST_F(Renderer_HiZ_Test, 遮挡剔除墙后实例)
 	//生成确实发生
 	EXPECT_GE(renderer.hiz_generation_count(), 2u);
 	EXPECT_EQ(without_visible, COUNT);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -354,7 +354,7 @@ TEST_F(Renderer_HiZ_Test, 部分遮挡场景不误剔)
 	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//左右两堵墙：半宽 0.5、半高 1.5（世界），平移 x = ±0.9、z = 3
 	std::array<float, 16> left_wall = identity_matrix();
 	left_wall[0] = 2.0f;
@@ -367,7 +367,7 @@ TEST_F(Renderer_HiZ_Test, 部分遮挡场景不误剔)
 	//两帧：写深度并生成金字塔
 	for (uint32_t frame = 0; frame < 2; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, walls[0].data(), static_cast<uint32_t>(walls.size())));
+		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, walls[0].data(), static_cast<uint32_t>(walls.size())));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	//缝隙内实例（x = 0，墙后 z = 0）
@@ -389,7 +389,7 @@ TEST_F(Renderer_HiZ_Test, 部分遮挡场景不误剔)
 		camera, forward, 0.0f, false, compacted[0].data(), &gap_visible));
 	//缝隙内全部可见（部分遮挡场景零误剔）
 	EXPECT_EQ(gap_visible, COUNT);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -420,14 +420,14 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 		renderer.camera_position_set(0.0f, 0.0f, camera_z);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		std::array<float, 16> wall = identity_matrix();
 		wall[0] = 40.0f;
 		wall[5] = 40.0f;
 		wall[14] = -5.0f;
 		for (uint32_t frame = 0; frame < 2; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, wall.data(), 1));
+			ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, wall.data(), 1));
 			ASSERT_TRUE(renderer.frame_render());
 		}
 		//墙后（z = −8）全部剔除、墙前（z = −2）全部可见
@@ -451,7 +451,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 			camera, forward, 0.0f, false, compacted[0].data(), &front_far));
 		EXPECT_EQ(behind_far, 0u);
 		EXPECT_EQ(front_far, COUNT);
-		renderer.mesh_unload(mesh);
+		renderer.resource().mesh_unload(mesh);
 	}
 	//场景二：双层墙（z = 3 与 z = −2，各放大 40 倍）
 	{
@@ -462,7 +462,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 		renderer.camera_position_set(0.0f, 0.0f, camera_z);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		std::array<float, 16> near_wall = identity_matrix();
 		near_wall[0] = 40.0f;
 		near_wall[5] = 40.0f;
@@ -472,7 +472,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 		std::vector<std::array<float, 16>> walls = { near_wall, far_wall };
 		for (uint32_t frame = 0; frame < 2; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, walls[0].data(), static_cast<uint32_t>(walls.size())));
+			ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, walls[0].data(), static_cast<uint32_t>(walls.size())));
 			ASSERT_TRUE(renderer.frame_render());
 		}
 		//两墙之后（z = −5）全部剔除、近墙之前（z = 4）全部可见
@@ -496,7 +496,7 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 			camera, forward, 0.0f, false, compacted[0].data(), &between));
 		EXPECT_EQ(behind_both, 0u);
 		EXPECT_EQ(between, COUNT);
-		renderer.mesh_unload(mesh);
+		renderer.resource().mesh_unload(mesh);
 	}
 }
 
@@ -517,7 +517,7 @@ TEST_F(Renderer_HiZ_Test, 开启遮挡逐帧像素稳定)
 	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//全屏墙（z = 3，放大 30 倍）＋ 墙后实例（z = 0，10 个）
 	std::array<float, 16> wall = identity_matrix();
 	wall[0] = 30.0f;
@@ -528,9 +528,9 @@ TEST_F(Renderer_HiZ_Test, 开启遮挡逐帧像素稳定)
 	std::vector<std::vector<uint8_t>> frames;
 	for (uint32_t frame = 0; frame < 5; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, wall.data(), 1));
+		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, wall.data(), 1));
 		if (frame > 0)
-			ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
+			ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
 		std::vector<uint8_t> pixels(pixel_count, 0u);
 		uint32_t width = 0;
 		uint32_t height = 0;
@@ -546,7 +546,7 @@ TEST_F(Renderer_HiZ_Test, 开启遮挡逐帧像素稳定)
 			== frames[0].end();
 		EXPECT_TRUE(same) << "帧 " << frame << " 与首帧存在差异";
 	}
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -569,7 +569,7 @@ TEST_F(Renderer_HiZ_Test, MSAA路径生成与剔除)
 	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//近墙（z = 3，放大 30 倍）
 	std::array<float, 16> wall = identity_matrix();
 	wall[0] = 30.0f;
@@ -577,7 +577,7 @@ TEST_F(Renderer_HiZ_Test, MSAA路径生成与剔除)
 	wall[14] = 3.0f;
 	for (uint32_t frame = 0; frame < 2; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, wall.data(), 1));
+		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, wall.data(), 1));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	//生成发生
@@ -594,7 +594,7 @@ TEST_F(Renderer_HiZ_Test, MSAA路径生成与剔除)
 	ASSERT_TRUE(renderer.gpu_instance_compact_ex(behind[0].data(), COUNT, local_min, local_max,
 		camera, forward, 0.0f, false, compacted[0].data(), &behind_visible));
 	EXPECT_EQ(behind_visible, 0u);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -615,7 +615,7 @@ TEST_F(Renderer_HiZ_Test, 遮挡观测与三态)
 	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//近墙（z = 3）两帧预热
 	std::array<float, 16> wall = identity_matrix();
 	wall[0] = 30.0f;
@@ -623,12 +623,12 @@ TEST_F(Renderer_HiZ_Test, 遮挡观测与三态)
 	wall[14] = 3.0f;
 	for (uint32_t frame = 0; frame < 2; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, wall.data(), 1));
+		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, wall.data(), 1));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	//墙后 200 实例走 GPU 剔除路径：遮挡计数应大于 0
 	std::vector<std::array<float, 16>> behind(200, identity_matrix());
-	ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
+	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
 	ASSERT_TRUE(renderer.frame_render());
 	const engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_GT(stats.gpu_occluded, 0u);
@@ -637,11 +637,11 @@ TEST_F(Renderer_HiZ_Test, 遮挡观测与三态)
 	engine::Renderer_Config plain = hidden_config();
 	plain.gpu_cull_enable = true;
 	ASSERT_TRUE(without.init(plain));
-	ASSERT_TRUE(without.mesh_load(mesh, quad_data()));
-	ASSERT_TRUE(without.mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
+	ASSERT_TRUE(without.resource().mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(without.resource().mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
 	ASSERT_TRUE(without.frame_render());
 	EXPECT_EQ(without.frame_stats_get().gpu_occluded, 0u);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -686,8 +686,8 @@ TEST_F(Renderer_HiZ_Test, 性能对照)
 	ASSERT_TRUE(on.init(hiz));
 	engine::Mesh_Handle off_mesh = 0;
 	engine::Mesh_Handle on_mesh = 0;
-	ASSERT_TRUE(off.mesh_load(off_mesh, quad_data()));
-	ASSERT_TRUE(on.mesh_load(on_mesh, quad_data()));
+	ASSERT_TRUE(off.resource().mesh_load(off_mesh, quad_data()));
+	ASSERT_TRUE(on.resource().mesh_load(on_mesh, quad_data()));
 	//相机（两态一致）
 	off.camera_position_set(0.0f, 0.0f, 5.0f);
 	off.camera_target_set(0.0f, 0.0f, 0.0f);
@@ -700,10 +700,10 @@ TEST_F(Renderer_HiZ_Test, 性能对照)
 	uint64_t occluded = 0;
 	for (uint32_t frame = 0; frame < FRAMES; ++frame)
 	{
-		ASSERT_TRUE(off.mesh_draw_instanced(off_mesh, wall.data(), 1));
-		ASSERT_TRUE(off.mesh_draw_instanced(off_mesh, matrices[0].data(), INSTANCES));
-		ASSERT_TRUE(on.mesh_draw_instanced(on_mesh, wall.data(), 1));
-		ASSERT_TRUE(on.mesh_draw_instanced(on_mesh, matrices[0].data(), INSTANCES));
+		ASSERT_TRUE(off.resource().mesh_draw_instanced(off_mesh, wall.data(), 1));
+		ASSERT_TRUE(off.resource().mesh_draw_instanced(off_mesh, matrices[0].data(), INSTANCES));
+		ASSERT_TRUE(on.resource().mesh_draw_instanced(on_mesh, wall.data(), 1));
+		ASSERT_TRUE(on.resource().mesh_draw_instanced(on_mesh, matrices[0].data(), INSTANCES));
 		ASSERT_TRUE(off.frame_render());
 		ASSERT_TRUE(on.frame_render());
 		const engine::Frame_Stats off_stats = off.frame_stats_get();
@@ -724,8 +724,8 @@ TEST_F(Renderer_HiZ_Test, 性能对照)
 	//自洽性：开启态确有生成与遮挡剔除
 	EXPECT_GE(on.hiz_generation_count(), FRAMES);
 	EXPECT_GE(occluded, 1u);
-	off.mesh_unload(off_mesh);
-	on.mesh_unload(on_mesh);
+	off.resource().mesh_unload(off_mesh);
+	on.resource().mesh_unload(on_mesh);
 }
 
 /*
@@ -749,7 +749,7 @@ TEST_F(Renderer_HiZ_Test, 开关组合矩阵)
 		renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		//全屏墙（z = 3，放大 30 倍）＋ 墙后 10 实例
 		std::array<float, 16> wall = identity_matrix();
 		wall[0] = 30.0f;
@@ -758,8 +758,8 @@ TEST_F(Renderer_HiZ_Test, 开关组合矩阵)
 		std::vector<std::array<float, 16>> behind(10, identity_matrix());
 		for (uint32_t frame = 0; frame < 3; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, wall.data(), 1));
-			ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
+			ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, wall.data(), 1));
+			ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
 			ASSERT_TRUE(renderer.frame_render());
 		}
 		//末帧回读
@@ -770,7 +770,7 @@ TEST_F(Renderer_HiZ_Test, 开关组合矩阵)
 		ASSERT_EQ(width, WINDOW_WIDTH);
 		ASSERT_EQ(height, WINDOW_HEIGHT);
 		results.push_back(std::move(pixels));
-		renderer.mesh_unload(mesh);
+		renderer.resource().mesh_unload(mesh);
 	}
 	//四种组合画面逐字节一致
 	for (uint32_t combo = 1; combo < results.size(); ++combo)
@@ -786,14 +786,14 @@ TEST_F(Renderer_HiZ_Test, 开关切换前后出帧守恒)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//两个实例（同一网格两批）
 	std::array<float, 16> identity = identity_matrix();
 	std::array<float, 16> shifted = identity;
 	shifted[12] = 0.6f;
 	std::vector<std::array<float, 16>> matrices = { identity, shifted };
 	//先关闭态出帧
-	ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, matrices[0].data(), static_cast<uint32_t>(matrices.size())));
+	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, matrices[0].data(), static_cast<uint32_t>(matrices.size())));
 	ASSERT_TRUE(renderer.frame_render());
 	//关闭态本帧实际绘制实例数（统计为累计值，故取本帧前后差值）
 	const engine::Frame_Stats off_stats = renderer.frame_stats_get();
@@ -801,12 +801,12 @@ TEST_F(Renderer_HiZ_Test, 开关切换前后出帧守恒)
 	//开启 Hi-Z（能力不足时保持关闭，仍须正常出帧）
 	if (renderer.hiz_supported())
 		ASSERT_TRUE(renderer.hiz_enable_set(true));
-	ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, matrices[0].data(), static_cast<uint32_t>(matrices.size())));
+	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, matrices[0].data(), static_cast<uint32_t>(matrices.size())));
 	ASSERT_TRUE(renderer.frame_render());
 	const engine::Frame_Stats on_stats = renderer.frame_stats_get();
 	const uint64_t on_drawn = on_stats.drawn_instances - off_drawn;
 	//两态本帧实际绘制实例数一致
 	EXPECT_EQ(off_drawn, on_drawn);
 	EXPECT_GE(on_drawn, 1u);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }

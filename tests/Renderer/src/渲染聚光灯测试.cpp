@@ -19,10 +19,10 @@ TEST_F(Renderer_Scene_Test, 聚光灯只照亮锥内)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	renderer.resource().texture_bind_set(texture);
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	//关闭方向光（本用例只观察聚光灯）
@@ -37,7 +37,7 @@ TEST_F(Renderer_Scene_Test, 聚光灯只照亮锥内)
 	//渲染一帧并返回「中心 / 右上角样本」亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_pair = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return std::array<uint32_t, 2>{ brightness_at(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2),
@@ -64,8 +64,8 @@ TEST_F(Renderer_Scene_Test, 聚光灯只照亮锥内)
 	EXPECT_LE(narrow[1], 40u) << "锥外区域未被压暗（亮度 " << narrow[1] << "）";
 	EXPECT_GE(wide[1], 150u) << "宽锥未照亮角部（亮度 " << wide[1] << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -112,10 +112,10 @@ TEST_F(Renderer_Scene_Test, 场景描述携带聚光灯只照亮锥内)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//指定像素的 RGB 均值（亮度粗量；通道序无关）
 	auto brightness_at = [](const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
@@ -126,7 +126,7 @@ TEST_F(Renderer_Scene_Test, 场景描述携带聚光灯只照亮锥内)
 	//渲染一帧并返回「中心 / 右上角样本」亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_pair = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return std::array<uint32_t, 2>{ brightness_at(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2),
@@ -163,8 +163,8 @@ TEST_F(Renderer_Scene_Test, 场景描述携带聚光灯只照亮锥内)
 	uint32_t center_gap = narrow[0] > wide[0] ? narrow[0] - wide[0] : wide[0] - narrow[0];
 	EXPECT_LE(center_gap, 6u) << "锥角变化改变了中心亮度（" << narrow[0] << " vs " << wide[0] << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -180,15 +180,15 @@ TEST_F(Renderer_Scene_Test, 场景描述聚光灯非法参数被跳过)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return pixels;
@@ -210,8 +210,8 @@ TEST_F(Renderer_Scene_Test, 场景描述聚光灯非法参数被跳过)
 	EXPECT_EQ(after, plain) << "非法聚光灯改变了画面";
 	EXPECT_GE(center_brightness(after), 200u) << "方向光未继续生效";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -227,10 +227,10 @@ TEST_F(Renderer_Scene_Test, 平方反比衰减模式可切换)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	renderer.resource().texture_bind_set(texture);
 	//关闭方向光，只观察点光源
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
@@ -241,7 +241,7 @@ TEST_F(Renderer_Scene_Test, 平方反比衰减模式可切换)
 	//渲染一帧并返回中心亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_brightness = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return center_brightness(pixels);
@@ -265,8 +265,8 @@ TEST_F(Renderer_Scene_Test, 平方反比衰减模式可切换)
 	uint32_t gap = restored > linear ? restored - linear : linear - restored;
 	EXPECT_LE(gap, 2u) << "切回线性后亮度未恢复（" << linear << " vs " << restored << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -281,10 +281,10 @@ TEST_F(Renderer_Scene_Test, 非法衰减模式被拒)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	renderer.resource().texture_bind_set(texture);
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
 	renderer.light_set(forward, white_light, 0.0f, 0.0f);
@@ -294,7 +294,7 @@ TEST_F(Renderer_Scene_Test, 非法衰减模式被拒)
 	//渲染一帧并返回像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return pixels;
@@ -306,8 +306,8 @@ TEST_F(Renderer_Scene_Test, 非法衰减模式被拒)
 	EXPECT_EQ(renderer.light_attenuation_get(), 0u);
 	EXPECT_EQ(render_frame(), baseline) << "非法衰减模式改变了画面";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -323,15 +323,15 @@ TEST_F(Renderer_Scene_Test, 场景描述携带衰减模式)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回中心亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_brightness = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return center_brightness(pixels);
@@ -355,8 +355,8 @@ TEST_F(Renderer_Scene_Test, 场景描述携带衰减模式)
 	RecordProperty("scene_atten_inverse", inverse);
 	EXPECT_GE(inverse, linear + 40u) << "场景描述中的衰减模式未生效（" << linear << " → " << inverse << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -371,15 +371,15 @@ TEST_F(Renderer_Scene_Test, 场景描述非法衰减模式被忽略)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return pixels;
@@ -395,8 +395,8 @@ TEST_F(Renderer_Scene_Test, 场景描述非法衰减模式被忽略)
 	EXPECT_EQ(renderer.light_attenuation_get(), 0u);
 	EXPECT_EQ(render_frame(), plain) << "场景描述中的非法衰减模式改变了画面";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -414,10 +414,10 @@ TEST_F(Renderer_Scene_Test, 平方反比下聚光灯仍只照锥内)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	renderer.resource().texture_bind_set(texture);
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	//关闭方向光并切平方反比衰减
@@ -429,7 +429,7 @@ TEST_F(Renderer_Scene_Test, 平方反比下聚光灯仍只照锥内)
 	//渲染一帧并返回「中心 / 右上角样本」亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_pair = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		std::array<uint8_t, 4> center = pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -445,8 +445,8 @@ TEST_F(Renderer_Scene_Test, 平方反比下聚光灯仍只照锥内)
 	EXPECT_GE(pair[0], 200u) << "平方反比下锥内未被照亮（亮度 " << pair[0] << "）";
 	EXPECT_LE(pair[1], 40u) << "平方反比削弱了锥形（锥外亮度 " << pair[1] << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -462,10 +462,10 @@ TEST_F(Renderer_Scene_Test, 聚光灯锥内两种衰减可区分)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	renderer.resource().texture_bind_set(texture);
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	renderer.light_set(forward, white_light, 0.0f, 0.0f);
@@ -475,7 +475,7 @@ TEST_F(Renderer_Scene_Test, 聚光灯锥内两种衰减可区分)
 	//渲染一帧并返回中心亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_brightness = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return center_brightness(pixels);
@@ -490,8 +490,8 @@ TEST_F(Renderer_Scene_Test, 聚光灯锥内两种衰减可区分)
 	RecordProperty("spot_atten_inverse", inverse);
 	EXPECT_GE(inverse, linear + 40u) << "聚光灯未随衰减模式变亮（" << linear << " → " << inverse << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -508,15 +508,15 @@ TEST_F(Renderer_Scene_Test, 逐光源衰减模式覆盖全局)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.5f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.5f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回中心亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_brightness = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return center_brightness(pixels);
@@ -559,8 +559,8 @@ TEST_F(Renderer_Scene_Test, 逐光源衰减模式覆盖全局)
 	EXPECT_NEAR(follow, inverse, 4u) << "逐盏模式 0 未跟随全局（" << follow << " vs " << inverse << "）";
 	EXPECT_NEAR(clamped, inverse, 4u) << "逐光源模式越界未被钳到 2（" << clamped << " vs " << inverse << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*

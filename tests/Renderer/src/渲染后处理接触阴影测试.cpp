@@ -79,16 +79,16 @@ namespace
 		//左侧接收面（z = 0）与右侧偏后遮挡板（z = -0.4）
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		EXPECT_TRUE(renderer.mesh_load(receiver, offset_quad(0.5f, -0.45f, 0.0f)));
-		EXPECT_TRUE(renderer.mesh_load(occluder, offset_quad(0.5f, 0.45f, -0.4f)));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, nullptr));
-		EXPECT_TRUE(renderer.mesh_draw(occluder, nullptr));
-		renderer.mesh_unload(receiver);
-		renderer.mesh_unload(occluder);
+		EXPECT_TRUE(renderer.resource().mesh_load(receiver, offset_quad(0.5f, -0.45f, 0.0f)));
+		EXPECT_TRUE(renderer.resource().mesh_load(occluder, offset_quad(0.5f, 0.45f, -0.4f)));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, nullptr));
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().mesh_unload(occluder);
 
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.pipeline_unload(pass);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return pixels;
 	}
@@ -152,16 +152,16 @@ namespace
 		//左侧接收面（z = 0）与右侧偏后遮挡板（z = -0.4）
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		EXPECT_TRUE(renderer.mesh_load(receiver, offset_quad(0.5f, -0.45f, 0.0f)));
-		EXPECT_TRUE(renderer.mesh_load(occluder, offset_quad(0.5f, 0.45f, -0.4f)));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, nullptr));
-		EXPECT_TRUE(renderer.mesh_draw(occluder, nullptr));
-		renderer.mesh_unload(receiver);
-		renderer.mesh_unload(occluder);
+		EXPECT_TRUE(renderer.resource().mesh_load(receiver, offset_quad(0.5f, -0.45f, 0.0f)));
+		EXPECT_TRUE(renderer.resource().mesh_load(occluder, offset_quad(0.5f, 0.45f, -0.4f)));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, nullptr));
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().mesh_unload(occluder);
 
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.pipeline_unload(pass);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return pixels;
 	}
@@ -218,16 +218,16 @@ namespace
 		//左侧接收面（z = 0）与右侧偏后遮挡板（z = -0.4）
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		EXPECT_TRUE(renderer.mesh_load(receiver, offset_quad(0.5f, -0.45f, 0.0f)));
-		EXPECT_TRUE(renderer.mesh_load(occluder, offset_quad(0.5f, 0.45f, -0.4f)));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, nullptr));
-		EXPECT_TRUE(renderer.mesh_draw(occluder, nullptr));
-		renderer.mesh_unload(receiver);
-		renderer.mesh_unload(occluder);
+		EXPECT_TRUE(renderer.resource().mesh_load(receiver, offset_quad(0.5f, -0.45f, 0.0f)));
+		EXPECT_TRUE(renderer.resource().mesh_load(occluder, offset_quad(0.5f, 0.45f, -0.4f)));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, nullptr));
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().mesh_unload(occluder);
 
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.pipeline_unload(pass);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return pixels;
 	}

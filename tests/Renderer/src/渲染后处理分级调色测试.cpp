@@ -56,16 +56,16 @@ namespace
 	std::vector<uint8_t> render_with_chain(engine::Renderer& renderer, const std::vector<uint8_t>& texels)
 	{
 		uint64_t texture = 0;
-		EXPECT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+		EXPECT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 		//先绑定本用例的纹理（辅助的 scene_register 会回绑默认白纹理，故此处自行登记）
-		renderer.texture_bind_set(texture);
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		EXPECT_TRUE(renderer.mesh_load(handle, quad_data()));
-		EXPECT_TRUE(renderer.mesh_draw(handle, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
 		return pixels;
 	}
 }
@@ -94,8 +94,8 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色恒等与直通一致)
 		ASSERT_TRUE(renderer.post_chain_set(passes, 2));
 		renderer.render_target_present_set(scene_target);
 		reference = render_with_chain(renderer, std::vector<uint8_t>(2 * 2 * 4, 255));
-		renderer.pipeline_unload(passes[0]);
-		renderer.pipeline_unload(passes[1]);
+		renderer.resource().pipeline_unload(passes[0]);
+		renderer.resource().pipeline_unload(passes[1]);
 		renderer.render_target_destroy(scene_target);
 	}
 	//对照帧：分级调色（恒等）→ 反色
@@ -116,8 +116,8 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色恒等与直通一致)
 		renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
 		renderer.render_target_present_set(scene_target);
 		graded = render_with_chain(renderer, std::vector<uint8_t>(2 * 2 * 4, 255));
-		renderer.pipeline_unload(passes[0]);
-		renderer.pipeline_unload(passes[1]);
+		renderer.resource().pipeline_unload(passes[0]);
+		renderer.resource().pipeline_unload(passes[1]);
 		renderer.render_target_destroy(scene_target);
 	}
 
@@ -171,7 +171,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色增益与伽马方向)
 	EXPECT_GE(bright_gamma, identity + 30) << "gamma 2.0 未提亮（" << bright_gamma << "）";
 	EXPECT_LE(dark_gamma, identity - 30) << "gamma 0.5 未压暗（" << dark_gamma << "）";
 
-	renderer.pipeline_unload(grade);
+	renderer.resource().pipeline_unload(grade);
 	renderer.render_target_destroy(scene_target);
 }
 
@@ -216,7 +216,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色饱和度归零)
 	落盘后约为 127 字节；与饱和帧的字节亮度（18）直接比较无意义，故此处只断言「去饱和后三通道一致」。
 	*/
 
-	renderer.pipeline_unload(grade);
+	renderer.resource().pipeline_unload(grade);
 	renderer.render_target_destroy(scene_target);
 }
 
@@ -254,7 +254,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色非法参数忽略)
 	ASSERT_EQ(renderer.post_stage_param_get(0, params), 1u);
 	EXPECT_FLOAT_EQ(params[0], 0.0f) << "链外级序影响了当前级";
 
-	renderer.pipeline_unload(pass);
+	renderer.resource().pipeline_unload(pass);
 }
 
 /*
@@ -279,7 +279,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色串联反色可逆)
 		renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
 		renderer.render_target_present_set(scene_target);
 		single = render_with_chain(renderer, gray_texels());
-		renderer.pipeline_unload(grade);
+		renderer.resource().pipeline_unload(grade);
 		renderer.render_target_destroy(scene_target);
 	}
 	//链 A：恒等调色 → 反色 → 反色
@@ -302,9 +302,9 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色串联反色可逆)
 		renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
 		renderer.render_target_present_set(scene_target);
 		inverted = render_with_chain(renderer, gray_texels());
-		renderer.pipeline_unload(passes[0]);
-		renderer.pipeline_unload(passes[1]);
-		renderer.pipeline_unload(passes[2]);
+		renderer.resource().pipeline_unload(passes[0]);
+		renderer.resource().pipeline_unload(passes[1]);
+		renderer.resource().pipeline_unload(passes[2]);
 		renderer.render_target_destroy(scene_target);
 	}
 

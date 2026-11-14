@@ -92,17 +92,17 @@ TEST_F(Renderer_Scene_Test, 水平面可见)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	应用场景(渲染器);
 	//白色纹理 ＋ 20×20 水平面
-	渲染器.texture_bind_set(0);
+	渲染器.resource().texture_bind_set(0);
 	engine::Mesh_Handle 地面 = 0;
-	ASSERT_TRUE(渲染器.mesh_load(地面, 水平面数据(20.0f)));
-	ASSERT_TRUE(渲染器.mesh_draw(地面, nullptr));
+	ASSERT_TRUE(渲染器.resource().mesh_load(地面, 水平面数据(20.0f)));
+	ASSERT_TRUE(渲染器.resource().mesh_draw(地面, nullptr));
 	std::vector<uint8_t> 像素(pixel_bytes());
 	ASSERT_TRUE(渲染器.frame_render(像素.data(), static_cast<uint32_t>(像素.size())));
 	//下半部（地面应覆盖的区域）的亮像素
 	const uint32_t 下半亮像素 = bright_pixels(像素, WINDOW_HEIGHT / 2, WINDOW_HEIGHT, 60);
 	RecordProperty("horizontal_bright_pixels", 下半亮像素);
 	EXPECT_GT(下半亮像素, 50u) << "水平面未被绘制（下半部亮像素过少）";
-	渲染器.mesh_unload(地面);
+	渲染器.resource().mesh_unload(地面);
 }
 
 /*
@@ -117,21 +117,21 @@ TEST_F(Renderer_Scene_Test, 竖直面可见)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	应用场景(渲染器);
 	//白色纹理 ＋ 2×2 竖直面，放在相机正前方
-	渲染器.texture_bind_set(0);
+	渲染器.resource().texture_bind_set(0);
 	engine::Mesh_Handle 立板 = 0;
-	ASSERT_TRUE(渲染器.mesh_load(立板, 竖直面数据(1.0f, 1.0f)));
+	ASSERT_TRUE(渲染器.resource().mesh_load(立板, 竖直面数据(1.0f, 1.0f)));
 	const std::array<float, 16> 平移 = {
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 2.0f, -2.0f, 1.0f,
 	};
-	ASSERT_TRUE(渲染器.mesh_draw(立板, 平移.data()));
+	ASSERT_TRUE(渲染器.resource().mesh_draw(立板, 平移.data()));
 	std::vector<uint8_t> 像素(pixel_bytes());
 	ASSERT_TRUE(渲染器.frame_render(像素.data(), static_cast<uint32_t>(像素.size())));
 	//中央区域（竖直面应覆盖）
 	const uint32_t 中央亮像素 = bright_pixels(像素, WINDOW_HEIGHT / 4, WINDOW_HEIGHT * 3 / 4, 60);
 	RecordProperty("vertical_bright_pixels", 中央亮像素);
 	EXPECT_GT(中央亮像素, 50u) << "竖直面未被绘制（渲染环境异常）";
-	渲染器.mesh_unload(立板);
+	渲染器.resource().mesh_unload(立板);
 }

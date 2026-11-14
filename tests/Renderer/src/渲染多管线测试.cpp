@@ -152,7 +152,7 @@ TEST_F(Renderer_Multi_Pipeline_Test, 未初始化登记管线失败)
 	engine::Renderer renderer;
 	//未 init 直接登记
 	uint64_t handle = 12345;
-	EXPECT_FALSE(renderer.pipeline_load(handle, VERTEX_SHADER, SOLID_FRAGMENT_SHADER));
+	EXPECT_FALSE(renderer.resource().pipeline_load(handle, VERTEX_SHADER, SOLID_FRAGMENT_SHADER));
 	//句柄须被复位为 0（无效）
 	EXPECT_EQ(handle, 0u);
 }
@@ -164,7 +164,7 @@ TEST_F(Renderer_Multi_Pipeline_Test, 不存在的着色器登记失败)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//片元着色器文件名不存在
 	uint64_t handle = 0;
-	EXPECT_FALSE(renderer.pipeline_load(handle, VERTEX_SHADER, "不存在的着色器.frag.spv"));
+	EXPECT_FALSE(renderer.resource().pipeline_load(handle, VERTEX_SHADER, "不存在的着色器.frag.spv"));
 	EXPECT_EQ(handle, 0u);
 	//帧仍正常推进（登记失败不破坏帧循环）
 	std::vector<uint8_t> pixels(pixel_bytes());
@@ -182,25 +182,25 @@ TEST_F(Renderer_Multi_Pipeline_Test, 同帧两项不同管线各自正确)
 	//加载纯绿纹理并绑定（供默认场景管线采样）
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	//加载四边形
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 
 	//登记具名纯色管线（片元输出纯红）
 	uint64_t solid_pipeline = 0;
-	ASSERT_TRUE(renderer.pipeline_load(solid_pipeline, VERTEX_SHADER, SOLID_FRAGMENT_SHADER));
+	ASSERT_TRUE(renderer.resource().pipeline_load(solid_pipeline, VERTEX_SHADER, SOLID_FRAGMENT_SHADER));
 	EXPECT_GE(solid_pipeline, 1u);
 
 	//第一项：默认场景管线（贴绿纹理）画左半屏
 	std::array<float, 16> left = left_half_matrix();
-	ASSERT_TRUE(renderer.mesh_draw(handle, left.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, left.data()));
 	//切换到具名纯色管线
-	renderer.pipeline_bind_set(solid_pipeline);
+	renderer.resource().pipeline_bind_set(solid_pipeline);
 	//第二项：具名纯色管线画右半屏
 	std::array<float, 16> right = right_half_matrix();
-	ASSERT_TRUE(renderer.mesh_draw(handle, right.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, right.data()));
 
 	//渲染并回读
 	std::vector<uint8_t> pixels(pixel_bytes());
@@ -221,16 +221,16 @@ TEST_F(Renderer_Multi_Pipeline_Test, 同帧两项不同管线各自正确)
 	}
 
 	//切回默认场景管线后重复绘制左半屏，确认档位可往返（同帧登记须逐帧重做）
-	renderer.pipeline_bind_set(0);
-	ASSERT_TRUE(renderer.mesh_draw(handle, left.data()));
+	renderer.resource().pipeline_bind_set(0);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, left.data()));
 	std::vector<uint8_t> again(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(again.data(), static_cast<uint32_t>(again.size())));
 	EXPECT_TRUE(pixel_is_green(pixel_get(again, left_x, WINDOW_HEIGHT / 2)))
 		<< "切回默认管线后未恢复纹理色";
 
-	renderer.pipeline_unload(solid_pipeline);
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().pipeline_unload(solid_pipeline);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 //无效句柄回落默认场景管线
@@ -243,24 +243,24 @@ TEST_F(Renderer_Multi_Pipeline_Test, 无效句柄回落默认管线)
 	//加载纯绿纹理并绑定
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	//加载四边形
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 
 	//选择一个从未登记的句柄
-	renderer.pipeline_bind_set(99999u);
+	renderer.resource().pipeline_bind_set(99999u);
 	//全屏绘制（单位矩阵）
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	//中心应为默认场景管线的纹理绿
 	EXPECT_TRUE(pixel_is_green(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)))
 		<< "无效句柄未回落默认管线";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 //卸载具名管线后其句柄失效并回落默认场景管线
@@ -273,29 +273,29 @@ TEST_F(Renderer_Multi_Pipeline_Test, 卸载后句柄失效)
 	//加载纯绿纹理并绑定
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	//加载四边形
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 
 	//登记并选择具名纯色管线
 	uint64_t solid_pipeline = 0;
-	ASSERT_TRUE(renderer.pipeline_load(solid_pipeline, VERTEX_SHADER, SOLID_FRAGMENT_SHADER));
-	renderer.pipeline_bind_set(solid_pipeline);
+	ASSERT_TRUE(renderer.resource().pipeline_load(solid_pipeline, VERTEX_SHADER, SOLID_FRAGMENT_SHADER));
+	renderer.resource().pipeline_bind_set(solid_pipeline);
 
 	//卸载该管线（当前所选即被卸载，应自动回落默认）
-	renderer.pipeline_unload(solid_pipeline);
+	renderer.resource().pipeline_unload(solid_pipeline);
 	//卸载后再次选择该句柄（已失效）亦应回落默认，不崩溃
-	renderer.pipeline_bind_set(solid_pipeline);
+	renderer.resource().pipeline_bind_set(solid_pipeline);
 
 	//全屏绘制 → 应走默认场景管线（纹理绿），且帧正常推进
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	EXPECT_TRUE(pixel_is_green(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)))
 		<< "卸载后未回落默认场景管线";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }

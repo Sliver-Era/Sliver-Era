@@ -23,8 +23,8 @@ namespace
 	void scene_two_layers(engine::Renderer& renderer, engine::Mesh_Handle& receiver, engine::Mesh_Handle& occluder)
 	{
 		const std::array<float, 16> near_matrix = near_quad_matrix();
-		ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
-		ASSERT_TRUE(renderer.mesh_draw(occluder, near_matrix.data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(occluder, near_matrix.data()));
 	}
 
 	//统计「本帧比参考帧暗至少 threshold」的像素数（复用 luma 口径）
@@ -52,13 +52,13 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽强度为零原样输出)
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		ASSERT_TRUE(renderer.mesh_load(receiver, quad_data()));
-		ASSERT_TRUE(renderer.mesh_load(occluder, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data()));
 		scene_two_layers(renderer, receiver, occluder);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(receiver);
-		renderer.mesh_unload(occluder);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().mesh_unload(occluder);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 	//对照帧：遮蔽（强度 0）
@@ -77,13 +77,13 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽强度为零原样输出)
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		ASSERT_TRUE(renderer.mesh_load(receiver, quad_data()));
-		ASSERT_TRUE(renderer.mesh_load(occluder, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data()));
 		scene_two_layers(renderer, receiver, occluder);
 		ASSERT_TRUE(renderer.frame_render(disabled.data(), static_cast<uint32_t>(disabled.size())));
-		renderer.mesh_unload(receiver);
-		renderer.mesh_unload(occluder);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().mesh_unload(occluder);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 	int difference = max_channel_diff(reference, disabled);
@@ -113,13 +113,13 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽在一圈轮廓外压暗)
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		ASSERT_TRUE(renderer.mesh_load(receiver, quad_data()));
-		ASSERT_TRUE(renderer.mesh_load(occluder, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data()));
 		scene_two_layers(renderer, receiver, occluder);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(receiver);
-		renderer.mesh_unload(occluder);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().mesh_unload(occluder);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 	//对照帧：遮蔽（强度 1）
@@ -138,13 +138,13 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽在一圈轮廓外压暗)
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		ASSERT_TRUE(renderer.mesh_load(receiver, quad_data()));
-		ASSERT_TRUE(renderer.mesh_load(occluder, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data()));
 		scene_two_layers(renderer, receiver, occluder);
 		ASSERT_TRUE(renderer.frame_render(shaded.data(), static_cast<uint32_t>(shaded.size())));
-		renderer.mesh_unload(receiver);
-		renderer.mesh_unload(occluder);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().mesh_unload(occluder);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 	//轮廓外压暗像素数

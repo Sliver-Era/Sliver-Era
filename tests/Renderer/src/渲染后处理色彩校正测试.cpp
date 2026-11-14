@@ -1,4 +1,4 @@
-﻿/*
+/*
 渲染层后处理色彩校正 / 径向模糊 / 色温测试（第一百零八～一百一十轮）
 覆盖：色彩校正的饱和度与亮度、径向模糊的画面差异、色温的红蓝偏移方向。
 */
@@ -13,8 +13,8 @@ namespace
 	//登记「纹理四边形」场景（调用方自行绑定纹理）
 	void quad_register(engine::Renderer& renderer, engine::Mesh_Handle& handle_out)
 	{
-		ASSERT_TRUE(renderer.mesh_load(handle_out, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle_out, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle_out, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle_out, nullptr));
 	}
 
 	//直接渲染到交换链并回读（无后处理链）
@@ -47,7 +47,7 @@ namespace
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		//清理
 		renderer.render_target_present_set(0);
-		renderer.pipeline_unload(pipeline);
+		renderer.resource().pipeline_unload(pipeline);
 		renderer.render_target_destroy(target);
 		return pixels;
 	}
@@ -69,8 +69,8 @@ TEST_F(Renderer_Post_Grade_Test, 色彩校正饱和度与亮度)
 	//纯红 1×1 纹理贴满四边形
 	uint64_t texture = 0;
 	const uint8_t red[4] = { 255, 0, 0, 255 };
-	ASSERT_TRUE(renderer.texture_load(texture, red, 1, 1));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, red, 1, 1));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle quad = 0;
 	quad_register(renderer, quad);
 
@@ -95,8 +95,8 @@ TEST_F(Renderer_Post_Grade_Test, 色彩校正饱和度与亮度)
 	//以红通道（下标 2）比较亮度变化
 	EXPECT_LT(dim_pixel[2], base[2]) << "亮度 0.5 应变暗";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }
 
 //径向模糊：棋盘格画面与基准存在明显差异
@@ -109,8 +109,8 @@ TEST_F(Renderer_Post_Grade_Test, 径向模糊产生画面差异)
 
 	//棋盘格纹理增强高频细节
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, 32, 32, 4));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 32, 32, 4));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle quad = 0;
 	quad_register(renderer, quad);
 	std::vector<uint8_t> reference = render_direct(renderer);
@@ -120,8 +120,8 @@ TEST_F(Renderer_Post_Grade_Test, 径向模糊产生画面差异)
 	std::vector<uint8_t> blurred = render_stage(renderer, "径向模糊.frag.spv", 0.8f, 0.0f, 1.0f);
 	EXPECT_GT(max_channel_diff(reference, blurred), 20) << "径向模糊未产生可见变化";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }
 
 //色温：暖色使红通道高于蓝通道，冷色相反
@@ -135,8 +135,8 @@ TEST_F(Renderer_Post_Grade_Test, 色温冷暖偏移方向)
 	//中灰纹理
 	uint64_t texture = 0;
 	const uint8_t gray[4] = { 128, 128, 128, 255 };
-	ASSERT_TRUE(renderer.texture_load(texture, gray, 1, 1));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, gray, 1, 1));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle quad = 0;
 	quad_register(renderer, quad);
 
@@ -152,6 +152,6 @@ TEST_F(Renderer_Post_Grade_Test, 色温冷暖偏移方向)
 	std::array<uint8_t, 4> cool_pixel = pixel_get(cool, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	EXPECT_GT(static_cast<int>(cool_pixel[0]) - static_cast<int>(cool_pixel[2]), 20) << "冷色应蓝多于红";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }

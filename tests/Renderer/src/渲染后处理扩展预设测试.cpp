@@ -13,8 +13,8 @@ namespace
 	//登记四边形场景
 	void quad_register(engine::Renderer& renderer, engine::Mesh_Handle& handle_out)
 	{
-		ASSERT_TRUE(renderer.mesh_load(handle_out, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle_out, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle_out, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle_out, nullptr));
 	}
 
 	//直接渲染到交换链并回读
@@ -39,7 +39,7 @@ namespace
 		std::vector<uint8_t> pixels(pixel_bytes(), 0);
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		renderer.render_target_present_set(0);
-		renderer.pipeline_unload(pipeline);
+		renderer.resource().pipeline_unload(pipeline);
 		renderer.render_target_destroy(target);
 		return pixels;
 	}
@@ -59,8 +59,8 @@ TEST_F(Renderer_Post_Extra_Test, 色调分离抖动)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, 32, 32, 4));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 32, 32, 4));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle quad = 0;
 	quad_register(renderer, quad);
 	std::vector<uint8_t> reference = render_direct(renderer);
@@ -70,8 +70,8 @@ TEST_F(Renderer_Post_Extra_Test, 色调分离抖动)
 	std::vector<uint8_t> posterized = render_stage(renderer, "色调分离抖动.frag.spv", 3.0f, 0.0f, 1.0f);
 	EXPECT_GT(max_channel_diff(reference, posterized), 5) << "色调分离未产生可见变化";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }
 
 //桶形畸变：径向缩放应改变边缘区域采样
@@ -83,8 +83,8 @@ TEST_F(Renderer_Post_Extra_Test, 桶形畸变)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, 32, 32, 4));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 32, 32, 4));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle quad = 0;
 	quad_register(renderer, quad);
 	std::vector<uint8_t> reference = render_direct(renderer);
@@ -94,8 +94,8 @@ TEST_F(Renderer_Post_Extra_Test, 桶形畸变)
 	std::vector<uint8_t> distorted = render_stage(renderer, "桶形畸变.frag.spv", 0.8f, 0.0f, 1.0f);
 	EXPECT_GT(max_channel_diff(reference, distorted), 10) << "桶形畸变未产生可见变化";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }
 
 //双色调：中灰画面映射到暖色（红多于蓝）
@@ -108,8 +108,8 @@ TEST_F(Renderer_Post_Extra_Test, 双色调暖色方向)
 
 	const uint8_t gray[4] = { 200, 200, 200, 255 };
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load(texture, gray, 1, 1));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, gray, 1, 1));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle quad = 0;
 
 	//对比度 1、完全混入
@@ -119,8 +119,8 @@ TEST_F(Renderer_Post_Extra_Test, 双色调暖色方向)
 	//交换链为 BGRA：下标 2 红、下标 0 蓝
 	EXPECT_GT(static_cast<int>(pixel[2]) - static_cast<int>(pixel[0]), 20) << "双色调亮部应偏暖";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -149,7 +149,7 @@ TEST_F(Renderer_Post_Extra_Test, FXAA平滑斜边)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
 	engine::Mesh_Handle quad = 0;
-	ASSERT_TRUE(renderer.mesh_load(quad, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
 	//绕 Z 轴 45°（列主序）
 	const float cosine = 0.70710678f;
 	const float sine = 0.70710678f;
@@ -162,12 +162,12 @@ TEST_F(Renderer_Post_Extra_Test, FXAA平滑斜边)
 	transform[15] = 1.0f;
 
 	//参考帧（直通）
-	ASSERT_TRUE(renderer.mesh_draw(quad, transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, transform));
 	std::vector<uint8_t> reference = render_direct(renderer);
 	const uint32_t plain_mid = mid_count(reference);
 
 	//单级 FXAA（强度 1）
-        ASSERT_TRUE(renderer.mesh_draw(quad, transform));
+        ASSERT_TRUE(renderer.resource().mesh_draw(quad, transform));
         std::vector<uint8_t> smoothed = render_stage(renderer, "FXAA.frag.spv", 0.0f, 0.0f, 1.0f);
         const uint32_t fxaa_mid = mid_count(smoothed);
 
@@ -176,7 +176,7 @@ TEST_F(Renderer_Post_Extra_Test, FXAA平滑斜边)
         EXPECT_GT(fxaa_mid, plain_mid) << "FXAA 未产生中间亮度过渡";
         EXPECT_GT(max_channel_diff(reference, smoothed), 5) << "FXAA 未改变画面";
 
-        renderer.mesh_unload(quad);
+        renderer.resource().mesh_unload(quad);
 }
 
 /*
@@ -192,7 +192,7 @@ TEST_F(Renderer_Post_Extra_Test, FXAA强度为零原样输出)
                 GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 
         engine::Mesh_Handle quad = 0;
-        ASSERT_TRUE(renderer.mesh_load(quad, quad_data()));
+        ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
         //绕 Z 轴 45°（列主序）
         const float cosine = 0.70710678f;
         const float sine = 0.70710678f;
@@ -205,11 +205,11 @@ TEST_F(Renderer_Post_Extra_Test, FXAA强度为零原样输出)
         transform[15] = 1.0f;
 
         //参考帧（直通）
-        ASSERT_TRUE(renderer.mesh_draw(quad, transform));
+        ASSERT_TRUE(renderer.resource().mesh_draw(quad, transform));
         std::vector<uint8_t> reference = render_direct(renderer);
 
         //单级 FXAA（强度 0：用四参入口，避免三参入口的「强度须 > 0」校验）
-        ASSERT_TRUE(renderer.mesh_draw(quad, transform));
+        ASSERT_TRUE(renderer.resource().mesh_draw(quad, transform));
         uint64_t target = 0;
         ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
         uint64_t pipeline = post_pipeline_register(renderer, "FXAA.frag.spv");
@@ -223,10 +223,10 @@ TEST_F(Renderer_Post_Extra_Test, FXAA强度为零原样输出)
         RecordProperty("fxaa_disabled_max_diff", difference);
         EXPECT_LE(difference, 2) << "强度 0 未原样输出（最大差 " << difference << "）";
         renderer.render_target_present_set(0);
-        renderer.pipeline_unload(pipeline);
+        renderer.resource().pipeline_unload(pipeline);
         renderer.render_target_destroy(target);
 
-        renderer.mesh_unload(quad);
+        renderer.resource().mesh_unload(quad);
 }
 
 /*
@@ -243,8 +243,8 @@ TEST_F(Renderer_Post_Extra_Test, 色调映射曲线亮度次序)
 
 	//亮暗分明且中心为亮格的棋盘纹理
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, 32, 32, 4));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 32, 32, 4));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle quad = 0;
 
 	quad_register(renderer, quad);
@@ -268,7 +268,7 @@ TEST_F(Renderer_Post_Extra_Test, 色调映射曲线亮度次序)
 	EXPECT_GE(aces_sum - exp_sum, 5) << "ACES 未高于指数映射（" << aces_sum << " vs " << exp_sum << "）";
 	EXPECT_GE(exp_sum - reinhard_sum, 5) << "指数映射未高于 Reinhard（" << exp_sum << " vs " << reinhard_sum << "）";
 
-	renderer.mesh_unload(quad);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }
 

@@ -151,8 +151,8 @@ TEST(Renderer_Ssaa_Test, EdgeBlend)
 	engine::Renderer off_renderer;
 	ASSERT_TRUE(off_renderer.init(hidden_config()));
 	engine::Mesh_Handle off_mesh = 0;
-	ASSERT_TRUE(off_renderer.mesh_load(off_mesh, data));
-	ASSERT_TRUE(off_renderer.mesh_draw(off_mesh, nullptr));
+	ASSERT_TRUE(off_renderer.resource().mesh_load(off_mesh, data));
+	ASSERT_TRUE(off_renderer.resource().mesh_draw(off_mesh, nullptr));
 	std::vector<uint8_t> off_pixels = render_once(off_renderer);
 	uint32_t off_intermediate = intermediate_count(off_pixels);
 	//(2) 2× SSAA 帧
@@ -161,8 +161,8 @@ TEST(Renderer_Ssaa_Test, EdgeBlend)
 	engine::Renderer on_renderer;
 	ASSERT_TRUE(on_renderer.init(config));
 	engine::Mesh_Handle on_mesh = 0;
-	ASSERT_TRUE(on_renderer.mesh_load(on_mesh, data));
-	ASSERT_TRUE(on_renderer.mesh_draw(on_mesh, nullptr));
+	ASSERT_TRUE(on_renderer.resource().mesh_load(on_mesh, data));
+	ASSERT_TRUE(on_renderer.resource().mesh_draw(on_mesh, nullptr));
 	std::vector<uint8_t> on_pixels = render_once(on_renderer);
 	uint32_t on_intermediate = intermediate_count(on_pixels);
 	//关闭时边缘为硬边：中间色应为 0

@@ -25,12 +25,12 @@ namespace
 		renderer.post_stage_color_set(0, color[0], color[1], color[2]);
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle cube = 0;
-		EXPECT_TRUE(renderer.mesh_cube_load(cube, 0.4f));
-		EXPECT_TRUE(renderer.mesh_draw(cube, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_cube_load(cube, 0.4f));
+		EXPECT_TRUE(renderer.resource().mesh_draw(cube, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.mesh_unload(cube);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(cube);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return pixels;
 	}

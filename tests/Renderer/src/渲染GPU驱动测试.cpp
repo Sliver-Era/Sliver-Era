@@ -271,7 +271,7 @@ TEST_F(Renderer_GPU_Driven_Test, 性能基线采集)
 	ASSERT_TRUE(renderer.init(config));
 	//准备网格与实例矩阵
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	std::vector<std::array<float, 16>> matrices = baseline_matrices(BASELINE_INSTANCES);
 	//逐帧渲染并收集
 	double host_record_sum = 0.0;
@@ -282,7 +282,7 @@ TEST_F(Renderer_GPU_Driven_Test, 性能基线采集)
 	uint64_t last_instances = 0;
 	for (uint32_t frame = 0; frame < BASELINE_FRAMES; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, matrices[0].data(), BASELINE_INSTANCES));
+		ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, matrices[0].data(), BASELINE_INSTANCES));
 		ASSERT_TRUE(renderer.frame_render());
 		const engine::Frame_Stats stats = renderer.frame_stats_get();
 		host_record_sum += stats.host_record_ms;
@@ -303,7 +303,7 @@ TEST_F(Renderer_GPU_Driven_Test, 性能基线采集)
 	//基线自洽性：至少一帧有绘制实例，且剔除计数不超过登记数
 	EXPECT_GE(last_instances + last_culled_instances, 1u);
 	EXPECT_GE(cpu_cull_sum, 0.0);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 /*
 多批次合批基线采集（第二百五十二轮）
@@ -331,8 +331,8 @@ TEST_F(Renderer_GPU_Driven_Test, 多批次合批基线采集)
 	ASSERT_TRUE(on.init(on_config));
 	engine::Mesh_Handle off_mesh = 0;
 	engine::Mesh_Handle on_mesh = 0;
-	ASSERT_TRUE(off.mesh_load(off_mesh, quad_data()));
-	ASSERT_TRUE(on.mesh_load(on_mesh, quad_data()));
+	ASSERT_TRUE(off.resource().mesh_load(off_mesh, quad_data()));
+	ASSERT_TRUE(on.resource().mesh_load(on_mesh, quad_data()));
 	double off_record_sum = 0.0;
 	double off_gpu_sum = 0.0;
 	double on_record_sum = 0.0;
@@ -344,8 +344,8 @@ TEST_F(Renderer_GPU_Driven_Test, 多批次合批基线采集)
 		for (uint32_t batch = 0; batch < BATCHES; ++batch)
 		{
 			const uint32_t offset = batch * PER_BATCH;
-			ASSERT_TRUE(off.mesh_draw_instanced(off_mesh, matrices[offset].data(), PER_BATCH));
-			ASSERT_TRUE(on.mesh_draw_instanced(on_mesh, matrices[offset].data(), PER_BATCH));
+			ASSERT_TRUE(off.resource().mesh_draw_instanced(off_mesh, matrices[offset].data(), PER_BATCH));
+			ASSERT_TRUE(on.resource().mesh_draw_instanced(on_mesh, matrices[offset].data(), PER_BATCH));
 		}
 		ASSERT_TRUE(off.frame_render());
 		ASSERT_TRUE(on.frame_render());
@@ -371,8 +371,8 @@ TEST_F(Renderer_GPU_Driven_Test, 多批次合批基线采集)
 	//两态绘制实例数守恒；开时确有间接命令
 	EXPECT_EQ(off_drawn, on_drawn);
 	EXPECT_GT(on.frame_stats_get().indirect_draws, 0u);
-	off.mesh_unload(off_mesh);
-	on.mesh_unload(on_mesh);
+	off.resource().mesh_unload(off_mesh);
+	on.resource().mesh_unload(on_mesh);
 }
 
 //视锥平面提取与球 / 盒判定（第二百四十八轮；纯 CPU 口径）
@@ -633,10 +633,10 @@ TEST_F(Renderer_GPU_Driven_Test, GPU剔除开关画面等价)
 	}
 	engine::Mesh_Handle off_mesh = 0;
 	engine::Mesh_Handle on_mesh = 0;
-	ASSERT_TRUE(off.mesh_load(off_mesh, quad_data()));
-	ASSERT_TRUE(on.mesh_load(on_mesh, quad_data()));
-	ASSERT_TRUE(off.mesh_draw_instanced(off_mesh, transforms[0].data(), static_cast<uint32_t>(transforms.size())));
-	ASSERT_TRUE(on.mesh_draw_instanced(on_mesh, transforms[0].data(), static_cast<uint32_t>(transforms.size())));
+	ASSERT_TRUE(off.resource().mesh_load(off_mesh, quad_data()));
+	ASSERT_TRUE(on.resource().mesh_load(on_mesh, quad_data()));
+	ASSERT_TRUE(off.resource().mesh_draw_instanced(off_mesh, transforms[0].data(), static_cast<uint32_t>(transforms.size())));
+	ASSERT_TRUE(on.resource().mesh_draw_instanced(on_mesh, transforms[0].data(), static_cast<uint32_t>(transforms.size())));
 	std::vector<uint8_t> off_pixels(WINDOW_WIDTH * WINDOW_HEIGHT * 4, 0);
 	std::vector<uint8_t> on_pixels(off_pixels.size(), 0);
 	ASSERT_TRUE(off.frame_render(off_pixels.data(), static_cast<uint32_t>(off_pixels.size())));
@@ -656,8 +656,8 @@ TEST_F(Renderer_GPU_Driven_Test, GPU剔除开关画面等价)
 	//GPU 路径确实产生了耗时或至少计数可读（不支持时间戳时为 −1）
 	if (on.compute_timestamp_supported())
 		EXPECT_GE(on_stats.gpu_cull_ms, 0.0);
-	off.mesh_unload(off_mesh);
-	on.mesh_unload(on_mesh);
+	off.resource().mesh_unload(off_mesh);
+	on.resource().mesh_unload(on_mesh);
 }
 //距离与背面剔除边界（第二百五十轮；纯 CPU 口径）
 TEST_F(Renderer_GPU_Driven_Test, 距离与背面剔除边界)
@@ -761,10 +761,10 @@ TEST_F(Renderer_GPU_Driven_Test, 剔除三态统计单调)
 	}
 	engine::Mesh_Handle off_mesh = 0;
 	engine::Mesh_Handle gpu_mesh = 0;
-	ASSERT_TRUE(off.mesh_load(off_mesh, quad_data()));
-	ASSERT_TRUE(gpu.mesh_load(gpu_mesh, quad_data()));
-	ASSERT_TRUE(off.mesh_draw_instanced(off_mesh, transforms[0].data(), COUNT));
-	ASSERT_TRUE(gpu.mesh_draw_instanced(gpu_mesh, transforms[0].data(), COUNT));
+	ASSERT_TRUE(off.resource().mesh_load(off_mesh, quad_data()));
+	ASSERT_TRUE(gpu.resource().mesh_load(gpu_mesh, quad_data()));
+	ASSERT_TRUE(off.resource().mesh_draw_instanced(off_mesh, transforms[0].data(), COUNT));
+	ASSERT_TRUE(gpu.resource().mesh_draw_instanced(gpu_mesh, transforms[0].data(), COUNT));
 	ASSERT_TRUE(off.frame_render());
 	ASSERT_TRUE(gpu.frame_render());
 	const engine::Frame_Stats off_stats = off.frame_stats_get();
@@ -789,8 +789,8 @@ TEST_F(Renderer_GPU_Driven_Test, 剔除三态统计单调)
 	EXPECT_LE(visible_distance, gpu_stats.last_instances);
 	//派发计数再增 1
 	EXPECT_EQ(gpu.frame_stats_get().gpu_cull_dispatches, 2u);
-	off.mesh_unload(off_mesh);
-	gpu.mesh_unload(gpu_mesh);
+	off.resource().mesh_unload(off_mesh);
+	gpu.resource().mesh_unload(gpu_mesh);
 }
 /*
 间接绘制开关画面等价（第二百五十二轮核心验收）
@@ -822,13 +822,13 @@ TEST_F(Renderer_GPU_Driven_Test, 间接绘制开关画面等价)
 	}
 	engine::Mesh_Handle off_mesh = 0;
 	engine::Mesh_Handle on_mesh = 0;
-	ASSERT_TRUE(off.mesh_load(off_mesh, quad_data()));
-	ASSERT_TRUE(on.mesh_load(on_mesh, quad_data()));
+	ASSERT_TRUE(off.resource().mesh_load(off_mesh, quad_data()));
+	ASSERT_TRUE(on.resource().mesh_load(on_mesh, quad_data()));
 	for (uint32_t chunk = 0; chunk < CHUNKS; ++chunk)
 	{
 		const uint32_t base = chunk * PER_CHUNK;
-		ASSERT_TRUE(off.mesh_draw_instanced(off_mesh, transforms[base].data(), PER_CHUNK));
-		ASSERT_TRUE(on.mesh_draw_instanced(on_mesh, transforms[base].data(), PER_CHUNK));
+		ASSERT_TRUE(off.resource().mesh_draw_instanced(off_mesh, transforms[base].data(), PER_CHUNK));
+		ASSERT_TRUE(on.resource().mesh_draw_instanced(on_mesh, transforms[base].data(), PER_CHUNK));
 	}
 	std::vector<uint8_t> off_pixels(WINDOW_WIDTH * WINDOW_HEIGHT * 4, 0);
 	std::vector<uint8_t> on_pixels(off_pixels.size(), 0);
@@ -848,6 +848,6 @@ TEST_F(Renderer_GPU_Driven_Test, 间接绘制开关画面等价)
 	EXPECT_LE(on_stats.indirect_draws, on_stats.drawn_items);
 	//实例数守恒
 	EXPECT_EQ(off_stats.drawn_instances, on_stats.drawn_instances);
-	off.mesh_unload(off_mesh);
-	on.mesh_unload(on_mesh);
+	off.resource().mesh_unload(off_mesh);
+	on.resource().mesh_unload(on_mesh);
 }

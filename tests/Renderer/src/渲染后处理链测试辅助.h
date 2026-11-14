@@ -89,17 +89,17 @@ namespace
 	void scene_register(engine::Renderer& renderer, engine::Mesh_Handle& handle_out)
 	{
 		//回落内置默认白纹理
-		renderer.texture_bind_set(0);
+		renderer.resource().texture_bind_set(0);
 		//加载四边形并登记绘制
-		ASSERT_TRUE(renderer.mesh_load(handle_out, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle_out, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle_out, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle_out, nullptr));
 	}
 
 	//登记一条后处理管线（顶点复用 后处理.vert，片元取给定文件名）
 	uint64_t post_pipeline_register(engine::Renderer& renderer, const std::string& frag_shader)
 	{
 		uint64_t handle = 0;
-		EXPECT_TRUE(renderer.pipeline_load(handle, "后处理.vert.spv", frag_shader));
+		EXPECT_TRUE(renderer.resource().pipeline_load(handle, "后处理.vert.spv", frag_shader));
 		return handle;
 	}
 

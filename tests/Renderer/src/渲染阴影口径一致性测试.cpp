@@ -59,8 +59,8 @@ namespace
 	//绘制全屏接收面 ＋ 遮挡面并推进一帧（返回画面像素）
 	std::vector<uint8_t> draw_scene(engine::Renderer& renderer, engine::Mesh_Handle occluder, engine::Mesh_Handle receiver)
 	{
-		EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -9.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, full_screen_matrix().data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -9.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, full_screen_matrix().data()));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return pixels;
@@ -104,12 +104,12 @@ TEST_F(Renderer_Scene_Test, 三模型阴影边界一致)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
@@ -138,9 +138,9 @@ TEST_F(Renderer_Scene_Test, 三模型阴影边界一致)
 	RecordProperty("mask_pbr", counts[1]);
 	RecordProperty("mask_toon", counts[2]);
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -155,12 +155,12 @@ TEST_F(Renderer_Scene_Test, 阴影强度三模型同比例)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
@@ -188,9 +188,9 @@ TEST_F(Renderer_Scene_Test, 阴影强度三模型同比例)
 		EXPECT_NEAR(ratio, 0.5f, 0.03f) << "模型 " << model << " 的半强度阴影比例偏离 0.5";
 	}
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -205,12 +205,12 @@ TEST_F(Renderer_Scene_Test, 关闭阴影三模型无遮蔽)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
@@ -226,7 +226,7 @@ TEST_F(Renderer_Scene_Test, 关闭阴影三模型无遮蔽)
 		EXPECT_EQ(mask_count(mask), 0u) << "模型 " << model << " 在关闭阴影后仍存在遮蔽像素";
 	}
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }

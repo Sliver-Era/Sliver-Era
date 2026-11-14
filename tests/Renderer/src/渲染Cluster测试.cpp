@@ -457,7 +457,7 @@ TEST(Renderer_Cluster_Test, 开关组合矩阵)
 		renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		//全屏墙（z = 3，放大 30 倍）＋ 墙后 10 实例
 		std::array<float, 16> wall = identity_matrix();
 		wall[0] = 30.0f;
@@ -470,14 +470,14 @@ TEST(Renderer_Cluster_Test, 开关组合矩阵)
 		uint32_t height = 0;
 		for (uint32_t frame = 0; frame < 3; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, wall.data(), 1));
-			ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
+			ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, wall.data(), 1));
+			ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, behind[0].data(), static_cast<uint32_t>(behind.size())));
 			ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, &width, &height));
 		}
 		ASSERT_EQ(width, WINDOW_WIDTH);
 		ASSERT_EQ(height, WINDOW_HEIGHT);
 		results.push_back(std::move(pixels));
-		renderer.mesh_unload(mesh);
+		renderer.resource().mesh_unload(mesh);
 	}
 	//八种组合画面逐字节一致
 	for (uint32_t combo = 1; combo < results.size(); ++combo)
@@ -578,7 +578,7 @@ TEST(Renderer_Cluster_Test, 组合矩阵_阴影与MSAA)
 				renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 				renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 				engine::Mesh_Handle mesh = 0;
-				ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+				ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 				//全屏墙（z = 3，放大 30 倍）＋ 墙后 10 实例
 				std::array<float, 16> wall = identity_matrix();
 				wall[0] = 30.0f;
@@ -591,15 +591,15 @@ TEST(Renderer_Cluster_Test, 组合矩阵_阴影与MSAA)
 				uint32_t height = 0;
 				for (uint32_t frame = 0; frame < 3; ++frame)
 				{
-					ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, wall.data(), 1));
-					ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, behind[0].data(),
+					ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, wall.data(), 1));
+					ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, behind[0].data(),
 						static_cast<uint32_t>(behind.size())));
 					ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, &width, &height));
 				}
 				ASSERT_EQ(width, WINDOW_WIDTH);
 				ASSERT_EQ(height, WINDOW_HEIGHT);
 				pair.push_back(std::move(pixels));
-				renderer.mesh_unload(mesh);
+				renderer.resource().mesh_unload(mesh);
 			}
 			//同一环境下 Cluster 开 / 关画面逐字节一致
 			const bool same = std::mismatch(pair[0].begin(), pair[0].end(), pair[1].begin()).first
@@ -716,7 +716,7 @@ TEST(Renderer_Cluster_Test, 图形set0簇缓冲上传)
 		renderer.camera_position_set(0.0f, 0.0f, 5.0f);
 		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		//一盏点光（半径 10 保守覆盖全簇）
 		const float position[3] = { 0.0f, 0.0f, 0.0f };
 		const float color[3] = { 1.0f, 1.0f, 1.0f };
@@ -725,7 +725,7 @@ TEST(Renderer_Cluster_Test, 图形set0簇缓冲上传)
 		std::vector<uint8_t> pixels(pixel_count, 0u);
 		for (uint32_t frame = 0; frame < 3; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 			ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 		}
 		engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -739,7 +739,7 @@ TEST(Renderer_Cluster_Test, 图形set0簇缓冲上传)
 			EXPECT_EQ(stats.cluster_gpu_bytes, 3456u * 8u + stats.cluster_entries * 4u);
 		}
 		results.push_back(std::move(pixels));
-		renderer.mesh_unload(mesh);
+		renderer.resource().mesh_unload(mesh);
 	}
 	//两态画面逐字节一致（着色器本轮不读取簇缓冲）
 	const bool same = std::mismatch(results[0].begin(), results[0].end(), results[1].begin()).first
@@ -772,14 +772,14 @@ TEST(Renderer_Cluster_Test, 片元簇采样_八盏等价)
 		}
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
 		//关闭主方向光（满照会饱和画面，掩盖点光差异）
 		const float no_direction[3] = { 0.0f, 0.0f, -1.0f };
 		const float no_color[3] = { 1.0f, 1.0f, 1.0f };
 		renderer.light_set(no_direction, no_color, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_lit()));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 		//六盏点光 ＋ 两盏聚光（半径 20，均保守覆盖全部簇）
 		const float color[3] = { 0.3f, 0.5f, 0.7f };
 		for (uint32_t index = 0; index < 6; ++index)
@@ -797,15 +797,15 @@ TEST(Renderer_Cluster_Test, 片元簇采样_八盏等价)
 		std::vector<uint8_t> pixels(pixel_count, 0u);
 		for (uint32_t frame = 0; frame < 3; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 			ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 		}
 		//开启态：簇条目已整备并上传
 		if (cluster_index != 0)
 			EXPECT_GT(renderer.frame_stats_get().cluster_entries, 0u);
 		results.push_back(std::move(pixels));
-		renderer.mesh_unload(mesh);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(mesh);
+		renderer.resource().texture_unload(texture);
 	}
 	//两态画面逐字节一致（同一 8 盏光源、同一累加顺序）
 	const bool same = std::mismatch(results[0].begin(), results[0].end(), results[1].begin()).first
@@ -837,14 +837,14 @@ TEST(Renderer_Cluster_Test, 片元簇采样_三十三盏扩展)
 		}
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
 		//关闭主方向光（满照会饱和画面，掩盖第 9 盏差异）
 		const float no_direction[3] = { 0.0f, 0.0f, -1.0f };
 		const float no_color[3] = { 1.0f, 1.0f, 1.0f };
 		renderer.light_set(no_direction, no_color, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_lit()));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 		//前 32 盏（半径 20 覆盖全部簇；强度压低避免画面饱和后第 33 盏不可见）
 		const float color[3] = { 0.4f, 0.5f, 0.6f };
 		for (uint32_t index = 0; index < 32; ++index)
@@ -863,15 +863,15 @@ TEST(Renderer_Cluster_Test, 片元簇采样_三十三盏扩展)
 		std::vector<uint8_t> pixels(pixel_count, 0u);
 		for (uint32_t frame = 0; frame < 3; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 			ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 		}
 		engine::Frame_Stats stats = renderer.frame_stats_get();
 		//关闭态：截断标志置 1；开启态：无截断
 		EXPECT_EQ(stats.light_truncated, cluster_index == 0 ? 1u : 0u);
 		results.push_back(std::move(pixels));
-		renderer.mesh_unload(mesh);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(mesh);
+		renderer.resource().texture_unload(texture);
 	}
 	//两态画面不同（第 33 盏在开启态参与照明）
 	const bool same = std::mismatch(results[0].begin(), results[0].end(), results[1].begin()).first
@@ -903,14 +903,14 @@ TEST(Renderer_Cluster_Test, 片元簇采样_MSAA四倍等价)
 		}
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
 		//关闭主方向光（满照会饱和画面）
 		const float no_direction[3] = { 0.0f, 0.0f, -1.0f };
 		const float no_color[3] = { 1.0f, 1.0f, 1.0f };
 		renderer.light_set(no_direction, no_color, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_lit()));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 		//六盏点光 ＋ 两盏聚光（半径 20，均保守覆盖全部簇）
 		const float color[3] = { 0.3f, 0.5f, 0.7f };
 		for (uint32_t index = 0; index < 6; ++index)
@@ -928,12 +928,12 @@ TEST(Renderer_Cluster_Test, 片元簇采样_MSAA四倍等价)
 		std::vector<uint8_t> pixels(pixel_count, 0u);
 		for (uint32_t frame = 0; frame < 3; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 			ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 		}
 		results.push_back(std::move(pixels));
-		renderer.mesh_unload(mesh);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(mesh);
+		renderer.resource().texture_unload(texture);
 	}
 	//两态画面逐字节一致（4× MSAA 解析后）
 	const bool same = std::mismatch(results[0].begin(), results[0].end(), results[1].begin()).first
@@ -970,15 +970,15 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏)
 	//出帧（逐帧回读口径）
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_lit()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 	const uint32_t pixel_count = WINDOW_WIDTH * WINDOW_HEIGHT * 4u;
 	std::vector<uint8_t> pixels(pixel_count, 0u);
 	for (uint32_t frame = 0; frame < 2; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 	}
 	//簇条目与上传量非零
@@ -1015,8 +1015,8 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏)
 	std::cout << "[大光源512] CPU " << cpu_best_ms << " ms / GPU " << gpu_best_ms << " ms | 条目 "
 		<< cpu_entries << std::endl;
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -1049,15 +1049,15 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏聚光灯)
 	//出帧（逐帧回读）
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_lit()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 	const uint32_t pixel_count = WINDOW_WIDTH * WINDOW_HEIGHT * 4u;
 	std::vector<uint8_t> pixels(pixel_count, 0u);
 	for (uint32_t frame = 0; frame < 2; ++frame)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 	}
 	const engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -1075,8 +1075,8 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏聚光灯)
 	EXPECT_GT(entries, 0u);
 	std::cout << "[大光源512聚光] CPU " << renderer.cluster_build_ms_get() << " ms | 条目 " << entries << std::endl;
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 /*
 簇开关反复切换（第二百九十八轮）
@@ -1093,10 +1093,10 @@ TEST(Renderer_Cluster_Test, 簇开关反复切换)
 	}
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_lit()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 	const uint32_t pixel_count = WINDOW_WIDTH * WINDOW_HEIGHT * 4u;
 	std::vector<uint8_t> pixels(pixel_count, 0u);
 	//三帧：开启 / 关闭 / 开启
@@ -1104,7 +1104,7 @@ TEST(Renderer_Cluster_Test, 簇开关反复切换)
 	for (uint32_t cycle = 0; cycle < 3; ++cycle)
 	{
 		ASSERT_TRUE(renderer.cluster_enable_set(states[cycle]));
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 		const engine::Frame_Stats stats = renderer.frame_stats_get();
 		if (states[cycle])
@@ -1120,8 +1120,8 @@ TEST(Renderer_Cluster_Test, 簇开关反复切换)
 	}
 	//收尾：关闭并释放
 	ASSERT_TRUE(renderer.cluster_enable_set(false));
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -1144,10 +1144,10 @@ TEST(Renderer_Cluster_Test, 簇网格切换与缓冲重建)
 	ASSERT_TRUE(renderer.light_add_point(position, color, 10.0f, 0.5f, 0.1f));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_lit()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 	//三档网格：默认 3456 → 缩小 512 → 超出总簇上限被收缩到 4032（32 × 18 × 7）
 	const uint32_t grid_sets[3][3] = {
 		{ 16, 9, 24 },
@@ -1161,7 +1161,7 @@ TEST(Renderer_Cluster_Test, 簇网格切换与缓冲重建)
 	{
 		ASSERT_TRUE(renderer.cluster_grid_set(grid_sets[stage][0], grid_sets[stage][1], grid_sets[stage][2]));
 		EXPECT_EQ(renderer.cluster_grid_cluster_count(), expected_total[stage]);
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 		const engine::Frame_Stats stats = renderer.frame_stats_get();
 		//每档：条目 > 0 且上传量 = 簇数 × 8 ＋ 条目 × 4
@@ -1170,8 +1170,8 @@ TEST(Renderer_Cluster_Test, 簇网格切换与缓冲重建)
 	}
 	//恢复默认网格
 	ASSERT_TRUE(renderer.cluster_grid_set(16, 9, 24));
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -1209,9 +1209,9 @@ TEST(Renderer_Cluster_Test, 大光源整帧耗时对照)
 	engine::Mesh_Handle off_mesh = 0;
 	engine::Mesh_Handle on_eight_mesh = 0;
 	engine::Mesh_Handle on_many_mesh = 0;
-	ASSERT_TRUE(off.mesh_load(off_mesh, quad_data_lit()));
-	ASSERT_TRUE(on_eight.mesh_load(on_eight_mesh, quad_data_lit()));
-	ASSERT_TRUE(on_many.mesh_load(on_many_mesh, quad_data_lit()));
+	ASSERT_TRUE(off.resource().mesh_load(off_mesh, quad_data_lit()));
+	ASSERT_TRUE(on_eight.resource().mesh_load(on_eight_mesh, quad_data_lit()));
+	ASSERT_TRUE(on_many.resource().mesh_load(on_many_mesh, quad_data_lit()));
 	std::array<float, 16> model = identity_matrix();
 	model[0] = 8.0f;
 	model[5] = 8.0f;
@@ -1249,9 +1249,9 @@ TEST(Renderer_Cluster_Test, 大光源整帧耗时对照)
 	double many_record = 0.0;
 	for (uint32_t frame = 0; frame < PERF_FRAMES; ++frame)
 	{
-		ASSERT_TRUE(off.mesh_draw(off_mesh, model.data()));
-		ASSERT_TRUE(on_eight.mesh_draw(on_eight_mesh, model.data()));
-		ASSERT_TRUE(on_many.mesh_draw(on_many_mesh, model.data()));
+		ASSERT_TRUE(off.resource().mesh_draw(off_mesh, model.data()));
+		ASSERT_TRUE(on_eight.resource().mesh_draw(on_eight_mesh, model.data()));
+		ASSERT_TRUE(on_many.resource().mesh_draw(on_many_mesh, model.data()));
 		ASSERT_TRUE(off.frame_render());
 		ASSERT_TRUE(on_eight.frame_render());
 		ASSERT_TRUE(on_many.frame_render());
@@ -1280,9 +1280,9 @@ TEST(Renderer_Cluster_Test, 大光源整帧耗时对照)
 	EXPECT_EQ(off.frame_stats_get().light_truncated, 1u);
 	//关闭态不做簇整备
 	EXPECT_EQ(off.frame_stats_get().cluster_entries, 0u);
-	off.mesh_unload(off_mesh);
-	on_eight.mesh_unload(on_eight_mesh);
-	on_many.mesh_unload(on_many_mesh);
+	off.resource().mesh_unload(off_mesh);
+	on_eight.resource().mesh_unload(on_eight_mesh);
+	on_many.resource().mesh_unload(on_many_mesh);
 }
 
 /*
@@ -1311,7 +1311,7 @@ TEST(Renderer_Cluster_Test, 片元簇采样_线性衰减提前退出)
 		const float no_color[3] = { 1.0f, 1.0f, 1.0f };
 		renderer.light_set(no_direction, no_color, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_lit()));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 		//八盏小半径点光（线性衰减；多数片元只在其中少数光源半径内）
 		const float color[3] = { 0.9f, 0.85f, 0.75f };
 		for (uint32_t index = 0; index < 8; ++index)
@@ -1324,11 +1324,11 @@ TEST(Renderer_Cluster_Test, 片元簇采样_线性衰减提前退出)
 		std::vector<uint8_t> pixels(pixel_count, 0u);
 		for (uint32_t frame = 0; frame < 3; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 			ASSERT_TRUE(renderer.frame_render(pixels.data(), pixel_count, nullptr, nullptr));
 		}
 		results.push_back(std::move(pixels));
-		renderer.mesh_unload(mesh);
+		renderer.resource().mesh_unload(mesh);
 	}
 	//两态画面逐字节一致（半径外贡献 0，提前退出不改变结果）
 	const bool same = std::mismatch(results[0].begin(), results[0].end(), results[1].begin()).first

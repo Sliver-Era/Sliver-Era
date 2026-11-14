@@ -42,8 +42,8 @@ TEST_F(Renderer_Post_Chain_Test, 景深对焦面保持清晰)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 	//对照帧：景深（对焦在 3）
@@ -63,8 +63,8 @@ TEST_F(Renderer_Post_Chain_Test, 景深对焦面保持清晰)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(dof.data(), static_cast<uint32_t>(dof.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 
@@ -109,8 +109,8 @@ TEST_F(Renderer_Post_Chain_Test, 景深离焦使边缘变软)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 	//对照帧：景深（严重离焦）
@@ -130,8 +130,8 @@ TEST_F(Renderer_Post_Chain_Test, 景深离焦使边缘变软)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(dof.data(), static_cast<uint32_t>(dof.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 
@@ -175,8 +175,8 @@ TEST_F(Renderer_Post_Chain_Test, 景深最大模糊近零近似直通)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 	//对照帧：景深（模糊半径近零）
@@ -196,8 +196,8 @@ TEST_F(Renderer_Post_Chain_Test, 景深最大模糊近零近似直通)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(dof.data(), static_cast<uint32_t>(dof.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	}
 
@@ -235,8 +235,8 @@ TEST_F(Renderer_Post_Chain_Test, 景深在MSAA下区分对焦与离焦)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return ok;
 	};

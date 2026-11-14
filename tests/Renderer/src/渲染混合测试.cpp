@@ -178,12 +178,12 @@ TEST_F(Renderer_Blend_Test, 不透明档忽略源alpha)
 	//加载 2×2 半透明白纹理并绑定
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = translucent_white(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	//加载四边形并登记绘制
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	//中心像素：颜色三通道为实白（源 alpha 未参与混合）
@@ -196,8 +196,8 @@ TEST_F(Renderer_Blend_Test, 不透明档忽略源alpha)
 	EXPECT_LE(center_alpha, SOURCE_ALPHA + 8) << "不透明档下 alpha 未原样写出：" << pixel_text(center);
 	//角落未被四边形覆盖，仍为清屏色
 	EXPECT_TRUE(pixel_is_clear(pixel_get(pixels, 1, 1))) << "角落被意外覆盖";
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 //alpha 档：发生半透明叠加（结果严格介于清屏色与纹理白之间）
@@ -210,14 +210,14 @@ TEST_F(Renderer_Blend_Test, alpha档产生半透明叠加)
 	//加载半透明纹理并绑定
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = translucent_white(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	//切到 alpha 档（触发一次图形管线重建）
-	renderer.blend_mode_set(engine::Blend_Mode::Alpha);
+	renderer.resource().blend_mode_set(engine::Blend_Mode::Alpha);
 	//加载四边形并登记绘制
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	/*
@@ -236,8 +236,8 @@ TEST_F(Renderer_Blend_Test, alpha档产生半透明叠加)
 	EXPECT_LE(center_alpha, 205) << "混合后 alpha 偏高：" << pixel_text(center);
 	//角落未被四边形覆盖，仍为清屏色（混合只作用于被覆盖区域）
 	EXPECT_TRUE(pixel_is_clear(pixel_get(pixels, 1, 1))) << "角落被意外覆盖";
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -255,18 +255,18 @@ TEST_F(Renderer_Blend_Test, 加法档叠加两层亮度累加)
 	//加载中性灰纹理并绑定
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	//切到加法档（触发一次图形管线重建）
-	renderer.blend_mode_set(engine::Blend_Mode::Additive);
+	renderer.resource().blend_mode_set(engine::Blend_Mode::Additive);
 	//两个不同深度的覆盖四边形（深度测试下先后通过，故两层都参与混合）
 	engine::Mesh_Handle far_handle = 0;
 	engine::Mesh_Handle near_handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(far_handle, quad_data_at(-0.2f)));
-	ASSERT_TRUE(renderer.mesh_load(near_handle, quad_data_at(0.2f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(far_handle, quad_data_at(-0.2f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(near_handle, quad_data_at(0.2f)));
 
 	//第一帧：只画远层，中心应比清屏色亮但明显未饱和
-	ASSERT_TRUE(renderer.mesh_draw(far_handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(far_handle, nullptr));
 	std::vector<uint8_t> single_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(single_pixels.data(), static_cast<uint32_t>(single_pixels.size())));
 	std::array<uint8_t, 4> single_center = pixel_get(single_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -277,8 +277,8 @@ TEST_F(Renderer_Blend_Test, 加法档叠加两层亮度累加)
 	EXPECT_TRUE(pixel_is_clear(pixel_get(single_pixels, 1, 1))) << "角落被意外覆盖";
 
 	//第二帧：先远后近各画一层，中心亮度应显著抬升
-	ASSERT_TRUE(renderer.mesh_draw(far_handle, nullptr));
-	ASSERT_TRUE(renderer.mesh_draw(near_handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(far_handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(near_handle, nullptr));
 	std::vector<uint8_t> double_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(double_pixels.data(), static_cast<uint32_t>(double_pixels.size())));
 	std::array<uint8_t, 4> double_center = pixel_get(double_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -286,9 +286,9 @@ TEST_F(Renderer_Blend_Test, 加法档叠加两层亮度累加)
 	EXPECT_GT(double_min, single_min + 40) << "加法两层未发生亮度累加：" << pixel_text(double_center);
 	EXPECT_TRUE(pixel_is_clear(pixel_get(double_pixels, 1, 1))) << "角落被意外覆盖";
 
-	renderer.mesh_unload(far_handle);
-	renderer.mesh_unload(near_handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(far_handle);
+	renderer.resource().mesh_unload(near_handle);
+	renderer.resource().texture_unload(texture);
 }
 
 //切回不透明档：半透明叠加消失，颜色回到实白（档位可往返）
@@ -301,15 +301,15 @@ TEST_F(Renderer_Blend_Test, 切回不透明档后恢复实白)
 	//加载半透明纹理并绑定
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = translucent_white(2, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	//加载四边形
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 
 	//第一帧：alpha 档
-	renderer.blend_mode_set(engine::Blend_Mode::Alpha);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().blend_mode_set(engine::Blend_Mode::Alpha);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> blend_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(blend_pixels.data(), static_cast<uint32_t>(blend_pixels.size())));
 	//混合帧中心应明显暗于实白
@@ -317,14 +317,14 @@ TEST_F(Renderer_Blend_Test, 切回不透明档后恢复实白)
 	EXPECT_LE(blend_min, 240) << "混合帧中心未落在混合区间";
 
 	//第二帧：切回不透明档（待绘制项逐帧登记，故须重新 mesh_draw）
-	renderer.blend_mode_set(engine::Blend_Mode::Opaque);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().blend_mode_set(engine::Blend_Mode::Opaque);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> opaque_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(opaque_pixels.data(), static_cast<uint32_t>(opaque_pixels.size())));
 	//恢复帧中心应为实白
 	std::array<uint8_t, 4> center = pixel_get(opaque_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	EXPECT_GE(color_min(center), 250) << "切回不透明档后中心未被恢复为实白：" << pixel_text(center);
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }

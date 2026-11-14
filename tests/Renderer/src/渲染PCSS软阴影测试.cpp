@@ -51,8 +51,8 @@ namespace
 	//绘制固定场景并推进一帧，返回画面像素（接收面在原点、遮挡面 z = -3，半影宽度可达数纹素）
 	std::vector<uint8_t> draw_scene(engine::Renderer& renderer, engine::Mesh_Handle occluder, engine::Mesh_Handle receiver)
 	{
-		EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -3.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -3.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return pixels;
@@ -84,12 +84,12 @@ TEST_F(Renderer_Scene_Test, PCSS关闭口径逐字节一致)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	engine::Light_Data light = positive_z_light();
@@ -106,9 +106,9 @@ TEST_F(Renderer_Scene_Test, PCSS关闭口径逐字节一致)
 	EXPECT_TRUE(reference == again) << "显式关闭 PCSS 后画面与默认不一致";
 	EXPECT_EQ(renderer.frame_stats_get().shadow_pcss, 0u);
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -124,12 +124,12 @@ TEST_F(Renderer_Scene_Test, PCSS开启改变阴影边界)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	engine::Light_Data light = positive_z_light();
@@ -150,9 +150,9 @@ TEST_F(Renderer_Scene_Test, PCSS开启改变阴影边界)
 	EXPECT_EQ(renderer.frame_stats_get().shadow_pcss, 1u);
 	EXPECT_GT(difference, 0u) << "PCSS 开启后画面与硬边完全一致（分支未生效）";
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*

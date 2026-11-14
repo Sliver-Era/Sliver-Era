@@ -299,7 +299,7 @@ TEST_F(Renderer_Decode_Test, 未初始化加载文件纹理失败)
 {
 	engine::Renderer renderer;
 	uint64_t handle = 123;
-	EXPECT_FALSE(renderer.texture_load_file(handle, PNG_FILE));
+	EXPECT_FALSE(renderer.resource().texture_load_file(handle, PNG_FILE));
 	//失败时句柄复位为零
 	EXPECT_EQ(handle, 0u);
 }
@@ -310,7 +310,7 @@ TEST_F(Renderer_Decode_Test, 不存在的文件加载失败)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t handle = 123;
-	EXPECT_FALSE(renderer.texture_load_file(handle, "此文件不存在_解码测试.png"));
+	EXPECT_FALSE(renderer.resource().texture_load_file(handle, "此文件不存在_解码测试.png"));
 	//失败时句柄复位为零
 	EXPECT_EQ(handle, 0u);
 }
@@ -325,20 +325,20 @@ TEST_F(Renderer_Decode_Test, BMP解码并绘制)
 	//现场写出 2×2 纯红 BMP
 	ASSERT_TRUE(write_file(BMP_FILE, bmp_encode_2x2(SAMPLE_RED, SAMPLE_GREEN, SAMPLE_BLUE)));
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_file(texture, BMP_FILE));
+	ASSERT_TRUE(renderer.resource().texture_load_file(texture, BMP_FILE));
 	ASSERT_NE(texture, 0u);
-	renderer.texture_bind_set(texture);
+	renderer.resource().texture_bind_set(texture);
 	//加载覆盖视口中央的四边形并登记绘制
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(1.0f)));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	//中心应为解码出的纯红（若非解码则会是默认白纹理）
 	std::array<uint8_t, 4> center = pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	EXPECT_TRUE(pixel_is_red(center)) << "BMP 解码结果未落到画面上：" << pixel_text(center);
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 	remove_file(BMP_FILE);
 }
 
@@ -352,19 +352,19 @@ TEST_F(Renderer_Decode_Test, PNG解码并绘制)
 	//现场写出 2×2 纯红 PNG
 	ASSERT_TRUE(write_file(PNG_FILE, png_encode_2x2(SAMPLE_RED, SAMPLE_GREEN, SAMPLE_BLUE)));
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_file(texture, PNG_FILE));
+	ASSERT_TRUE(renderer.resource().texture_load_file(texture, PNG_FILE));
 	ASSERT_NE(texture, 0u);
-	renderer.texture_bind_set(texture);
+	renderer.resource().texture_bind_set(texture);
 	//加载覆盖视口中央的四边形并登记绘制
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(1.0f)));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	//中心应为解码出的纯红
 	std::array<uint8_t, 4> center = pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	EXPECT_TRUE(pixel_is_red(center)) << "PNG 解码结果未落到画面上：" << pixel_text(center);
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 	remove_file(PNG_FILE);
 }

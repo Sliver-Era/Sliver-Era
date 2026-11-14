@@ -173,8 +173,8 @@ TEST_F(Renderer_Instanced_Test, 未初始化实例化绘制失败)
 {
 	engine::Renderer renderer;
 	std::array<float, 16> transform = translation(0.0f, 0.0f, 0.0f);
-	EXPECT_FALSE(renderer.mesh_draw_instanced(0, transform.data(), 1));
-	EXPECT_FALSE(renderer.mesh_draw_instanced(1, transform.data(), 3));
+	EXPECT_FALSE(renderer.resource().mesh_draw_instanced(0, transform.data(), 1));
+	EXPECT_FALSE(renderer.resource().mesh_draw_instanced(1, transform.data(), 3));
 }
 
 //实例数为零或句柄无效时被拒
@@ -183,15 +183,15 @@ TEST_F(Renderer_Instanced_Test, 实例数为零或句柄无效被拒)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(QUAD_HALF)));
 	std::array<float, 16> transform = translation(0.0f, 0.0f, 0.0f);
 	//实例数为零被拒
-	EXPECT_FALSE(renderer.mesh_draw_instanced(handle, transform.data(), 0));
+	EXPECT_FALSE(renderer.resource().mesh_draw_instanced(handle, transform.data(), 0));
 	//无效句柄（未加载过的编号）被拒
-	EXPECT_FALSE(renderer.mesh_draw_instanced(handle + 100, transform.data(), 1));
+	EXPECT_FALSE(renderer.resource().mesh_draw_instanced(handle + 100, transform.data(), 1));
 	//卸载后的句柄被拒
-	renderer.mesh_unload(handle);
-	EXPECT_FALSE(renderer.mesh_draw_instanced(handle, transform.data(), 1));
+	renderer.resource().mesh_unload(handle);
+	EXPECT_FALSE(renderer.resource().mesh_draw_instanced(handle, transform.data(), 1));
 }
 
 //三个实例各自可见且彼此分离
@@ -202,13 +202,13 @@ TEST_F(Renderer_Instanced_Test, 三个实例各自可见且彼此分离)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
-	renderer.texture_bind_set(0);
+	renderer.resource().texture_bind_set(0);
 	//加载中心小四边形
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(QUAD_HALF)));
 
 	//第一帧：单实例（恒等变换，落在视口中央）作为「一份实例」的面积基准
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> single_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(single_pixels.data(), static_cast<uint32_t>(single_pixels.size())));
 	uint32_t single_white = white_count(single_pixels);
@@ -220,7 +220,7 @@ TEST_F(Renderer_Instanced_Test, 三个实例各自可见且彼此分离)
 		translation(0.0f, 0.0f, 0.0f),
 		translation(0.0f, -INSTANCE_SHIFT, 0.0f),
 	};
-	ASSERT_TRUE(renderer.mesh_draw_instanced(handle, transforms[0].data(), 3));
+	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(handle, transforms[0].data(), 3));
 	std::vector<uint8_t> instanced_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(instanced_pixels.data(), static_cast<uint32_t>(instanced_pixels.size())));
 
@@ -247,7 +247,7 @@ TEST_F(Renderer_Instanced_Test, 三个实例各自可见且彼此分离)
 	std::array<uint8_t, 4> gap = pixel_get(instanced_pixels, WINDOW_WIDTH / 2, gap_row);
 	EXPECT_TRUE(pixel_is_clear(gap)) << "实例之间未分离（第 " << gap_row << " 行被覆盖）：" << pixel_text(gap);
 
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }
 
 //实例数为 1 时与逐次绘制等价
@@ -258,18 +258,18 @@ TEST_F(Renderer_Instanced_Test, 实例数为一与逐次绘制等价)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
-	renderer.texture_bind_set(0);
+	renderer.resource().texture_bind_set(0);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(QUAD_HALF)));
 
 	//第一帧：逐次绘制路径（mesh_draw）
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> draw_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(draw_pixels.data(), static_cast<uint32_t>(draw_pixels.size())));
 
 	//第二帧：实例化路径（实例数 = 1）
 	std::array<float, 16> transform = translation(0.0f, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.mesh_draw_instanced(handle, transform.data(), 1));
+	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(handle, transform.data(), 1));
 	std::vector<uint8_t> instanced_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(instanced_pixels.data(), static_cast<uint32_t>(instanced_pixels.size())));
 
@@ -286,7 +286,7 @@ TEST_F(Renderer_Instanced_Test, 实例数为一与逐次绘制等价)
 			<< pixel_text(draw_center) << " vs " << pixel_text(instanced_center);
 	}
 
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }
 
 /*
@@ -303,9 +303,9 @@ TEST_F(Renderer_Instanced_Test, 实例化绘制共享同一材质)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
-	renderer.texture_bind_set(0);
+	renderer.resource().texture_bind_set(0);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(QUAD_HALF)));
 	//关闭高光只看漫反射，PBR 开启
 	renderer.specular_set(0.0f, 16.0f);
 	renderer.pbr_enable_set(true);
@@ -318,7 +318,7 @@ TEST_F(Renderer_Instanced_Test, 实例化绘制共享同一材质)
 	//渲染一帧并返回纹理白像素数
 	auto render_white = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw_instanced(handle, transforms[0].data(), 2));
+		EXPECT_TRUE(renderer.resource().mesh_draw_instanced(handle, transforms[0].data(), 2));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		return white_count(pixels);
@@ -326,9 +326,9 @@ TEST_F(Renderer_Instanced_Test, 实例化绘制共享同一材质)
 
 	//基线：整批为纹理白
 	uint32_t baseline = render_white();
-	ASSERT_TRUE(renderer.material_pbr_set(1.0f, 1.0f));
+	ASSERT_TRUE(renderer.resource().material_pbr_set(1.0f, 1.0f));
 	uint32_t metallized = render_white();
-	renderer.material_pbr_clear();
+	renderer.resource().material_pbr_clear();
 	uint32_t restored = render_white();
 
 	RecordProperty("instanced_white", baseline);
@@ -337,7 +337,7 @@ TEST_F(Renderer_Instanced_Test, 实例化绘制共享同一材质)
 	EXPECT_LT(metallized, 5u) << "逐物体金属度未作用于整批实例（" << metallized << "）";
 	EXPECT_EQ(restored, baseline) << "清除逐物体材质后实例画面未恢复";
 
-        renderer.mesh_unload(handle);
+        renderer.resource().mesh_unload(handle);
 }
 
 /*
@@ -350,7 +350,7 @@ TEST_F(Renderer_Instanced_Test, 实例级视锥剔除)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(QUAD_HALF)));
 	renderer.cull_enabled_set(true);
 	//两个可见 + 两个远在视锥外
 	std::array<float, 16> transforms[4] = {
@@ -359,7 +359,7 @@ TEST_F(Renderer_Instanced_Test, 实例级视锥剔除)
 		translation(1000.0f, 0.0f, 0.0f),
 		translation(-1000.0f, 0.0f, 0.0f),
 	};
-	ASSERT_TRUE(renderer.mesh_draw_instanced(handle, transforms[0].data(), 4));
+	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(handle, transforms[0].data(), 4));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	RecordProperty("instanced_registered", static_cast<int>(stats.instances));
@@ -372,5 +372,5 @@ TEST_F(Renderer_Instanced_Test, 实例级视锥剔除)
 	engine::Frame_Stats cleared = renderer.frame_stats_get();
 	EXPECT_EQ(cleared.culled_instances, 0u);
 	EXPECT_EQ(cleared.last_culled_instances, 2u);
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }

@@ -1,4 +1,4 @@
-﻿/*
+/*
 渲染聚光偏置缩放测试（第六百五十八轮；深研方向八 A2）
 覆盖：默认缩放 1 与既有口径一致、数据侧缩放生效、门面钳制与越界拒绝。
 口径：1 盏聚光灯（单盏阴影模式）＋ 遮挡面 / 接收面；读取逐瓦片有效偏置做数值断言。
@@ -39,8 +39,8 @@ namespace
 	//推进一帧（绘制遮挡面与接收面）
 	void render_once_with(engine::Renderer& renderer, engine::Mesh_Handle occluder, engine::Mesh_Handle receiver)
 	{
-		EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, occluder_model(0.0f, 0.0f, 0.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, occluder_model(0.0f, 0.0f, 0.0f).data()));
 		EXPECT_TRUE(renderer.frame_render());
 	}
 }
@@ -55,12 +55,12 @@ TEST_F(Renderer_Scene_Test, 聚光偏置缩放默认口径)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle occluder = 0;
 	engine::Mesh_Handle receiver = 0;
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
@@ -74,9 +74,9 @@ TEST_F(Renderer_Scene_Test, 聚光偏置缩放默认口径)
 	ASSERT_GT(base_bias, 0.0f);
 	EXPECT_FLOAT_EQ(base_out[0], base_bias) << "默认缩放不是 1（逐瓦片偏置与全局不一致）";
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -89,12 +89,12 @@ TEST_F(Renderer_Scene_Test, 聚光偏置缩放数据侧生效)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle occluder = 0;
 	engine::Mesh_Handle receiver = 0;
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
 
@@ -121,9 +121,9 @@ TEST_F(Renderer_Scene_Test, 聚光偏置缩放数据侧生效)
 	renderer.spot_shadow_bias_tiles_get(tiles);
 	EXPECT_FLOAT_EQ(tiles[0], base_bias);
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -136,12 +136,12 @@ TEST_F(Renderer_Scene_Test, 聚光偏置缩放门面钳制)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle occluder = 0;
 	engine::Mesh_Handle receiver = 0;
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, one_spot_light(), fog);
@@ -162,7 +162,7 @@ TEST_F(Renderer_Scene_Test, 聚光偏置缩放门面钳制)
 	renderer.spot_shadow_bias_tiles_get(tiles);
 	EXPECT_FLOAT_EQ(tiles[0], base_bias * 10.0f);
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }

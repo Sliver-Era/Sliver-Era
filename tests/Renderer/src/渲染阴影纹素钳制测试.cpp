@@ -1,4 +1,4 @@
-﻿/*
+/*
 渲染阴影纹素钳制与自动淡化测试（第六百六十一轮；深研方向八 B1 剩余课题）
 覆盖：纹素上限默认不干预 / 钳制后纹素不超过上限且覆盖面收缩 / 级联切换带自动淡化建议 /
      显式比例优先与自动关闭 / 扁平入口透传。
@@ -43,8 +43,8 @@ namespace
 	//绘制固定场景并推进一帧（返回画面像素；遮挡面 z = -10、接收面 z = -9，间距 1.0）
 	std::vector<uint8_t> draw_scene(engine::Renderer& renderer, engine::Mesh_Handle occluder, engine::Mesh_Handle receiver)
 	{
-		EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -10.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, translate_model(0.0f, 0.0f, -9.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -10.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, translate_model(0.0f, 0.0f, -9.0f).data()));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return pixels;
@@ -64,12 +64,12 @@ TEST_F(Renderer_Scene_Test, 纹素上限默认不干预)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//单级、半宽 48、边长 512（纹素 = 96 / 512 = 0.1875）
 	renderer.shadow_range_set(48.0f, 1.0f, 60.0f);
@@ -99,9 +99,9 @@ TEST_F(Renderer_Scene_Test, 纹素上限默认不干预)
 	EXPECT_FLOAT_EQ(renderer.frame_stats_get().shadow_texel_world, 0.1875f) << "关闭钳制后纹素未回到默认";
 	EXPECT_TRUE(reference == again) << "关闭纹素钳制后画面与默认不一致";
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -117,12 +117,12 @@ TEST_F(Renderer_Scene_Test, 纹素钳制覆盖面收缩)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	renderer.shadow_range_set(48.0f, 1.0f, 60.0f);
 	engine::Camera_Data camera{};
@@ -145,9 +145,9 @@ TEST_F(Renderer_Scene_Test, 纹素钳制覆盖面收缩)
 	RecordProperty("texel_clamp_brightness", lit);
 	EXPECT_GT(lit, base) << "钳制后覆盖面未收缩（遮挡面仍在视锥内）";
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*

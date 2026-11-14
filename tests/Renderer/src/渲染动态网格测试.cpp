@@ -110,7 +110,7 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 未初始化更新失败)
 {
 	engine::Renderer renderer;
 	engine::Vertex vertex = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } };
-	EXPECT_FALSE(renderer.mesh_update_vertices(1, 0, 1, &vertex));
+	EXPECT_FALSE(renderer.resource().mesh_update_vertices(1, 0, 1, &vertex));
 }
 
 //无效句柄 / 区间越界 / 空指针均被拒
@@ -119,22 +119,22 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 参数校验拒绝)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_triangle_load(handle));
+	ASSERT_TRUE(renderer.resource().mesh_triangle_load(handle));
 	engine::Vertex vertex = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } };
 
 	//无效句柄
-	EXPECT_FALSE(renderer.mesh_update_vertices(handle + 99, 0, 1, &vertex));
+	EXPECT_FALSE(renderer.resource().mesh_update_vertices(handle + 99, 0, 1, &vertex));
 	//区间越界（三角形只有 3 个顶点）
-	EXPECT_FALSE(renderer.mesh_update_vertices(handle, 2, 2, &vertex));
+	EXPECT_FALSE(renderer.resource().mesh_update_vertices(handle, 2, 2, &vertex));
 	//起始顶点自身越界
-	EXPECT_FALSE(renderer.mesh_update_vertices(handle, 3, 1, &vertex));
+	EXPECT_FALSE(renderer.resource().mesh_update_vertices(handle, 3, 1, &vertex));
 	//数量为零 / 空指针
-	EXPECT_FALSE(renderer.mesh_update_vertices(handle, 0, 0, &vertex));
-	EXPECT_FALSE(renderer.mesh_update_vertices(handle, 0, 1, nullptr));
+	EXPECT_FALSE(renderer.resource().mesh_update_vertices(handle, 0, 0, &vertex));
+	EXPECT_FALSE(renderer.resource().mesh_update_vertices(handle, 0, 1, nullptr));
 
 	//卸载后句柄失效
-	renderer.mesh_unload(handle);
-	EXPECT_FALSE(renderer.mesh_update_vertices(handle, 0, 1, &vertex));
+	renderer.resource().mesh_unload(handle);
+	EXPECT_FALSE(renderer.resource().mesh_update_vertices(handle, 0, 1, &vertex));
 }
 
 //顶点整体平移后画面随之移动
@@ -145,12 +145,12 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 顶点平移改变画面位置)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
-	renderer.texture_bind_set(0);
+	renderer.resource().texture_bind_set(0);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_triangle_load(handle));
+	ASSERT_TRUE(renderer.resource().mesh_triangle_load(handle));
 
 	//第一帧：三角形居中
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> baseline(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(baseline.data(), static_cast<uint32_t>(baseline.size())));
 	float baseline_row = white_centroid_row(baseline);
@@ -167,9 +167,9 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 顶点平移改变画面位置)
 		engine::Vertex{ { 0.5f, -0.5f + VERTEX_SHIFT_Y, 0.0f }, { 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } },
 		engine::Vertex{ { 0.0f, 0.5f + VERTEX_SHIFT_Y, 0.0f }, { 0.5f, 1.0f }, { 0.0f, 0.0f, 1.0f } },
 	};
-	ASSERT_TRUE(renderer.mesh_update_vertices(handle, 0, 3, shifted.data()));
+	ASSERT_TRUE(renderer.resource().mesh_update_vertices(handle, 0, 3, shifted.data()));
 
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> shifted_frame(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(shifted_frame.data(), static_cast<uint32_t>(shifted_frame.size())));
 	float shifted_row = white_centroid_row(shifted_frame);
@@ -186,7 +186,7 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 顶点平移改变画面位置)
 	EXPECT_LE(shifted_white, baseline_white * 2) << "更新后覆盖面积异常放大：基线 "
 		<< baseline_white << "，更新后 " << shifted_white;
 
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }
 
 //包围盒只扩不缩（保守扩张）
@@ -195,12 +195,12 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 包围盒保守扩张)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_triangle_load(handle));
+	ASSERT_TRUE(renderer.resource().mesh_triangle_load(handle));
 
 	//基线包围盒（三角形 ±0.5）
 	float baseline_min[3] = { 0.0f, 0.0f, 0.0f };
 	float baseline_max[3] = { 0.0f, 0.0f, 0.0f };
-	ASSERT_TRUE(renderer.mesh_bounds(handle, baseline_min, baseline_max));
+	ASSERT_TRUE(renderer.resource().mesh_bounds(handle, baseline_min, baseline_max));
 	EXPECT_FLOAT_EQ(baseline_min[1], -0.5f);
 	EXPECT_FLOAT_EQ(baseline_max[1], 0.5f);
 
@@ -210,16 +210,16 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 包围盒保守扩张)
 		engine::Vertex{ { 0.5f, -0.5f + VERTEX_SHIFT_Y, 0.0f }, { 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } },
 		engine::Vertex{ { 0.0f, 0.5f + VERTEX_SHIFT_Y, 0.0f }, { 0.5f, 1.0f }, { 0.0f, 0.0f, 1.0f } },
 	};
-	ASSERT_TRUE(renderer.mesh_update_vertices(handle, 0, 3, shifted.data()));
+	ASSERT_TRUE(renderer.resource().mesh_update_vertices(handle, 0, 3, shifted.data()));
 	float updated_min[3] = { 0.0f, 0.0f, 0.0f };
 	float updated_max[3] = { 0.0f, 0.0f, 0.0f };
-	ASSERT_TRUE(renderer.mesh_bounds(handle, updated_min, updated_max));
+	ASSERT_TRUE(renderer.resource().mesh_bounds(handle, updated_min, updated_max));
 	//下界未收缩
 	EXPECT_FLOAT_EQ(updated_min[1], baseline_min[1]);
 	//上界扩到新顶点最高处
 	EXPECT_FLOAT_EQ(updated_max[1], 0.5f + VERTEX_SHIFT_Y);
 
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }
 
 /*
@@ -234,12 +234,12 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 索引区域更新改变覆盖)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
-	renderer.texture_bind_set(0);
+	renderer.resource().texture_bind_set(0);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_triangle_load(handle));
+	ASSERT_TRUE(renderer.resource().mesh_triangle_load(handle));
 
 	//基线：正常三角形
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> baseline(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(baseline.data(), static_cast<uint32_t>(baseline.size())));
 	uint32_t baseline_white = white_count(baseline);
@@ -247,26 +247,26 @@ TEST_F(Renderer_Dynamic_Mesh_Test, 索引区域更新改变覆盖)
 
 	//退化索引：三顶点同点，零面积（不产生像素）
 	const uint32_t degenerate[3] = { 0, 0, 0 };
-	ASSERT_TRUE(renderer.mesh_update_indices(handle, 0, 3, degenerate));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_update_indices(handle, 0, 3, degenerate));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> degenerated(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(degenerated.data(), static_cast<uint32_t>(degenerated.size())));
 	EXPECT_EQ(white_count(degenerated), 0u) << "退化索引仍产生覆盖：索引写入未生效";
 
 	//恢复原索引
 	const uint32_t restored[3] = { 0, 1, 2 };
-	ASSERT_TRUE(renderer.mesh_update_indices(handle, 0, 3, restored));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_update_indices(handle, 0, 3, restored));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> recovered(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(recovered.data(), static_cast<uint32_t>(recovered.size())));
 	EXPECT_EQ(white_count(recovered), baseline_white) << "恢复索引后覆盖面与基线不一致";
 
 	//索引越界（顶点只有 3 个）/ 区间越界 / 空指针均拒绝
 	const uint32_t out_of_range[3] = { 0, 1, 3 };
-	EXPECT_FALSE(renderer.mesh_update_indices(handle, 0, 3, out_of_range));
-	EXPECT_FALSE(renderer.mesh_update_indices(handle, 2, 2, restored));
-	EXPECT_FALSE(renderer.mesh_update_indices(handle, 0, 3, nullptr));
-	EXPECT_FALSE(renderer.mesh_update_indices(handle + 99, 0, 3, restored));
-	renderer.mesh_unload(handle);
-	EXPECT_FALSE(renderer.mesh_update_indices(handle, 0, 3, restored));
+	EXPECT_FALSE(renderer.resource().mesh_update_indices(handle, 0, 3, out_of_range));
+	EXPECT_FALSE(renderer.resource().mesh_update_indices(handle, 2, 2, restored));
+	EXPECT_FALSE(renderer.resource().mesh_update_indices(handle, 0, 3, nullptr));
+	EXPECT_FALSE(renderer.resource().mesh_update_indices(handle + 99, 0, 3, restored));
+	renderer.resource().mesh_unload(handle);
+	EXPECT_FALSE(renderer.resource().mesh_update_indices(handle, 0, 3, restored));
 }

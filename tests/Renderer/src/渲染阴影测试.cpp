@@ -12,12 +12,12 @@ TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回整帧像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
@@ -37,7 +37,7 @@ TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 	renderer.scene_apply(camera, light, fog);
 
 	//无遮挡基线（只画接收面）
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> baseline_pixels = render_frame();
 	const uint32_t baseline = center_brightness(baseline_pixels);
 	//阴影外参考点（中心右侧 150 像素：仍在接收面内、但位于遮挡面投影之外）
@@ -55,16 +55,16 @@ TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 	occluder_transform[15] = 1.0f;
 
 	//关闭阴影：遮挡面在接收面之后，画面应与基线一致
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> unshadowed_pixels = render_frame();
 	const uint32_t unshadowed = center_brightness(unshadowed_pixels);
 
 	//开启阴影
 	renderer.shadow_enable_set(true);
 	ASSERT_TRUE(renderer.shadow_enabled());
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> shadowed_pixels = render_frame();
 	const uint32_t shadowed = center_brightness(shadowed_pixels);
 	const std::array<uint8_t, 4> shadowed_edge =
@@ -75,8 +75,8 @@ TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 	//关闭阴影后应恢复基线
 	renderer.shadow_enable_set(false);
 	ASSERT_FALSE(renderer.shadow_enabled());
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t restored = center_brightness(render_frame());
 
 	RecordProperty("shadow_baseline", baseline);
@@ -96,9 +96,9 @@ TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 	EXPECT_NEAR(restored, baseline, 3u) << "关闭阴影后画面未恢复（"
 		<< restored << " vs " << baseline << "）";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -115,12 +115,12 @@ TEST_F(Renderer_Scene_Test, 阴影强度生效)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回整帧像素
 	auto render_frame = [&]()
@@ -148,40 +148,40 @@ TEST_F(Renderer_Scene_Test, 阴影强度生效)
 	occluder_transform[15] = 1.0f;
 
 	//无遮挡且未开阴影的基线
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t baseline = center_brightness(render_frame());
 
 	//开启阴影、强度 1：中心完全遮蔽
 	renderer.shadow_enable_set(true);
 	renderer.shadow_strength_set(1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t full_shadow = center_brightness(render_frame());
 
 	//强度 0：阴影完全无效，中心回到基线
 	renderer.shadow_strength_set(0.0f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t no_shadow = center_brightness(render_frame());
 
 	//强度 0.5：中心介于两者之间
 	renderer.shadow_strength_set(0.5f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t half_shadow = center_brightness(render_frame());
 
 	//非法强度 1.5：整次忽略，画面与 0.5 一致
 	renderer.shadow_strength_set(1.5f);
 	EXPECT_FLOAT_EQ(renderer.shadow_strength(), 0.5f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t rejected = center_brightness(render_frame());
 
 	//软度 1（3×3 PCF）、强度恢复 1：中心仍处于遮蔽区，亮度保持低位
 	renderer.shadow_strength_set(1.0f);
 	renderer.shadow_softness_set(1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t soft_shadow = center_brightness(render_frame());
 
 	RecordProperty("strength_baseline", baseline);
@@ -202,9 +202,9 @@ TEST_F(Renderer_Scene_Test, 阴影强度生效)
 		<< rejected << " vs " << half_shadow << "）";
 	EXPECT_LT(soft_shadow, 60u) << "软度 1 时中心未被遮蔽（" << soft_shadow << "）";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -220,12 +220,12 @@ TEST_F(Renderer_Scene_Test, 阴影分辨率可配)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回整帧像素
 	auto render_frame = [&]()
@@ -246,7 +246,7 @@ TEST_F(Renderer_Scene_Test, 阴影分辨率可配)
 	renderer.shadow_enable_set(true);
 
 	//基线（无遮挡）
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t baseline = center_brightness(render_frame());
 
 	//切到 512 后阴影仍应生效
@@ -258,8 +258,8 @@ TEST_F(Renderer_Scene_Test, 阴影分辨率可配)
 	occluder_transform[10] = 0.6f;
 	occluder_transform[14] = -0.5f;
 	occluder_transform[15] = 1.0f;
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t shadowed = center_brightness(render_frame());
 
 	//非法分辨率整次忽略
@@ -268,8 +268,8 @@ TEST_F(Renderer_Scene_Test, 阴影分辨率可配)
 
 	//关闭阴影恢复基线
 	renderer.shadow_enable_set(false);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t restored = center_brightness(render_frame());
 
 	RecordProperty("resolution_baseline", baseline);
@@ -281,9 +281,9 @@ TEST_F(Renderer_Scene_Test, 阴影分辨率可配)
 	EXPECT_NEAR(restored, baseline, 4u) << "关闭阴影后未恢复基线（"
 		<< restored << " vs " << baseline << "）";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -299,12 +299,12 @@ TEST_F(Renderer_Scene_Test, 阴影按需重绘)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回整帧像素
 	auto render_frame = [&]()
@@ -333,14 +333,14 @@ TEST_F(Renderer_Scene_Test, 阴影按需重绘)
 	occluder_transform[15] = 1.0f;
 
 	//第一帧：阴影 pass 必须执行
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t first_brightness = center_brightness(render_frame());
 	const uint64_t first_count = renderer.shadow_pass_count();
 
 	//第二帧：输入完全一致，阴影 pass 应被跳过且画面一致
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t second_brightness = center_brightness(render_frame());
 	const uint64_t second_count = renderer.shadow_pass_count();
 
@@ -349,8 +349,8 @@ TEST_F(Renderer_Scene_Test, 阴影按需重绘)
 	for (std::size_t index = 0; index < 16; ++index)
 		moved_transform[index] = occluder_transform[index];
 	moved_transform[12] = 0.9f;
-	ASSERT_TRUE(renderer.mesh_draw(occluder, moved_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, moved_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t moved_brightness = center_brightness(render_frame());
 	const uint64_t moved_count = renderer.shadow_pass_count();
 
@@ -369,9 +369,9 @@ TEST_F(Renderer_Scene_Test, 阴影按需重绘)
 	EXPECT_GT(moved_brightness, first_brightness + 20u) << "遮挡面平移后阴影未移开（"
 		<< moved_brightness << " vs " << first_brightness << "）";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -387,12 +387,12 @@ TEST_F(Renderer_Scene_Test, 阴影软度连续可调)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//渲染一帧并返回整帧像素
 	auto render_frame = [&]()
@@ -421,7 +421,7 @@ TEST_F(Renderer_Scene_Test, 阴影软度连续可调)
 	occluder_transform[15] = 1.0f;
 
 	//基线（无遮挡）
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t baseline = center_brightness(render_frame());
 
 	//三档软度下中心均被遮蔽
@@ -430,15 +430,15 @@ TEST_F(Renderer_Scene_Test, 阴影软度连续可调)
 	for (std::size_t index = 0; index < 3; ++index)
 	{
 		renderer.shadow_softness_set(softness_list[index]);
-		ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-		ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+		ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 		soft_brightness[index] = center_brightness(render_frame());
 	}
 
 	//关闭阴影恢复基线
 	renderer.shadow_enable_set(false);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t restored = center_brightness(render_frame());
 
 	RecordProperty("soft_baseline", baseline);
@@ -454,9 +454,9 @@ TEST_F(Renderer_Scene_Test, 阴影软度连续可调)
 	EXPECT_NEAR(restored, baseline, 4u) << "关闭阴影后未恢复基线（"
 		<< restored << " vs " << baseline << "）";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -471,12 +471,12 @@ TEST_F(Renderer_Scene_Test, 阴影图读回)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//场景：方向光沿 +Z、强度 1、环境光 0、阴影开启
 	engine::Camera_Data camera{};
@@ -495,8 +495,8 @@ TEST_F(Renderer_Scene_Test, 阴影图读回)
 	occluder_transform[10] = 0.6f;
 	occluder_transform[14] = -0.5f;
 	occluder_transform[15] = 1.0f;
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 
 	//读回 1024 阴影图
@@ -528,8 +528,8 @@ TEST_F(Renderer_Scene_Test, 阴影图读回)
 
 	//切 512 后尺寸随之变化
 	renderer.shadow_resolution_set(512);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	std::vector<uint8_t> small_pixels(512 * 512 * 4);
 	ASSERT_TRUE(renderer.shadow_readback(small_pixels.data(),
@@ -537,9 +537,9 @@ TEST_F(Renderer_Scene_Test, 阴影图读回)
 	EXPECT_EQ(read_width, 512u);
 	EXPECT_EQ(read_height, 512u);
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -562,10 +562,10 @@ TEST_F(Renderer_Scene_Test, 斜法线不产生自阴影)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//场景：方向光沿 +Z（光源在 -Z 侧）、强度 1、环境光 0
 	engine::Camera_Data camera{};
@@ -582,7 +582,7 @@ TEST_F(Renderer_Scene_Test, 斜法线不产生自阴影)
 	//渲染一帧并返回中心亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_brightness = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(receiver, model.data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, model.data()));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return center_brightness(pixels);
@@ -602,8 +602,8 @@ TEST_F(Renderer_Scene_Test, 斜法线不产生自阴影)
 		<< with_shadow << " vs " << without_shadow << "）";
 
 	renderer.shadow_enable_set(false);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -625,14 +625,14 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影输出与单线程一致)
 			return pixels;
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
-		if (!renderer.texture_load(texture, texels.data(), 2, 2))
+		if (!renderer.resource().texture_load(texture, texels.data(), 2, 2))
 			return pixels;
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		if (!renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
-			|| !renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
+		if (!renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
+			|| !renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
 			return pixels;
-		renderer.texture_bind_set(texture);
+		renderer.resource().texture_bind_set(texture);
 
 		//场景：方向光沿 +Z、强度 1、环境光 0，阴影开启
 		engine::Camera_Data camera{};
@@ -651,7 +651,7 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影输出与单线程一致)
 		occluder_transform[10] = 0.6f;
 		occluder_transform[14] = -0.5f;
 		occluder_transform[15] = 1.0f;
-		if (!renderer.mesh_draw(occluder, occluder_transform) || !renderer.mesh_draw(receiver, nullptr))
+		if (!renderer.resource().mesh_draw(occluder, occluder_transform) || !renderer.resource().mesh_draw(receiver, nullptr))
 			return pixels;
 
 		//渲染一帧并取并行段数（场景 pass 与阴影 pass 分列）
@@ -662,9 +662,9 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影输出与单线程一致)
 		segments_out = stats.parallel_segments;
 		shadow_segments_out = stats.shadow_parallel_segments;
 
-		renderer.mesh_unload(occluder);
-		renderer.mesh_unload(receiver);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(occluder);
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().texture_unload(texture);
 		return pixels;
 	};
 
@@ -713,14 +713,14 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影pass分段录制画面一致)
 		renderer.static_batching_set(false);
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
-		if (!renderer.texture_load(texture, texels.data(), 2, 2))
+		if (!renderer.resource().texture_load(texture, texels.data(), 2, 2))
 			return pixels;
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		if (!renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
-			|| !renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
+		if (!renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
+			|| !renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
 			return pixels;
-		renderer.texture_bind_set(texture);
+		renderer.resource().texture_bind_set(texture);
 
 		//场景：方向光沿 +Z、强度 1、环境光 0，阴影开启
 		engine::Camera_Data camera{};
@@ -742,10 +742,10 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影pass分段录制画面一致)
 			transform[12] = -0.95f + 0.049f * static_cast<float>(index);
 			transform[14] = -0.5f;
 			transform[15] = 1.0f;
-			if (!renderer.mesh_draw(occluder, transform))
+			if (!renderer.resource().mesh_draw(occluder, transform))
 				return pixels;
 		}
-		if (!renderer.mesh_draw(receiver, nullptr))
+		if (!renderer.resource().mesh_draw(receiver, nullptr))
 			return pixels;
 
 		//渲染一帧并取并行段数（场景 pass 与阴影 pass 分列）
@@ -756,9 +756,9 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影pass分段录制画面一致)
 		segments_out = stats.parallel_segments;
 		shadow_segments_out = stats.shadow_parallel_segments;
 
-		renderer.mesh_unload(occluder);
-		renderer.mesh_unload(receiver);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(occluder);
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().texture_unload(texture);
 		return pixels;
 	};
 

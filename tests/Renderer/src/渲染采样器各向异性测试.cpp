@@ -222,7 +222,7 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 未初始化设置采样器状态无副
 	state.max_anisotropy = 16.0f;
 	state.min_lod = 0.0f;
 	state.max_lod = 3.0f;
-	renderer.texture_sampler_state_set(state);
+	renderer.resource().texture_sampler_state_set(state);
 	EXPECT_FALSE(renderer.valid());
 }
 
@@ -252,19 +252,19 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性与细节层级设置后仍
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//程序生成棋盘格纹理（两种灰度交替，中心像素必为纹理色而非清屏色）
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, 32, 32, 4));
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 32, 32, 4));
 	//加载四边形
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 
 	//第一帧：开启各向异性（倍数取设备上限）并启用 mip 过滤
 	engine::Texture_Sampler_State anisotropic;
 	anisotropic.anisotropy = true;
 	anisotropic.max_anisotropy = renderer.sampler_max_anisotropy();
 	anisotropic.mip_filter = true;
-	renderer.texture_sampler_state_set(anisotropic);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_sampler_state_set(anisotropic);
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> first(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(first.data(), static_cast<uint32_t>(first.size())));
 	//中心像素应被纹理覆盖（非清屏色）——旁证采样器有效且绘制链路通畅
@@ -280,11 +280,11 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性与细节层级设置后仍
 	narrowed.mip_filter = true;
 	narrowed.min_lod = 0.0f;
 	narrowed.max_lod = 0.0f;
-	renderer.texture_sampler_state_set(narrowed);
+	renderer.resource().texture_sampler_state_set(narrowed);
 	//重复设置同一状态（空操作路径）
-	renderer.texture_sampler_state_set(narrowed);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_sampler_state_set(narrowed);
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> second(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(second.data(), static_cast<uint32_t>(second.size())));
 	std::array<uint8_t, 4> second_center = pixel_get(second, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -292,9 +292,9 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性与细节层级设置后仍
 
 	//第三帧：切回「不采样 mip」的默认档，仍应正常绘制（状态可往返）
 	engine::Texture_Sampler_State plain;
-	renderer.texture_sampler_state_set(plain);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_sampler_state_set(plain);
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> third(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(third.data(), static_cast<uint32_t>(third.size())));
 	EXPECT_FALSE(pixel_is_clear(pixel_get(third, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)))
@@ -303,8 +303,8 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性与细节层级设置后仍
 	//三帧均应正常推进
 	EXPECT_EQ(renderer.frame_count(), 3u);
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -324,25 +324,25 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, mip过滤开关产生像素级差异)
 	//大尺寸细棋格纹（256 × 256、格边 4 像素的纯黑 / 白棋格），配小四边形以制造强缩小
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = checker_black_white(256, 4);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 256, 256));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 256, 256));
 	//加载四边形
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 
 	//第一帧：开启 mip 过滤（各向异性保持关闭，使差异单纯来自 mip 选择）
 	engine::Texture_Sampler_State mip_on;
 	mip_on.mip_filter = true;
-	renderer.texture_sampler_state_set(mip_on);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_sampler_state_set(mip_on);
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> filtered(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(filtered.data(), static_cast<uint32_t>(filtered.size())));
 
 	//第二帧：切回默认档（不采样 mip）
 	engine::Texture_Sampler_State mip_off;
-	renderer.texture_sampler_state_set(mip_off);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_sampler_state_set(mip_off);
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> aliased(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(aliased.data(), static_cast<uint32_t>(aliased.size())));
 
@@ -363,8 +363,8 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, mip过滤开关产生像素级差异)
 	EXPECT_LE(extreme_filtered, extreme_aliased)
 		<< "开启 mip 过滤后极端亮度像素数反多于关闭侧（" << extreme_filtered << " > " << extreme_aliased << "）";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -386,9 +386,9 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性开关产生像素级差异
 	//垂直条纹纹理（256 × 256、条宽 2 像素）：细节落在被压缩的 u 方向，才能体现各向异性
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = stripes_vertical_black_white(256, 2);
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 256, 256));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 256, 256));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 
 	//绕 Y 轴 60° 的模型矩阵（列主序）：使四边形在屏幕空间沿 x 方向严重压缩
 	std::array<float, 16> oblique = {};
@@ -404,9 +404,9 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性开关产生像素级差异
 	//第一帧：关闭各向异性（倍数 1）
 	engine::Texture_Sampler_State plain;
 	plain.mip_filter = true;
-	renderer.texture_sampler_state_set(plain);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, oblique.data()));
+	renderer.resource().texture_sampler_state_set(plain);
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, oblique.data()));
 	std::vector<uint8_t> isotropic(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(isotropic.data(), static_cast<uint32_t>(isotropic.size())));
 
@@ -415,9 +415,9 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性开关产生像素级差异
 	anisotropic.mip_filter = true;
 	anisotropic.anisotropy = true;
 	anisotropic.max_anisotropy = renderer.sampler_max_anisotropy();
-	renderer.texture_sampler_state_set(anisotropic);
-	renderer.texture_bind_set(texture);
-	ASSERT_TRUE(renderer.mesh_draw(handle, oblique.data()));
+	renderer.resource().texture_sampler_state_set(anisotropic);
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, oblique.data()));
 	std::vector<uint8_t> anisotropic_frame(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(anisotropic_frame.data(), static_cast<uint32_t>(anisotropic_frame.size())));
 
@@ -440,6 +440,6 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性开关产生像素级差异
 	RecordProperty("anisotropy_supported", renderer.sampler_anisotropy_supported() ? "true" : "false");
 	RecordProperty("anisotropy_max", renderer.sampler_max_anisotropy());
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }

@@ -194,10 +194,10 @@ TEST_F(Renderer_Mipmap_Test, 未初始化设置采样器状态无副作用)
 	engine::Texture_Sampler_State state;
 	state.address_mode = engine::Texture_Address_Mode::Clamp_To_Edge;
 	state.mip_filter = true;
-	renderer.texture_sampler_state_set(state);
+	renderer.resource().texture_sampler_state_set(state);
 	//后续调用仍按未初始化处理
 	uint64_t texture = 0;
-	EXPECT_FALSE(renderer.texture_load_checkerboard(texture, 8, 8, 2));
+	EXPECT_FALSE(renderer.resource().texture_load_checkerboard(texture, 8, 8, 2));
 }
 
 //启用 mip 过滤后棋盘格纹理仍可正常绘制
@@ -209,24 +209,24 @@ TEST_F(Renderer_Mipmap_Test, 启用mip过滤后仍可正常绘制)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//棋盘格纹理（64×64 → 生成 7 级 mip）
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, CHECKER_SIZE, CHECKER_SIZE, CHECKER_CELL));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, CHECKER_SIZE, CHECKER_SIZE, CHECKER_CELL));
+	renderer.resource().texture_bind_set(texture);
 	//启用 mip 过滤
 	engine::Texture_Sampler_State state;
 	state.mip_filter = true;
-	renderer.texture_sampler_state_set(state);
+	renderer.resource().texture_sampler_state_set(state);
 	//满屏覆盖的四边形 + 跑帧
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(1.0f, 0.0f, 1.0f, 0.0f, 1.0f)));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(1.0f, 0.0f, 1.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 	//中心像素应为棋盘格的两种灰度之一（非清屏色），即绘制路径未被 mip 破坏
 	std::array<uint8_t, 3> center = color_sorted(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2));
 	EXPECT_TRUE(center[0] >= 30 && center[0] == center[1] && center[1] == center[2])
 		<< "启用 mip 过滤后中心非棋盘格灰度：" << pixel_text(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2));
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 //缩小绘制时 mip 过滤真实生效（关 / 开两帧对比）
@@ -238,25 +238,25 @@ TEST_F(Renderer_Mipmap_Test, 缩小绘制时mip生效)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//棋盘格纹理（64×64、格 8）
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, CHECKER_SIZE, CHECKER_SIZE, CHECKER_CELL));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, CHECKER_SIZE, CHECKER_SIZE, CHECKER_CELL));
+	renderer.resource().texture_bind_set(texture);
 	//小四边形（屏幕覆盖约 5~6 像素 → 每像素跨约 13 个纹素，属明显缩小绘制）
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(SMALL_QUAD_HALF, 0.0f, 1.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(SMALL_QUAD_HALF, 0.0f, 1.0f, 0.0f, 1.0f)));
 
 	//第一帧：关闭 mip 过滤（maxLod = 0，等价于只采第 0 级）
 	engine::Texture_Sampler_State without_mip;
 	without_mip.mip_filter = false;
-	renderer.texture_sampler_state_set(without_mip);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_sampler_state_set(without_mip);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> no_mip_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(no_mip_pixels.data(), static_cast<uint32_t>(no_mip_pixels.size())));
 
 	//第二帧：启用 mip 过滤（几何与纹理完全不变，只改采样器状态）
 	engine::Texture_Sampler_State with_mip;
 	with_mip.mip_filter = true;
-	renderer.texture_sampler_state_set(with_mip);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_sampler_state_set(with_mip);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> mip_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(mip_pixels.data(), static_cast<uint32_t>(mip_pixels.size())));
 
@@ -272,8 +272,8 @@ TEST_F(Renderer_Mipmap_Test, 缩小绘制时mip生效)
 	EXPECT_LT(mip_spread, no_mip_spread) << "启用 mip 后对比度未下降（关 " << no_mip_spread
 		<< " vs 开 " << mip_spread << "）";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 //寻址模式可配（重复 vs 边缘钳制）
@@ -286,25 +286,25 @@ TEST_F(Renderer_Mipmap_Test, 寻址模式可配)
 	//左右两色纹理（左白右黑）
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = two_tone_2x2();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	//纹理坐标 u ∈ [1, 2]（越界一倍；v 正常），用于区分重复与边缘钳制
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(1.0f, 1.0f, 2.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(1.0f, 1.0f, 2.0f, 0.0f, 1.0f)));
 
 	//第一帧：重复寻址（默认）→ u = 1.5 回绕到 0.5，落在白 / 黑交界 → 中间灰
 	engine::Texture_Sampler_State repeat_state;
 	repeat_state.address_mode = engine::Texture_Address_Mode::Repeat;
-	renderer.texture_sampler_state_set(repeat_state);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_sampler_state_set(repeat_state);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> repeat_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(repeat_pixels.data(), static_cast<uint32_t>(repeat_pixels.size())));
 
 	//第二帧：边缘钳制 → u = 1.5 钳到 1.0，取最右一列（黑）
 	engine::Texture_Sampler_State clamp_state;
 	clamp_state.address_mode = engine::Texture_Address_Mode::Clamp_To_Edge;
-	renderer.texture_sampler_state_set(clamp_state);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	renderer.resource().texture_sampler_state_set(clamp_state);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> clamp_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(clamp_pixels.data(), static_cast<uint32_t>(clamp_pixels.size())));
 
@@ -321,8 +321,8 @@ TEST_F(Renderer_Mipmap_Test, 寻址模式可配)
 	EXPECT_NE(color_sum(pixel_get(repeat_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)),
 		color_sum(pixel_get(clamp_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))) << "两种寻址模式结果相同，寻址配置未生效";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -339,10 +339,10 @@ TEST_F(Renderer_Mipmap_Test, 细节层级偏置改变缩小采样)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//棋盘格纹理与小四边形（与「缩小绘制时mip生效」同一前提）
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, CHECKER_SIZE, CHECKER_SIZE, CHECKER_CELL));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, CHECKER_SIZE, CHECKER_SIZE, CHECKER_CELL));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(MEDIUM_QUAD_HALF, 0.0f, 1.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(MEDIUM_QUAD_HALF, 0.0f, 1.0f, 0.0f, 1.0f)));
 
 	//按给定偏置渲染一帧（void λ 以允许 ASSERT）
 	auto render_with_bias = [&](float bias, std::vector<uint8_t>& pixels)
@@ -350,8 +350,8 @@ TEST_F(Renderer_Mipmap_Test, 细节层级偏置改变缩小采样)
 		engine::Texture_Sampler_State state;
 		state.mip_filter = true;
 		state.lod_bias = bias;
-		renderer.texture_sampler_state_set(state);
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		renderer.resource().texture_sampler_state_set(state);
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		pixels.assign(pixel_bytes(), 0);
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	};
@@ -379,8 +379,8 @@ TEST_F(Renderer_Mipmap_Test, 细节层级偏置改变缩小采样)
 	//锐利帧实际发生了画面变化（排除偏置被忽略）
 	EXPECT_GT(sharp_spread, baseline_spread + 10u) << "偏置影响过弱，疑未生效";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -393,13 +393,13 @@ TEST_F(Renderer_Mipmap_Test, 采样器状态可读与钳制)
 {
 	engine::Renderer renderer;
 	//未初始化：返回默认状态
-	engine::Texture_Sampler_State before_init = renderer.texture_sampler_state_get();
+	engine::Texture_Sampler_State before_init = renderer.resource().texture_sampler_state_get();
 	EXPECT_EQ(before_init.lod_bias, 0.0f);
 	EXPECT_FALSE(before_init.mip_filter);
 
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//默认值（与本轮之前行为一致）
-	engine::Texture_Sampler_State default_state = renderer.texture_sampler_state_get();
+	engine::Texture_Sampler_State default_state = renderer.resource().texture_sampler_state_get();
 	EXPECT_EQ(default_state.address_mode, engine::Texture_Address_Mode::Repeat);
 	EXPECT_FALSE(default_state.mip_filter);
 	EXPECT_EQ(default_state.min_lod, 0.0f);
@@ -410,9 +410,9 @@ TEST_F(Renderer_Mipmap_Test, 采样器状态可读与钳制)
 	engine::Texture_Sampler_State legal;
 	legal.mip_filter = true;
 	legal.lod_bias = -2.0f;
-	renderer.texture_sampler_state_set(legal);
-	EXPECT_EQ(renderer.texture_sampler_state_get().lod_bias, -2.0f);
-	EXPECT_TRUE(renderer.texture_sampler_state_get().mip_filter);
+	renderer.resource().texture_sampler_state_set(legal);
+	EXPECT_EQ(renderer.resource().texture_sampler_state_get().lod_bias, -2.0f);
+	EXPECT_TRUE(renderer.resource().texture_sampler_state_get().mip_filter);
 
 	//设备上限（第九十七轮：钳制上界随设备能力）
 	float lod_bias_limit = renderer.sampler_max_lod_bias();
@@ -421,18 +421,18 @@ TEST_F(Renderer_Mipmap_Test, 采样器状态可读与钳制)
 	//上界钳制
 	engine::Texture_Sampler_State high;
 	high.lod_bias = 99.0f;
-	renderer.texture_sampler_state_set(high);
-	EXPECT_EQ(renderer.texture_sampler_state_get().lod_bias, lod_bias_limit);
+	renderer.resource().texture_sampler_state_set(high);
+	EXPECT_EQ(renderer.resource().texture_sampler_state_get().lod_bias, lod_bias_limit);
 
 	//下界钳制
 	engine::Texture_Sampler_State low;
 	low.lod_bias = -99.0f;
-	renderer.texture_sampler_state_set(low);
-	EXPECT_EQ(renderer.texture_sampler_state_get().lod_bias, -lod_bias_limit);
+	renderer.resource().texture_sampler_state_set(low);
+	EXPECT_EQ(renderer.resource().texture_sampler_state_get().lod_bias, -lod_bias_limit);
 
 	//非数归 0
 	engine::Texture_Sampler_State not_a_number;
 	not_a_number.lod_bias = std::numeric_limits<float>::quiet_NaN();
-	renderer.texture_sampler_state_set(not_a_number);
-	EXPECT_EQ(renderer.texture_sampler_state_get().lod_bias, 0.0f);
+	renderer.resource().texture_sampler_state_set(not_a_number);
+	EXPECT_EQ(renderer.resource().texture_sampler_state_get().lod_bias, 0.0f);
 }

@@ -33,12 +33,12 @@ namespace
 		renderer.post_stage_extra_set(0, base_height, seed, denoise, 0.0f);
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle plane = 0;
-		EXPECT_TRUE(renderer.mesh_load(plane, quad_data()));
-		EXPECT_TRUE(renderer.mesh_draw(plane, nullptr));
-		renderer.mesh_unload(plane);
+		EXPECT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
+		renderer.resource().mesh_unload(plane);
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.pipeline_unload(pass);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return pixels;
 	}
@@ -98,12 +98,12 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾关闭原样输出)
 	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
 	renderer.render_target_present_set(scene_target);
 	engine::Mesh_Handle plane = 0;
-	ASSERT_TRUE(renderer.mesh_load(plane, quad_data()));
-	ASSERT_TRUE(renderer.mesh_draw(plane, nullptr));
-	renderer.mesh_unload(plane);
+	ASSERT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
+	renderer.resource().mesh_unload(plane);
 	std::vector<uint8_t> direct(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(direct.data(), static_cast<uint32_t>(direct.size())));
-	renderer.pipeline_unload(pass);
+	renderer.resource().pipeline_unload(pass);
 	renderer.render_target_destroy(scene_target);
 
 	int difference = max_channel_diff(reference, direct);
@@ -183,15 +183,15 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾多级链取源)
 		uint64_t targets[2] = { target0, target1 };
 		EXPECT_TRUE(renderer.render_target_present_chain_set(targets, 2));
 		engine::Mesh_Handle plane = 0;
-		EXPECT_TRUE(renderer.mesh_load(plane, quad_data()));
-		EXPECT_TRUE(renderer.mesh_draw(plane, nullptr));
-		renderer.mesh_unload(plane);
+		EXPECT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
+		renderer.resource().mesh_unload(plane);
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		if (stages_out != nullptr)
 			*stages_out = renderer.frame_stats_get().post_stages;
-		renderer.pipeline_unload(fog_pass);
-		renderer.pipeline_unload(invert_pass);
+		renderer.resource().pipeline_unload(fog_pass);
+		renderer.resource().pipeline_unload(invert_pass);
 		renderer.render_target_destroy(target1);
 		renderer.render_target_destroy(target0);
 		return pixels;
@@ -246,14 +246,14 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾步数开销)
 		renderer.post_stage_color_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2]);
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle plane = 0;
-		ASSERT_TRUE(renderer.mesh_load(plane, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
 		//八帧：前两帧预热，取第 3..8 帧均值
 		double record_sum = 0.0;
 		double gpu_sum = 0.0;
 		uint32_t samples = 0;
 		for (uint32_t frame = 0; frame < 8; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw(plane, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
 			ASSERT_TRUE(renderer.frame_render());
 			if (frame >= 2)
 			{
@@ -265,8 +265,8 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾步数开销)
 		}
 		record_out = record_sum / samples;
 		gpu_out = gpu_sum / samples;
-		renderer.mesh_unload(plane);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(plane);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	};
 	double small_12_record = 0.0, small_12_gpu = 0.0;
@@ -336,12 +336,12 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾密度噪声)
 		renderer.post_stage_color4_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2], noise);
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle plane = 0;
-		ASSERT_TRUE(renderer.mesh_load(plane, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
 		double gpu_sum = 0.0;
 		uint32_t samples = 0;
 		for (uint32_t frame = 0; frame < 8; ++frame)
 		{
-			ASSERT_TRUE(renderer.mesh_draw(plane, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
 			ASSERT_TRUE(renderer.frame_render());
 			if (frame >= 2)
 			{
@@ -350,8 +350,8 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾密度噪声)
 			}
 		}
 		gpu_out = gpu_sum / samples;
-		renderer.mesh_unload(plane);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(plane);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 	};
 	double smooth_gpu = 0.0;
@@ -402,15 +402,15 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾与深度描边组合)
 		uint64_t targets[2] = { target0, target1 };
 		EXPECT_TRUE(renderer.render_target_present_chain_set(targets, 2));
 		engine::Mesh_Handle plane = 0;
-		EXPECT_TRUE(renderer.mesh_load(plane, quad_data()));
-		EXPECT_TRUE(renderer.mesh_draw(plane, nullptr));
-		renderer.mesh_unload(plane);
+		EXPECT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
+		renderer.resource().mesh_unload(plane);
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		if (stages_out != nullptr)
 			*stages_out = renderer.frame_stats_get().post_stages;
-		renderer.pipeline_unload(first);
-		renderer.pipeline_unload(outline_pass);
+		renderer.resource().pipeline_unload(first);
+		renderer.resource().pipeline_unload(outline_pass);
 		renderer.render_target_destroy(target1);
 		renderer.render_target_destroy(target0);
 		return pixels;
@@ -472,17 +472,17 @@ TEST_F(Renderer_Post_Chain_Test, 四级链目标轮转)
 		uint64_t targets[2] = { target0, target1 };
 		EXPECT_TRUE(renderer.render_target_present_chain_set(targets, 2));
 		engine::Mesh_Handle plane = 0;
-		EXPECT_TRUE(renderer.mesh_load(plane, quad_data()));
-		EXPECT_TRUE(renderer.mesh_draw(plane, nullptr));
-		renderer.mesh_unload(plane);
+		EXPECT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
+		renderer.resource().mesh_unload(plane);
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		if (stages_out != nullptr)
 			*stages_out = renderer.frame_stats_get().post_stages;
-		renderer.pipeline_unload(first);
-		renderer.pipeline_unload(outline_pass);
-		renderer.pipeline_unload(gray);
-		renderer.pipeline_unload(invert);
+		renderer.resource().pipeline_unload(first);
+		renderer.resource().pipeline_unload(outline_pass);
+		renderer.resource().pipeline_unload(gray);
+		renderer.resource().pipeline_unload(invert);
 		renderer.render_target_destroy(target1);
 		renderer.render_target_destroy(target0);
 		return pixels;

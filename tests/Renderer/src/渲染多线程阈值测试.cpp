@@ -132,15 +132,15 @@ TEST(Renderer_Thread_Threshold_Test, 实例扫描并行阈值可配)
 	auto render_three_frames = [&](engine::Renderer& renderer, engine::Mesh_Handle& mesh,
 		std::vector<uint8_t>& pixels, engine::Frame_Stats& stats)
 	{
-		EXPECT_TRUE(renderer.mesh_load(mesh, quad_data(QUAD_HALF)));
+		EXPECT_TRUE(renderer.resource().mesh_load(mesh, quad_data(QUAD_HALF)));
 		//第 1 / 2 帧（两个帧槽各做一次整块写入并建立缓存）
-		EXPECT_TRUE(renderer.mesh_draw_instanced(mesh, matrices[0].data(), INSTANCE_COUNT));
+		EXPECT_TRUE(renderer.resource().mesh_draw_instanced(mesh, matrices[0].data(), INSTANCE_COUNT));
 		EXPECT_TRUE(renderer.frame_render());
-		EXPECT_TRUE(renderer.mesh_draw_instanced(mesh, matrices[0].data(), INSTANCE_COUNT));
+		EXPECT_TRUE(renderer.resource().mesh_draw_instanced(mesh, matrices[0].data(), INSTANCE_COUNT));
 		EXPECT_TRUE(renderer.frame_render());
 		//第 3 帧（回到首个帧槽：改动一个实例，触发差异扫描与分段写入）
 		matrices[0] = translation(-2.0f, 0.2f, 0.0f);
-		EXPECT_TRUE(renderer.mesh_draw_instanced(mesh, matrices[0].data(), INSTANCE_COUNT));
+		EXPECT_TRUE(renderer.resource().mesh_draw_instanced(mesh, matrices[0].data(), INSTANCE_COUNT));
 		pixels.resize(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		stats = renderer.frame_stats_get();
@@ -168,6 +168,6 @@ TEST(Renderer_Thread_Threshold_Test, 实例扫描并行阈值可配)
 	EXPECT_EQ(fallback_stats.cache_parallel_dispatches, 0u) << "默认阈值下 64 实例不应并行回写";
 
 	//清理（mesh_unload 无返回值）
-	forced.mesh_unload(forced_mesh);
-	fallback.mesh_unload(fallback_mesh);
+	forced.resource().mesh_unload(forced_mesh);
+	fallback.resource().mesh_unload(fallback_mesh);
 }

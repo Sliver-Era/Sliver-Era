@@ -18,10 +18,10 @@ TEST_F(Renderer_Scene_Test, 色阶量化改变分面明暗)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.4f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.4f)));
 	//场景：方向光斜射（各面 N·L 不同）、环境光 0
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -35,13 +35,13 @@ TEST_F(Renderer_Scene_Test, 色阶量化改变分面明暗)
 
 	//关闭量化
 	renderer.toon_set(0, 0.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain.data(), static_cast<uint32_t>(plain.size())));
 
 	//一档量化（二值化：受光面拉到满照、背光面保持 0）
 	renderer.toon_set(1, 0.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> toon(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(toon.data(), static_cast<uint32_t>(toon.size())));
 
@@ -58,8 +58,8 @@ TEST_F(Renderer_Scene_Test, 色阶量化改变分面明暗)
 	RecordProperty("toon_quantize_changed_pixels", static_cast<uint32_t>(changed));
 	EXPECT_GE(changed, 30u) << "色阶量化未改变分面明暗（变化像素 " << changed << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -75,10 +75,10 @@ TEST_F(Renderer_Scene_Test, 边缘光抬升表面亮度)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.7071f, 0.7071f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.7071f, 0.7071f)));
 	//场景：环境光 0、方向光关闭（无边缘光时应为全黑）
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -89,13 +89,13 @@ TEST_F(Renderer_Scene_Test, 边缘光抬升表面亮度)
 
 	//关闭边缘光
 	renderer.toon_set(0, 0.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain.data(), static_cast<uint32_t>(plain.size())));
 
 	//开启边缘光（强度 1）
 	renderer.toon_set(0, 1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> rim_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(rim_pixels.data(), static_cast<uint32_t>(rim_pixels.size())));
 
@@ -109,8 +109,8 @@ TEST_F(Renderer_Scene_Test, 边缘光抬升表面亮度)
 	EXPECT_LE(plain_outer, 20u) << "无光照且无边缘光时中心应为黑（" << pixel_text(plain_center) << "）";
 	EXPECT_GE(rim_outer, 40u) << "边缘光未抬升表面亮度（" << pixel_text(rim_center) << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -166,10 +166,10 @@ TEST_F(Renderer_Scene_Test, 暗部色调化只压暗未受光面)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.7071f, 0.7071f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.7071f, 0.7071f)));
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
 
@@ -179,12 +179,12 @@ TEST_F(Renderer_Scene_Test, 暗部色调化只压暗未受光面)
 	lit_light.ambient = 0.2f;
 	renderer.scene_apply(camera, lit_light, fog);
 	renderer.toon_shadow_tint_set(1.0f, 1.0f, 1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> lit_plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(lit_plain.data(), static_cast<uint32_t>(lit_plain.size())));
 
 	renderer.toon_shadow_tint_set(0.25f, 0.25f, 0.25f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> lit_tinted(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(lit_tinted.data(), static_cast<uint32_t>(lit_tinted.size())));
 
@@ -210,12 +210,12 @@ TEST_F(Renderer_Scene_Test, 暗部色调化只压暗未受光面)
 	dark_light.ambient = 0.2f;
 	renderer.scene_apply(camera, dark_light, fog);
 	renderer.toon_shadow_tint_set(1.0f, 1.0f, 1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> dark_plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(dark_plain.data(), static_cast<uint32_t>(dark_plain.size())));
 
 	renderer.toon_shadow_tint_set(0.25f, 0.25f, 0.25f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> dark_tinted(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(dark_tinted.data(), static_cast<uint32_t>(dark_tinted.size())));
 
@@ -230,8 +230,8 @@ TEST_F(Renderer_Scene_Test, 暗部色调化只压暗未受光面)
 	EXPECT_LE(dark_tinted_brightness * 10, dark_plain_brightness * 7)
 		<< "暗部未被色调压暗（" << dark_plain_brightness << " → " << dark_tinted_brightness << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -296,10 +296,10 @@ TEST_F(Renderer_Scene_Test, 卡通高光阈值化抹除弱高光)
 	uint64_t texture = 0;
 	//中灰纹理：避免白色纹理 + 满照时漫反射已饱和，使高光本身可见
 	std::vector<uint8_t> texels = solid_gray();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_sphere_load(mesh, 0.6f, 32, 16));
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(mesh, 0.6f, 32, 16));
 	//场景：默认方向光 + 中等环境光；高光强度 3、光泽度 8（高光面较大）
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -311,13 +311,13 @@ TEST_F(Renderer_Scene_Test, 卡通高光阈值化抹除弱高光)
 
 	//关闭阈值化
 	renderer.toon_specular_set(0.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain.data(), static_cast<uint32_t>(plain.size())));
 
 	//开启阈值化
 	renderer.toon_specular_set(0.35f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> toon(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(toon.data(), static_cast<uint32_t>(toon.size())));
 
@@ -340,8 +340,8 @@ TEST_F(Renderer_Scene_Test, 卡通高光阈值化抹除弱高光)
 	EXPECT_GT(darkened, 20u) << "阈值化未抹除弱高光（暗化像素 " << darkened << "）";
 	EXPECT_EQ(brightened, 0u) << "阈值化意外提亮了像素（" << brightened << " 个）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*

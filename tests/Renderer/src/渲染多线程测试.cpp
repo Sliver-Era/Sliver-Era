@@ -198,19 +198,19 @@ TEST_F(Renderer_Thread_Test, 并行剔除与单线程结果一致)
 	std::vector<std::array<float, 16>> matrices = instance_matrices(INSTANCE_COUNT);
 
 	//单线程帧
-	single.texture_bind_set(0);
+	single.resource().texture_bind_set(0);
 	engine::Mesh_Handle single_mesh = 0;
-	ASSERT_TRUE(single.mesh_load(single_mesh, quad_data(QUAD_HALF)));
-	ASSERT_TRUE(single.mesh_draw_instanced(single_mesh, matrices[0].data(), INSTANCE_COUNT));
+	ASSERT_TRUE(single.resource().mesh_load(single_mesh, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(single.resource().mesh_draw_instanced(single_mesh, matrices[0].data(), INSTANCE_COUNT));
 	std::vector<uint8_t> single_pixels(pixel_bytes());
 	ASSERT_TRUE(single.frame_render(single_pixels.data(), static_cast<uint32_t>(single_pixels.size())));
 	const engine::Frame_Stats single_stats = single.frame_stats_get();
 
 	//四线程帧
-	parallel.texture_bind_set(0);
+	parallel.resource().texture_bind_set(0);
 	engine::Mesh_Handle parallel_mesh = 0;
-	ASSERT_TRUE(parallel.mesh_load(parallel_mesh, quad_data(QUAD_HALF)));
-	ASSERT_TRUE(parallel.mesh_draw_instanced(parallel_mesh, matrices[0].data(), INSTANCE_COUNT));
+	ASSERT_TRUE(parallel.resource().mesh_load(parallel_mesh, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(parallel.resource().mesh_draw_instanced(parallel_mesh, matrices[0].data(), INSTANCE_COUNT));
 	std::vector<uint8_t> parallel_pixels(pixel_bytes());
 	ASSERT_TRUE(parallel.frame_render(parallel_pixels.data(), static_cast<uint32_t>(parallel_pixels.size())));
 	const engine::Frame_Stats parallel_stats = parallel.frame_stats_get();
@@ -232,8 +232,8 @@ TEST_F(Renderer_Thread_Test, 并行剔除与单线程结果一致)
 	EXPECT_GT(parallel_stats.parallel_dispatches, 0u) << "四线程未派发任何并行任务";
 	EXPECT_EQ(single_stats.parallel_dispatches, 0u) << "单线程不应派发并行任务";
 
-	single.mesh_unload(single_mesh);
-	parallel.mesh_unload(parallel_mesh);
+	single.resource().mesh_unload(single_mesh);
+	parallel.resource().mesh_unload(parallel_mesh);
 }
 
 /*
@@ -248,18 +248,18 @@ TEST_F(Renderer_Thread_Test, 实例容量钳制与大批量登记)
 	ASSERT_TRUE(renderer.init(config));
 
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(QUAD_HALF)));
 	std::vector<std::array<float, 16>> matrices = instance_matrices(17);
 
 	//关闭剔除，使实例数严格按输入计（否则视锥外实例先被剔除，容量判定不可测）
 	renderer.cull_enabled_set(false);
 
 	//17 个实例超出钳制后的容量 16，被整批拒绝
-	EXPECT_FALSE(renderer.mesh_draw_instanced(handle, matrices[0].data(), 17));
+	EXPECT_FALSE(renderer.resource().mesh_draw_instanced(handle, matrices[0].data(), 17));
 	//16 个实例恰好填满容量
-	EXPECT_TRUE(renderer.mesh_draw_instanced(handle, matrices[0].data(), 16));
+	EXPECT_TRUE(renderer.resource().mesh_draw_instanced(handle, matrices[0].data(), 16));
 
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }
 
 /*
@@ -285,13 +285,13 @@ TEST_F(Renderer_Thread_Test, 并行录制场景通道与单线程一致)
 		if (!renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
 			return false;
 		uint64_t pass = 0;
-		if (!renderer.pipeline_load(pass, "后处理.vert.spv", "后处理.frag.spv"))
+		if (!renderer.resource().pipeline_load(pass, "后处理.vert.spv", "后处理.frag.spv"))
 			return false;
 		if (!renderer.post_chain_set(&pass, 1))
 			return false;
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle quad = 0;
-		if (!renderer.mesh_load(quad, quad_data(QUAD_HALF)))
+		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
 		//64 个绘制项：8×8 网格排布（每项一个独立绘制项，便于切成 4 段）
 		for (uint32_t row = 0; row < 8; ++row)
@@ -306,16 +306,16 @@ TEST_F(Renderer_Thread_Test, 并行录制场景通道与单线程一致)
 					0.0f, 0.0f, 0.09f, 0.0f,
 					x, y, 0.0f, 1.0f,
 				};
-				if (!renderer.mesh_draw(quad, matrix))
+				if (!renderer.resource().mesh_draw(quad, matrix))
 					return false;
 			}
 		}
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		stats = renderer.frame_stats_get();
-		renderer.mesh_unload(quad);
+		renderer.resource().mesh_unload(quad);
 		renderer.post_chain_set(nullptr, 0);
 		renderer.render_target_present_set(0);
-		renderer.pipeline_unload(pass);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return ok;
 	};
@@ -364,7 +364,7 @@ TEST_F(Renderer_Thread_Test, 并行录制交换链直通路径与单线程一致
 		//关闭静态合批：保持 64 个独立绘制项（≥ 32 才启用并行录制）
 		renderer.static_batching_set(false);
 		engine::Mesh_Handle quad = 0;
-		if (!renderer.mesh_load(quad, quad_data(QUAD_HALF)))
+		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
 		for (uint32_t row = 0; row < 8; ++row)
 		{
@@ -378,13 +378,13 @@ TEST_F(Renderer_Thread_Test, 并行录制交换链直通路径与单线程一致
 					0.0f, 0.0f, 0.09f, 0.0f,
 					x, y, 0.0f, 1.0f,
 				};
-				if (!renderer.mesh_draw(quad, matrix))
+				if (!renderer.resource().mesh_draw(quad, matrix))
 					return false;
 			}
 		}
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		stats = renderer.frame_stats_get();
-		renderer.mesh_unload(quad);
+		renderer.resource().mesh_unload(quad);
 		return ok;
 	};
 
@@ -430,7 +430,7 @@ TEST_F(Renderer_Thread_Test, 并行录制离屏目标路径与单线程一致)
 			return false;
 		renderer.render_target_set(target);
 		engine::Mesh_Handle quad = 0;
-		if (!renderer.mesh_load(quad, quad_data(QUAD_HALF)))
+		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
 		for (uint32_t row = 0; row < 8; ++row)
 		{
@@ -444,14 +444,14 @@ TEST_F(Renderer_Thread_Test, 并行录制离屏目标路径与单线程一致)
 					0.0f, 0.0f, 0.09f, 0.0f,
 					x, y, 0.0f, 1.0f,
 				};
-				if (!renderer.mesh_draw(quad, matrix))
+				if (!renderer.resource().mesh_draw(quad, matrix))
 					return false;
 			}
 		}
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		stats = renderer.frame_stats_get();
 		renderer.render_target_set(0);
-		renderer.mesh_unload(quad);
+		renderer.resource().mesh_unload(quad);
 		renderer.render_target_destroy(target);
 		return ok;
 	};
@@ -510,7 +510,7 @@ TEST_F(Renderer_Thread_Test, MSAA下并行录制与单线程一致)
 		if (!renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
 			return false;
 		uint64_t pass = 0;
-		if (!renderer.pipeline_load(pass, "后处理.vert.spv", "深度描边.frag.spv"))
+		if (!renderer.resource().pipeline_load(pass, "后处理.vert.spv", "深度描边.frag.spv"))
 			return false;
 		if (!renderer.post_chain_set(&pass, 1))
 			return false;
@@ -518,7 +518,7 @@ TEST_F(Renderer_Thread_Test, MSAA下并行录制与单线程一致)
 		renderer.post_stage_color_set(0, 1.0f, 0.0f, 0.0f);
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle quad = 0;
-		if (!renderer.mesh_load(quad, quad_data(QUAD_HALF)))
+		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
 		for (uint32_t row = 0; row < 8; ++row)
 		{
@@ -532,16 +532,16 @@ TEST_F(Renderer_Thread_Test, MSAA下并行录制与单线程一致)
 					0.0f, 0.0f, 0.09f, 0.0f,
 					x, y, 0.0f, 1.0f,
 				};
-				if (!renderer.mesh_draw(quad, matrix))
+				if (!renderer.resource().mesh_draw(quad, matrix))
 					return false;
 			}
 		}
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		stats = renderer.frame_stats_get();
-		renderer.mesh_unload(quad);
+		renderer.resource().mesh_unload(quad);
 		renderer.post_chain_set(nullptr, 0);
 		renderer.render_target_present_set(0);
-		renderer.pipeline_unload(pass);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return ok;
 	};
@@ -586,7 +586,7 @@ TEST_F(Renderer_Thread_Test, 并行录制阈值可配)
 			return false;
 		renderer.static_batching_set(false);
 		engine::Mesh_Handle quad = 0;
-		if (!renderer.mesh_load(quad, quad_data(QUAD_HALF)))
+		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
 		for (uint32_t row = 0; row < 8; ++row)
 		{
@@ -600,13 +600,13 @@ TEST_F(Renderer_Thread_Test, 并行录制阈值可配)
 					0.0f, 0.0f, 0.09f, 0.0f,
 					x, y, 0.0f, 1.0f,
 				};
-				if (!renderer.mesh_draw(quad, matrix))
+				if (!renderer.resource().mesh_draw(quad, matrix))
 					return false;
 			}
 		}
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		stats = renderer.frame_stats_get();
-		renderer.mesh_unload(quad);
+		renderer.resource().mesh_unload(quad);
 		return ok;
 	};
 
@@ -646,7 +646,7 @@ TEST_F(Renderer_Thread_Test, 并行录制段数上限可配)
 			return false;
 		renderer.static_batching_set(false);
 		engine::Mesh_Handle quad = 0;
-		if (!renderer.mesh_load(quad, quad_data(QUAD_HALF)))
+		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
 		for (uint32_t row = 0; row < 8; ++row)
 		{
@@ -660,13 +660,13 @@ TEST_F(Renderer_Thread_Test, 并行录制段数上限可配)
 					0.0f, 0.0f, 0.09f, 0.0f,
 					x, y, 0.0f, 1.0f,
 				};
-				if (!renderer.mesh_draw(quad, matrix))
+				if (!renderer.resource().mesh_draw(quad, matrix))
 					return false;
 			}
 		}
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		stats = renderer.frame_stats_get();
-		renderer.mesh_unload(quad);
+		renderer.resource().mesh_unload(quad);
 		return ok;
 	};
 
@@ -726,16 +726,16 @@ TEST_F(Renderer_Thread_Test, 实例剔除并行阈值可配)
 
 	//强制并行侧
 	engine::Mesh_Handle forced_mesh = 0;
-	ASSERT_TRUE(forced.mesh_load(forced_mesh, quad_data(QUAD_HALF)));
-	ASSERT_TRUE(forced.mesh_draw_instanced(forced_mesh, matrices[0].data(), small_count));
+	ASSERT_TRUE(forced.resource().mesh_load(forced_mesh, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(forced.resource().mesh_draw_instanced(forced_mesh, matrices[0].data(), small_count));
 	std::vector<uint8_t> forced_pixels(pixel_bytes());
 	ASSERT_TRUE(forced.frame_render(forced_pixels.data(), static_cast<uint32_t>(forced_pixels.size())));
 	const engine::Frame_Stats forced_stats = forced.frame_stats_get();
 
 	//单线程侧
 	engine::Mesh_Handle fallback_mesh = 0;
-	ASSERT_TRUE(fallback.mesh_load(fallback_mesh, quad_data(QUAD_HALF)));
-	ASSERT_TRUE(fallback.mesh_draw_instanced(fallback_mesh, matrices[0].data(), small_count));
+	ASSERT_TRUE(fallback.resource().mesh_load(fallback_mesh, quad_data(QUAD_HALF)));
+	ASSERT_TRUE(fallback.resource().mesh_draw_instanced(fallback_mesh, matrices[0].data(), small_count));
 	std::vector<uint8_t> fallback_pixels(pixel_bytes());
 	ASSERT_TRUE(fallback.frame_render(fallback_pixels.data(), static_cast<uint32_t>(fallback_pixels.size())));
 	const engine::Frame_Stats fallback_stats = fallback.frame_stats_get();
@@ -757,6 +757,6 @@ TEST_F(Renderer_Thread_Test, 实例剔除并行阈值可配)
 	EXPECT_EQ(forced_stats.cache_parallel_dispatches, 0u) << "64 实例不应触发缓存回写并行";
 	EXPECT_EQ(fallback_stats.cull_parallel_dispatches, 0u) << "默认阈值下单线程侧不应有剔除派发";
 
-	forced.mesh_unload(forced_mesh);
-	fallback.mesh_unload(fallback_mesh);
+	forced.resource().mesh_unload(forced_mesh);
+	fallback.resource().mesh_unload(fallback_mesh);
 }

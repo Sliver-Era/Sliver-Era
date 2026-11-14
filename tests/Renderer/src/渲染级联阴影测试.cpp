@@ -77,12 +77,12 @@ TEST_F(Renderer_Scene_Test, 级联阴影默认单级不变)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//场景：方向光沿 +Z、环境光 0、阴影开启
 	engine::Camera_Data camera{};
@@ -91,8 +91,8 @@ TEST_F(Renderer_Scene_Test, 级联阴影默认单级不变)
 
 	//默认级联配置（1 级）下渲染
 	std::array<float, 16> occluder_transform = occluder_matrix(0.0f, 0.0f, -0.5f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> default_pixels = render_once(renderer);
 
 	//显式设为 1 级后渲染
@@ -104,8 +104,8 @@ TEST_F(Renderer_Scene_Test, 级联阴影默认单级不变)
 	EXPECT_EQ(cascade_count, 1u);
 	EXPECT_FLOAT_EQ(far_scale, 3.0f);
 	EXPECT_FLOAT_EQ(split_distance, 12.0f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> explicit_pixels = render_once(renderer);
 
 	RecordProperty("cascade_default_center", center_brightness(default_pixels));
@@ -115,9 +115,9 @@ TEST_F(Renderer_Scene_Test, 级联阴影默认单级不变)
 		<< "显式设为 1 级后画面与默认不一致（单级行为被改变）";
 	EXPECT_LT(center_brightness(default_pixels), 60u) << "单级下中心未被遮蔽";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -136,12 +136,12 @@ TEST_F(Renderer_Scene_Test, 级联阴影远端覆盖)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//① 相机默认、物体 z = -5：单级覆盖 → 遮蔽
 	engine::Camera_Data camera{};
@@ -149,8 +149,8 @@ TEST_F(Renderer_Scene_Test, 级联阴影远端覆盖)
 	std::array<float, 16> occluder_transform = occluder_matrix(0.0f, 0.0f, -5.5f);
 	lights_apply(renderer, camera, positive_z_light());
 	renderer.shadow_enable_set(true);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> origin_pixels = render_once(renderer);
 
 	//② 相机与物体同移到 x = 40：单级仍遮蔽（跟随相机）
@@ -160,8 +160,8 @@ TEST_F(Renderer_Scene_Test, 级联阴影远端覆盖)
 	occluder_transform = occluder_matrix(40.0f, 0.0f, -5.5f);
 	lights_apply(renderer, camera, positive_z_light());
 	renderer.shadow_enable_set(true);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> moved_pixels = render_once(renderer);
 
 	//③ 相机回默认、物体 z = -20（距相机约 23，超出单级半径 12）：单级受光
@@ -171,14 +171,14 @@ TEST_F(Renderer_Scene_Test, 级联阴影远端覆盖)
 	occluder_transform = occluder_matrix(0.0f, 0.0f, -20.5f);
 	lights_apply(renderer, camera, positive_z_light());
 	renderer.shadow_enable_set(true);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> single_pixels = render_once(renderer);
 
 	//④ 双级：远区半径 36 覆盖 z = -20 → 中心被遮蔽
 	renderer.shadow_cascade_set(2, 3.0f, 12.0f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> dual_pixels = render_once(renderer);
 
 	const uint32_t origin_brightness = center_brightness(origin_pixels);
@@ -195,9 +195,9 @@ TEST_F(Renderer_Scene_Test, 级联阴影远端覆盖)
 	EXPECT_GE(single_brightness, 150u) << "单级覆盖半径外的接收面被意外遮蔽（" << single_brightness << "）";
 	EXPECT_LT(dual_brightness, 60u) << "双级未覆盖相机周边区域（" << dual_brightness << "）";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -213,12 +213,12 @@ TEST_F(Renderer_Scene_Test, 级联阴影切回单级恢复)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//默认相机、方向光沿 +Z、阴影开启
 	engine::Camera_Data camera{};
@@ -226,20 +226,20 @@ TEST_F(Renderer_Scene_Test, 级联阴影切回单级恢复)
 	renderer.shadow_enable_set(true);
 
 	std::array<float, 16> occluder_transform = occluder_matrix(0.0f, 0.0f, -0.5f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> single_pixels = render_once(renderer);
 
 	//切双级：近区半片应继续遮蔽中心
 	renderer.shadow_cascade_set(2, 3.0f, 12.0f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> dual_pixels = render_once(renderer);
 
 	//切回单级：画面应与最初单级帧一致
 	renderer.shadow_cascade_set(1, 3.0f, 12.0f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> restored_pixels = render_once(renderer);
 
 	RecordProperty("cascade_near_single", center_brightness(single_pixels));
@@ -251,9 +251,9 @@ TEST_F(Renderer_Scene_Test, 级联阴影切回单级恢复)
 		<< center_brightness(dual_pixels) << "）";
 	EXPECT_TRUE(pixels_equal(single_pixels, restored_pixels)) << "切回单级后画面未恢复";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -270,12 +270,12 @@ TEST_F(Renderer_Scene_Test, 三级级联覆盖中距并切回单级恢复)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//相机注视 z = -20 处，远平面放宽以覆盖中距
 	engine::Camera_Data camera{};
@@ -290,8 +290,8 @@ TEST_F(Renderer_Scene_Test, 三级级联覆盖中距并切回单级恢复)
 	const std::array<float, 16> occluder_transform = occluder_matrix(0.0f, 0.0f, -20.5f);
 
 	//单级：光源视锥以原点为中心，深度覆盖不到 z = -20 → 受光
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> single_pixels = render_once(renderer);
 
 	//三级：阈值 12 / 36，距离 23 落入第 2 片（半径 36）→ 遮蔽
@@ -301,14 +301,14 @@ TEST_F(Renderer_Scene_Test, 三级级联覆盖中距并切回单级恢复)
 	float split_distance = 0.0f;
 	renderer.shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
 	EXPECT_EQ(cascade_count, 3u) << "三级配置未生效";
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> triple_pixels = render_once(renderer);
 
 	//切回单级：画面应与最初单级帧一致
 	renderer.shadow_cascade_set(1, 3.0f, 12.0f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> restored_pixels = render_once(renderer);
 
 	RecordProperty("cascade3_single", center_brightness(single_pixels));
@@ -320,9 +320,9 @@ TEST_F(Renderer_Scene_Test, 三级级联覆盖中距并切回单级恢复)
 		<< center_brightness(triple_pixels) << "）";
 	EXPECT_TRUE(pixels_equal(single_pixels, restored_pixels)) << "切回单级后画面未恢复";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -340,12 +340,12 @@ TEST_F(Renderer_Scene_Test, 级联接缝淡化)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//默认相机（z = 3）；接收面与遮挡面位于 z = -9.5
 	engine::Camera_Data camera{};
@@ -358,21 +358,21 @@ TEST_F(Renderer_Scene_Test, 级联接缝淡化)
 	//三级 + 硬切换
 	renderer.shadow_cascade_set(3, 3.0f, 12.0f);
 	ASSERT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.0f) << "淡化默认值应为 0";
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> hard_pixels = render_once(renderer);
 
 	//淡化 0.3：带内混合 → 中心变亮
 	renderer.shadow_cascade_blend_set(0.3f);
 	EXPECT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.3f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> blended_pixels = render_once(renderer);
 
 	//归零：逐字节回到硬切换
 	renderer.shadow_cascade_blend_set(0.0f);
-	ASSERT_TRUE(renderer.mesh_draw(occluder, occluder_transform.data()));
-	ASSERT_TRUE(renderer.mesh_draw(receiver, receiver_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> restored_pixels = render_once(renderer);
 
 	const uint32_t hard_brightness = center_brightness(hard_pixels);
@@ -384,9 +384,9 @@ TEST_F(Renderer_Scene_Test, 级联接缝淡化)
 		<< hard_brightness << " → " << blended_brightness << "）";
 	EXPECT_TRUE(pixels_equal(hard_pixels, restored_pixels)) << "淡化归零后画面未恢复";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -445,12 +445,12 @@ TEST_F(Renderer_Scene_Test, 级联阴影纹素对齐)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//双级级联 + 方向光阴影（级联配置由 Light_Data 驱动；scene_apply 会按数据重置阴影，故每次应用后显式开启）
 	engine::Camera_Data camera{};
@@ -474,8 +474,8 @@ TEST_F(Renderer_Scene_Test, 级联阴影纹素对齐)
 	//绘制固定场景并推进一帧（不使用回读，仅让阴影 pass 执行）
 	auto draw_scene = [&]()
 	{
-		EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_matrix(0.0f, 0.0f, -10.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, translate_matrix(0.0f, 0.0f, -9.5f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_matrix(0.0f, 0.0f, -10.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, translate_matrix(0.0f, 0.0f, -9.5f).data()));
 		EXPECT_TRUE(renderer.frame_render());
 	};
 
@@ -495,7 +495,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影纹素对齐)
 	EXPECT_FALSE(before.empty()) << "阴影图回读为空";
 	EXPECT_TRUE(before == after) << "级联阴影图随亚纹素相机位移重采样（纹素对齐失效）";
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }

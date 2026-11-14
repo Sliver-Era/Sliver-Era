@@ -47,7 +47,7 @@ TEST_F(Renderer_Mesh_Test, 未初始化加载网格失败)
 {
 	engine::Renderer renderer;
 	engine::Mesh_Handle handle = 0;
-	EXPECT_FALSE(renderer.mesh_load(handle, triangle_data()));
+	EXPECT_FALSE(renderer.resource().mesh_load(handle, triangle_data()));
 	EXPECT_EQ(handle, 0u);
 }
 
@@ -57,14 +57,14 @@ TEST_F(Renderer_Mesh_Test, 加载三角形并绘制)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, triangle_data()));
 	//句柄有效
 	EXPECT_NE(handle, 0u);
 	//登记单位矩阵绘制
-	EXPECT_TRUE(renderer.mesh_draw(handle, nullptr));
+	EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	//推进一帧（消费该待绘制项）
 	EXPECT_TRUE(renderer.frame_render());
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }
 
 //同一帧内登记两个网格，可由一帧一并消费
@@ -74,15 +74,15 @@ TEST_F(Renderer_Mesh_Test, 同帧绘制两个网格)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle first = 0;
 	engine::Mesh_Handle second = 0;
-	ASSERT_TRUE(renderer.mesh_load(first, triangle_data()));
-	ASSERT_TRUE(renderer.mesh_load(second, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(first, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(second, triangle_data()));
 	//同一帧内两次登记（各自独立模型矩阵）
-	EXPECT_TRUE(renderer.mesh_draw(first, nullptr));
-	EXPECT_TRUE(renderer.mesh_draw(second, nullptr));
+	EXPECT_TRUE(renderer.resource().mesh_draw(first, nullptr));
+	EXPECT_TRUE(renderer.resource().mesh_draw(second, nullptr));
 	//推进一帧，两个网格一并被消费
 	EXPECT_TRUE(renderer.frame_render());
-	renderer.mesh_unload(first);
-	renderer.mesh_unload(second);
+	renderer.resource().mesh_unload(first);
+	renderer.resource().mesh_unload(second);
 }
 
 //绘制无效句柄失败
@@ -91,7 +91,7 @@ TEST_F(Renderer_Mesh_Test, 绘制无效句柄失败)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//未加载过的句柄
-	EXPECT_FALSE(renderer.mesh_draw(12345u, nullptr));
+	EXPECT_FALSE(renderer.resource().mesh_draw(12345u, nullptr));
 }
 
 //卸载后绘制失败，且重复卸载不报错
@@ -100,12 +100,12 @@ TEST_F(Renderer_Mesh_Test, 卸载后绘制失败)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, triangle_data()));
-	renderer.mesh_unload(handle);
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, triangle_data()));
+	renderer.resource().mesh_unload(handle);
 	//卸载后绘制应失败
-	EXPECT_FALSE(renderer.mesh_draw(handle, nullptr));
+	EXPECT_FALSE(renderer.resource().mesh_draw(handle, nullptr));
 	//重复卸载不报错
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }
 
 //程序化三角形入口：3 顶点 / 3 索引，可绘制并推进一帧
@@ -114,15 +114,15 @@ TEST_F(Renderer_Mesh_Test, 程序化三角形加载)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_triangle_load(mesh));
+	ASSERT_TRUE(renderer.resource().mesh_triangle_load(mesh));
 	uint32_t vertices = 0;
 	uint32_t indices = 0;
-	ASSERT_TRUE(renderer.mesh_counts(mesh, &vertices, &indices));
+	ASSERT_TRUE(renderer.resource().mesh_counts(mesh, &vertices, &indices));
 	EXPECT_EQ(vertices, 3u);
 	EXPECT_EQ(indices, 3u);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 //程序化立方体入口：24 顶点 / 36 索引；非法半边长被拒绝
@@ -132,17 +132,17 @@ TEST_F(Renderer_Mesh_Test, 程序化立方体加载)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 12345;
 	//非法半边长（0）整次拒绝并把句柄复位为 0
-	EXPECT_FALSE(renderer.mesh_cube_load(mesh, 0.0f));
+	EXPECT_FALSE(renderer.resource().mesh_cube_load(mesh, 0.0f));
 	EXPECT_EQ(mesh, 0u);
-	ASSERT_TRUE(renderer.mesh_cube_load(mesh, 0.5f));
+	ASSERT_TRUE(renderer.resource().mesh_cube_load(mesh, 0.5f));
 	uint32_t vertices = 0;
 	uint32_t indices = 0;
-	ASSERT_TRUE(renderer.mesh_counts(mesh, &vertices, &indices));
+	ASSERT_TRUE(renderer.resource().mesh_counts(mesh, &vertices, &indices));
 	EXPECT_EQ(vertices, 24u);
 	EXPECT_EQ(indices, 36u);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -157,32 +157,32 @@ TEST_F(Renderer_Mesh_Test, 程序化正二十面体球加载)
 
 	//非法参数整次拒绝
 	engine::Mesh_Handle invalid = 12345;
-	EXPECT_FALSE(renderer.mesh_icosphere_load(invalid, 0.0f, 0));
+	EXPECT_FALSE(renderer.resource().mesh_icosphere_load(invalid, 0.0f, 0));
 	EXPECT_EQ(invalid, 0u);
 	invalid = 12345;
-	EXPECT_FALSE(renderer.mesh_icosphere_load(invalid, 1.0f, 5));
+	EXPECT_FALSE(renderer.resource().mesh_icosphere_load(invalid, 1.0f, 5));
 	EXPECT_EQ(invalid, 0u);
 
 	//细分 0：正二十面体
 	engine::Mesh_Handle level0 = 0;
-	ASSERT_TRUE(renderer.mesh_icosphere_load(level0, 0.8f, 0));
+	ASSERT_TRUE(renderer.resource().mesh_icosphere_load(level0, 0.8f, 0));
 	uint32_t vertices = 0;
 	uint32_t indices = 0;
-	ASSERT_TRUE(renderer.mesh_counts(level0, &vertices, &indices));
+	ASSERT_TRUE(renderer.resource().mesh_counts(level0, &vertices, &indices));
 	EXPECT_EQ(vertices, 12u);
 	EXPECT_EQ(indices, 60u);
 
 	//细分 1：每面拆四
 	engine::Mesh_Handle level1 = 0;
-	ASSERT_TRUE(renderer.mesh_icosphere_load(level1, 0.8f, 1));
-	ASSERT_TRUE(renderer.mesh_counts(level1, &vertices, &indices));
+	ASSERT_TRUE(renderer.resource().mesh_icosphere_load(level1, 0.8f, 1));
+	ASSERT_TRUE(renderer.resource().mesh_counts(level1, &vertices, &indices));
 	EXPECT_EQ(vertices, 42u);
 	EXPECT_EQ(indices, 240u);
 
 	//包围盒接近 ±半径（顶点在球面上）
 	float bounds_min[3] = {};
 	float bounds_max[3] = {};
-	ASSERT_TRUE(renderer.mesh_bounds(level1, bounds_min, bounds_max));
+	ASSERT_TRUE(renderer.resource().mesh_bounds(level1, bounds_min, bounds_max));
 	for (std::size_t axis = 0; axis < 3; ++axis)
 	{
 		EXPECT_GE(bounds_max[axis], 0.6f) << "第 " << axis << " 轴包围盒上界过小";
@@ -192,11 +192,11 @@ TEST_F(Renderer_Mesh_Test, 程序化正二十面体球加载)
 	}
 
 	//可正常绘制
-	ASSERT_TRUE(renderer.mesh_draw(level1, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(level1, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 
-	renderer.mesh_unload(level0);
-	renderer.mesh_unload(level1);
+	renderer.resource().mesh_unload(level0);
+	renderer.resource().mesh_unload(level1);
 }
 
 /*
@@ -211,28 +211,28 @@ TEST_F(Renderer_Mesh_Test, 程序化水平细分平面加载)
 
 	//非法参数整次拒绝
 	engine::Mesh_Handle invalid = 12345;
-	EXPECT_FALSE(renderer.mesh_ground_grid_load(invalid, 0.0f, 2.0f, 3, 2));
+	EXPECT_FALSE(renderer.resource().mesh_ground_grid_load(invalid, 0.0f, 2.0f, 3, 2));
 	EXPECT_EQ(invalid, 0u);
 	invalid = 12345;
-	EXPECT_FALSE(renderer.mesh_ground_grid_load(invalid, 3.0f, 2.0f, 0, 2));
+	EXPECT_FALSE(renderer.resource().mesh_ground_grid_load(invalid, 3.0f, 2.0f, 0, 2));
 	EXPECT_EQ(invalid, 0u);
 	invalid = 12345;
-	EXPECT_FALSE(renderer.mesh_ground_grid_load(invalid, 3.0f, 2.0f, 513, 2));
+	EXPECT_FALSE(renderer.resource().mesh_ground_grid_load(invalid, 3.0f, 2.0f, 513, 2));
 	EXPECT_EQ(invalid, 0u);
 
 	//合法参数：3×2 分段
 	engine::Mesh_Handle grid = 0;
-	ASSERT_TRUE(renderer.mesh_ground_grid_load(grid, 3.0f, 2.0f, 3, 2));
+	ASSERT_TRUE(renderer.resource().mesh_ground_grid_load(grid, 3.0f, 2.0f, 3, 2));
 	uint32_t vertices = 0;
 	uint32_t indices = 0;
-	ASSERT_TRUE(renderer.mesh_counts(grid, &vertices, &indices));
+	ASSERT_TRUE(renderer.resource().mesh_counts(grid, &vertices, &indices));
 	EXPECT_EQ(vertices, 12u);
 	EXPECT_EQ(indices, 36u);
 
 	//包围盒：X ±1.5、Z ±1、Y 恒 0
 	float bounds_min[3] = {};
 	float bounds_max[3] = {};
-	ASSERT_TRUE(renderer.mesh_bounds(grid, bounds_min, bounds_max));
+	ASSERT_TRUE(renderer.resource().mesh_bounds(grid, bounds_min, bounds_max));
 	EXPECT_NEAR(bounds_min[0], -1.5f, 0.0001f);
 	EXPECT_NEAR(bounds_max[0], 1.5f, 0.0001f);
 	EXPECT_NEAR(bounds_min[1], 0.0f, 0.0001f);
@@ -241,9 +241,9 @@ TEST_F(Renderer_Mesh_Test, 程序化水平细分平面加载)
 	EXPECT_NEAR(bounds_max[2], 1.0f, 0.0001f);
 
 	//可正常绘制
-	ASSERT_TRUE(renderer.mesh_draw(grid, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(grid, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
-	renderer.mesh_unload(grid);
+	renderer.resource().mesh_unload(grid);
 }
 
 /*
@@ -257,30 +257,30 @@ TEST_F(Renderer_Mesh_Test, 程序化水平细分平面边界)
 
 	//最小分段：单格两三角
 	engine::Mesh_Handle grid = 0;
-	ASSERT_TRUE(renderer.mesh_ground_grid_load(grid, 2.0f, 2.0f, 1, 1));
+	ASSERT_TRUE(renderer.resource().mesh_ground_grid_load(grid, 2.0f, 2.0f, 1, 1));
 	uint32_t vertices = 0;
 	uint32_t indices = 0;
-	ASSERT_TRUE(renderer.mesh_counts(grid, &vertices, &indices));
+	ASSERT_TRUE(renderer.resource().mesh_counts(grid, &vertices, &indices));
 	EXPECT_EQ(vertices, 4u);
 	EXPECT_EQ(indices, 6u);
-	renderer.mesh_unload(grid);
+	renderer.resource().mesh_unload(grid);
 
 	//负宽与 NaN 宽均整次拒绝（非数比较为假 → 拒绝）
 	const float nan_width = std::numeric_limits<float>::quiet_NaN();
 	engine::Mesh_Handle invalid = 12345;
-	EXPECT_FALSE(renderer.mesh_ground_grid_load(invalid, -1.0f, 2.0f, 2, 2));
+	EXPECT_FALSE(renderer.resource().mesh_ground_grid_load(invalid, -1.0f, 2.0f, 2, 2));
 	EXPECT_EQ(invalid, 0u);
 	invalid = 12345;
-	EXPECT_FALSE(renderer.mesh_ground_grid_load(invalid, nan_width, 2.0f, 2, 2));
+	EXPECT_FALSE(renderer.resource().mesh_ground_grid_load(invalid, nan_width, 2.0f, 2, 2));
 	EXPECT_EQ(invalid, 0u);
 
 	//较大分段：64×64 → 65² 顶点 / 64² × 6 索引
 	engine::Mesh_Handle large = 0;
-	ASSERT_TRUE(renderer.mesh_ground_grid_load(large, 8.0f, 8.0f, 64, 64));
-	ASSERT_TRUE(renderer.mesh_counts(large, &vertices, &indices));
+	ASSERT_TRUE(renderer.resource().mesh_ground_grid_load(large, 8.0f, 8.0f, 64, 64));
+	ASSERT_TRUE(renderer.resource().mesh_counts(large, &vertices, &indices));
 	EXPECT_EQ(vertices, 65u * 65u);
 	EXPECT_EQ(indices, 64u * 64u * 6u);
-	renderer.mesh_unload(large);
+	renderer.resource().mesh_unload(large);
 }
 
 //纹理测试夹具
@@ -295,7 +295,7 @@ TEST_F(Renderer_Texture_Test, 未初始化加载纹理失败)
 	//4×4 白色像素（RGBA8 紧排）
 	const uint8_t pixels[64] = {};
 	uint64_t handle = 9999u;
-	EXPECT_FALSE(renderer.texture_load(handle, pixels, 4, 4));
+	EXPECT_FALSE(renderer.resource().texture_load(handle, pixels, 4, 4));
 	EXPECT_EQ(handle, 0u);
 }
 
@@ -312,12 +312,12 @@ TEST_F(Renderer_Texture_Test, 加载字节流纹理成功)
 		pixels[index + 3] = 255;
 	}
 	uint64_t handle = 0;
-	ASSERT_TRUE(renderer.texture_load(handle, pixels, 4, 4));
+	ASSERT_TRUE(renderer.resource().texture_load(handle, pixels, 4, 4));
 	EXPECT_NE(handle, 0u);
 	//绑定该纹理
-	renderer.texture_bind_set(handle);
+	renderer.resource().texture_bind_set(handle);
 	EXPECT_TRUE(renderer.frame_render());
-	renderer.texture_unload(handle);
+	renderer.resource().texture_unload(handle);
 }
 
 //程序生成棋盘格纹理，绑定后推进一帧
@@ -326,11 +326,11 @@ TEST_F(Renderer_Texture_Test, 棋盘格纹理绑定跑帧)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t handle = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(handle, 64, 64, 8));
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(handle, 64, 64, 8));
 	EXPECT_NE(handle, 0u);
-	renderer.texture_bind_set(handle);
+	renderer.resource().texture_bind_set(handle);
 	EXPECT_TRUE(renderer.frame_render());
-	renderer.texture_unload(handle);
+	renderer.resource().texture_unload(handle);
 }
 
 //绑定无效句柄回落内置默认白纹理，推进一帧不报错
@@ -339,7 +339,7 @@ TEST_F(Renderer_Texture_Test, 绑定无效句柄回落默认)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//句柄为零即回落默认白纹理
-	renderer.texture_bind_set(0);
+	renderer.resource().texture_bind_set(0);
 	EXPECT_TRUE(renderer.frame_render());
 }
 
@@ -349,16 +349,16 @@ TEST_F(Renderer_Texture_Test, 卸载后重绑定跑帧)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t handle = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(handle, 32, 32, 4));
-	renderer.texture_bind_set(handle);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(handle, 32, 32, 4));
+	renderer.resource().texture_bind_set(handle);
 	ASSERT_TRUE(renderer.frame_render());
 	//卸载该纹理
-	renderer.texture_unload(handle);
+	renderer.resource().texture_unload(handle);
 	//再次绑定已卸载句柄（内部回落默认白纹理）
-	renderer.texture_bind_set(handle);
+	renderer.resource().texture_bind_set(handle);
 	EXPECT_TRUE(renderer.frame_render());
 	//重复卸载不报错
-	renderer.texture_unload(handle);
+	renderer.resource().texture_unload(handle);
 }
 
 //多纹理创建后逐条卸载，随后推进一帧不崩
@@ -369,10 +369,10 @@ TEST_F(Renderer_Texture_Test, 多纹理创建后逐条卸载)
         //四条独立纹理
         uint64_t handles[4] = {};
         for (uint32_t index = 0; index < 4; ++index)
-                ASSERT_TRUE(renderer.texture_load_checkerboard(handles[index], 16, 16, 4));
+                ASSERT_TRUE(renderer.resource().texture_load_checkerboard(handles[index], 16, 16, 4));
         //逐条卸载（销毁顺序无关）
         for (uint32_t index = 0; index < 4; ++index)
-                renderer.texture_unload(handles[index]);
+                renderer.resource().texture_unload(handles[index]);
         EXPECT_TRUE(renderer.frame_render());
 }
 
@@ -393,12 +393,12 @@ TEST_F(Renderer_Texture_Test, 纹理读回与输入一致)
                 255, 255, 0, 255,
         };
         uint64_t texture = 0;
-        ASSERT_TRUE(renderer.texture_load(texture, texels, 2, 2));
+        ASSERT_TRUE(renderer.resource().texture_load(texture, texels, 2, 2));
         //读回第 0 级
         std::vector<uint8_t> pixels(16);
         uint32_t width = 0;
         uint32_t height = 0;
-        ASSERT_TRUE(renderer.texture_readback(texture, pixels.data(), 16, &width, &height));
+        ASSERT_TRUE(renderer.resource().texture_readback(texture, pixels.data(), 16, &width, &height));
         EXPECT_EQ(width, 2u);
         EXPECT_EQ(height, 2u);
         for (std::size_t index = 0; index < 16; ++index)
@@ -406,13 +406,13 @@ TEST_F(Renderer_Texture_Test, 纹理读回与输入一致)
         //容量不足 / 无效句柄 / 未初始化语义：均返回假且尺寸为 0
         uint32_t small_width = 9;
         uint32_t small_height = 9;
-        EXPECT_FALSE(renderer.texture_readback(texture, pixels.data(), 15, &small_width, &small_height));
+        EXPECT_FALSE(renderer.resource().texture_readback(texture, pixels.data(), 15, &small_width, &small_height));
         EXPECT_EQ(small_width, 0u);
         EXPECT_EQ(small_height, 0u);
-        EXPECT_FALSE(renderer.texture_readback(9999u, pixels.data(), 16, nullptr, nullptr));
-        renderer.texture_unload(texture);
+        EXPECT_FALSE(renderer.resource().texture_readback(9999u, pixels.data(), 16, nullptr, nullptr));
+        renderer.resource().texture_unload(texture);
         //卸载后句柄失效
-        EXPECT_FALSE(renderer.texture_readback(texture, pixels.data(), 16, nullptr, nullptr));
+        EXPECT_FALSE(renderer.resource().texture_readback(texture, pixels.data(), 16, nullptr, nullptr));
 }
 
 /*
@@ -427,7 +427,7 @@ TEST_F(Renderer_Texture_Test, 纹理区域更新)
 	//4×4 全白（RGBA8 紧排）
 	std::vector<uint8_t> white(4 * 4 * 4, 255);
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load(texture, white.data(), 4, 4));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, white.data(), 4, 4));
 	//2×2 纯红
 	const unsigned char red[16] = {
 		255, 0, 0, 255,
@@ -435,10 +435,10 @@ TEST_F(Renderer_Texture_Test, 纹理区域更新)
 		255, 0, 0, 255,
 		255, 0, 0, 255,
 	};
-	ASSERT_TRUE(renderer.texture_update_region(texture, 1, 1, 2, 2, red));
+	ASSERT_TRUE(renderer.resource().texture_update_region(texture, 1, 1, 2, 2, red));
 	//整幅读回
 	std::vector<uint8_t> pixels(4 * 4 * 4, 0);
-	ASSERT_TRUE(renderer.texture_readback(texture, pixels.data(), static_cast<uint32_t>(pixels.size()), nullptr, nullptr));
+	ASSERT_TRUE(renderer.resource().texture_readback(texture, pixels.data(), static_cast<uint32_t>(pixels.size()), nullptr, nullptr));
 	//区域内四像素为红
 	const uint32_t inside[4][2] = { { 1, 1 }, { 2, 1 }, { 1, 2 }, { 2, 2 } };
 	for (uint32_t index = 0; index < 4; ++index)
@@ -457,9 +457,9 @@ TEST_F(Renderer_Texture_Test, 纹理区域更新)
 	EXPECT_EQ(pixels[last], 255);
 	EXPECT_EQ(pixels[last + 1], 255);
 	//越界 / 空指针被拒绝
-	EXPECT_FALSE(renderer.texture_update_region(texture, 3, 3, 2, 2, red));
-	EXPECT_FALSE(renderer.texture_update_region(texture, 0, 0, 1, 1, nullptr));
-	renderer.texture_unload(texture);
+	EXPECT_FALSE(renderer.resource().texture_update_region(texture, 3, 3, 2, 2, red));
+	EXPECT_FALSE(renderer.resource().texture_update_region(texture, 0, 0, 1, 1, nullptr));
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -476,9 +476,9 @@ TEST_F(Renderer_Texture_Test, 纹理区域读回与整幅一致)
                 255, 255, 0, 255,
         };
         uint64_t texture = 0;
-        ASSERT_TRUE(renderer.texture_load(texture, texels, 2, 2));
+        ASSERT_TRUE(renderer.resource().texture_load(texture, texels, 2, 2));
         std::vector<uint8_t> whole(16);
-        ASSERT_TRUE(renderer.texture_readback(texture, whole.data(), 16, nullptr, nullptr));
+        ASSERT_TRUE(renderer.resource().texture_readback(texture, whole.data(), 16, nullptr, nullptr));
         //四个 1×1 子块
         std::vector<uint8_t> stitched(16, 0);
         const uint32_t origins[4][2] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
@@ -487,7 +487,7 @@ TEST_F(Renderer_Texture_Test, 纹理区域读回与整幅一致)
                 uint8_t block[4] = {};
                 uint32_t width = 0;
                 uint32_t height = 0;
-                ASSERT_TRUE(renderer.texture_readback_region(texture, origins[index][0], origins[index][1],
+                ASSERT_TRUE(renderer.resource().texture_readback_region(texture, origins[index][0], origins[index][1],
                         1, 1, block, 4, &width, &height));
                 EXPECT_EQ(width, 1u);
                 EXPECT_EQ(height, 1u);
@@ -499,10 +499,10 @@ TEST_F(Renderer_Texture_Test, 纹理区域读回与整幅一致)
         uint8_t probe[16] = {};
         uint32_t width = 5;
         uint32_t height = 6;
-        EXPECT_FALSE(renderer.texture_readback_region(texture, 1, 0, 2, 1, probe, 8, &width, &height));
+        EXPECT_FALSE(renderer.resource().texture_readback_region(texture, 1, 0, 2, 1, probe, 8, &width, &height));
         EXPECT_EQ(width, 0u);
         EXPECT_EQ(height, 0u);
-        renderer.texture_unload(texture);
+        renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -516,28 +516,28 @@ TEST_F(Renderer_Mesh_Test, 程序化球体与圆柱可绘制)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle sphere = 0;
 	engine::Mesh_Handle cylinder = 0;
-	ASSERT_TRUE(renderer.mesh_sphere_load(sphere, 1.0f, 24, 12));
-	ASSERT_TRUE(renderer.mesh_cylinder_load(cylinder, 0.5f, 2.0f, 24));
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 24, 12));
+	ASSERT_TRUE(renderer.resource().mesh_cylinder_load(cylinder, 0.5f, 2.0f, 24));
 	EXPECT_NE(sphere, 0u);
 	EXPECT_NE(cylinder, 0u);
 	//两网格同帧登记并出帧
-	EXPECT_TRUE(renderer.mesh_draw(sphere, nullptr));
-	EXPECT_TRUE(renderer.mesh_draw(cylinder, nullptr));
+	EXPECT_TRUE(renderer.resource().mesh_draw(sphere, nullptr));
+	EXPECT_TRUE(renderer.resource().mesh_draw(cylinder, nullptr));
 	EXPECT_TRUE(renderer.frame_render());
 
 	//非法参数整次拒绝（句柄归零）
 	engine::Mesh_Handle invalid = 99;
-	EXPECT_FALSE(renderer.mesh_sphere_load(invalid, 0.0f, 24, 12));
+	EXPECT_FALSE(renderer.resource().mesh_sphere_load(invalid, 0.0f, 24, 12));
 	EXPECT_EQ(invalid, 0u);
-	EXPECT_FALSE(renderer.mesh_sphere_load(invalid, 1.0f, 2, 12));
+	EXPECT_FALSE(renderer.resource().mesh_sphere_load(invalid, 1.0f, 2, 12));
 	EXPECT_EQ(invalid, 0u);
-	EXPECT_FALSE(renderer.mesh_cylinder_load(invalid, 0.5f, 0.0f, 24));
+	EXPECT_FALSE(renderer.resource().mesh_cylinder_load(invalid, 0.5f, 0.0f, 24));
 	EXPECT_EQ(invalid, 0u);
-	EXPECT_FALSE(renderer.mesh_cylinder_load(invalid, 0.5f, 2.0f, 2));
+	EXPECT_FALSE(renderer.resource().mesh_cylinder_load(invalid, 0.5f, 2.0f, 2));
 	EXPECT_EQ(invalid, 0u);
 
-	renderer.mesh_unload(sphere);
-	renderer.mesh_unload(cylinder);
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().mesh_unload(cylinder);
 }
 
 /*
@@ -550,19 +550,19 @@ TEST_F(Renderer_Mesh_Test, 程序化圆环可绘制)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle torus = 0;
-	ASSERT_TRUE(renderer.mesh_torus_load(torus, 1.0f, 0.3f, 32, 16));
+	ASSERT_TRUE(renderer.resource().mesh_torus_load(torus, 1.0f, 0.3f, 32, 16));
 	EXPECT_NE(torus, 0u);
-	EXPECT_TRUE(renderer.mesh_draw(torus, nullptr));
+	EXPECT_TRUE(renderer.resource().mesh_draw(torus, nullptr));
 	EXPECT_TRUE(renderer.frame_render());
 
 	//非法参数整次拒绝（句柄归零）
 	engine::Mesh_Handle invalid = 77;
-	EXPECT_FALSE(renderer.mesh_torus_load(invalid, 0.0f, 0.3f, 32, 16));
+	EXPECT_FALSE(renderer.resource().mesh_torus_load(invalid, 0.0f, 0.3f, 32, 16));
 	EXPECT_EQ(invalid, 0u);
-	EXPECT_FALSE(renderer.mesh_torus_load(invalid, 1.0f, 0.3f, 2, 16));
+	EXPECT_FALSE(renderer.resource().mesh_torus_load(invalid, 1.0f, 0.3f, 2, 16));
 	EXPECT_EQ(invalid, 0u);
 
-	renderer.mesh_unload(torus);
+	renderer.resource().mesh_unload(torus);
 }
 
 /*
@@ -575,21 +575,21 @@ TEST_F(Renderer_Mesh_Test, 程序化圆锥可绘制)
         engine::Renderer renderer;
         ASSERT_TRUE(renderer.init(hidden_config()));
         engine::Mesh_Handle cone = 0;
-        ASSERT_TRUE(renderer.mesh_cone_load(cone, 0.8f, 2.0f, 24));
+        ASSERT_TRUE(renderer.resource().mesh_cone_load(cone, 0.8f, 2.0f, 24));
         EXPECT_NE(cone, 0u);
-        EXPECT_TRUE(renderer.mesh_draw(cone, nullptr));
+        EXPECT_TRUE(renderer.resource().mesh_draw(cone, nullptr));
         EXPECT_TRUE(renderer.frame_render());
 
         //非法参数整次拒绝（句柄归零）
         engine::Mesh_Handle invalid = 88;
-        EXPECT_FALSE(renderer.mesh_cone_load(invalid, 0.0f, 2.0f, 24));
+        EXPECT_FALSE(renderer.resource().mesh_cone_load(invalid, 0.0f, 2.0f, 24));
         EXPECT_EQ(invalid, 0u);
-        EXPECT_FALSE(renderer.mesh_cone_load(invalid, 0.8f, -1.0f, 24));
+        EXPECT_FALSE(renderer.resource().mesh_cone_load(invalid, 0.8f, -1.0f, 24));
         EXPECT_EQ(invalid, 0u);
-        EXPECT_FALSE(renderer.mesh_cone_load(invalid, 0.8f, 2.0f, 2));
+        EXPECT_FALSE(renderer.resource().mesh_cone_load(invalid, 0.8f, 2.0f, 2));
         EXPECT_EQ(invalid, 0u);
 
-        renderer.mesh_unload(cone);
+        renderer.resource().mesh_unload(cone);
 }
 
 /*
@@ -602,34 +602,34 @@ TEST_F(Renderer_Mesh_Test, 程序化四棱锥可绘制)
         engine::Renderer renderer;
         ASSERT_TRUE(renderer.init(hidden_config()));
         engine::Mesh_Handle pyramid = 0;
-        ASSERT_TRUE(renderer.mesh_pyramid_load(pyramid, 0.8f, 1.6f));
+        ASSERT_TRUE(renderer.resource().mesh_pyramid_load(pyramid, 0.8f, 1.6f));
         EXPECT_NE(pyramid, 0u);
 
         //顶点 / 索引计数（侧面 4 × 3 ＋ 底面 4；索引 4 × 3 ＋ 6）
         uint32_t vertex_count = 0;
         uint32_t index_count = 0;
-        ASSERT_TRUE(renderer.mesh_counts(pyramid, &vertex_count, &index_count));
+        ASSERT_TRUE(renderer.resource().mesh_counts(pyramid, &vertex_count, &index_count));
         EXPECT_EQ(vertex_count, 16u);
         EXPECT_EQ(index_count, 18u);
 
         //包围盒（高 1.6 居中 → Y ∈ [-0.8, 0.8]）
         float bounds_min[3] = { 0.0f, 0.0f, 0.0f };
         float bounds_max[3] = { 0.0f, 0.0f, 0.0f };
-        ASSERT_TRUE(renderer.mesh_bounds(pyramid, bounds_min, bounds_max));
+        ASSERT_TRUE(renderer.resource().mesh_bounds(pyramid, bounds_min, bounds_max));
         EXPECT_NEAR(bounds_min[1], -0.8f, 1e-4f);
         EXPECT_NEAR(bounds_max[1], 0.8f, 1e-4f);
 
-        EXPECT_TRUE(renderer.mesh_draw(pyramid, nullptr));
+        EXPECT_TRUE(renderer.resource().mesh_draw(pyramid, nullptr));
         EXPECT_TRUE(renderer.frame_render());
 
         //非法参数整次拒绝（句柄归零）
         engine::Mesh_Handle invalid = 88;
-        EXPECT_FALSE(renderer.mesh_pyramid_load(invalid, 0.0f, 1.6f));
+        EXPECT_FALSE(renderer.resource().mesh_pyramid_load(invalid, 0.0f, 1.6f));
         EXPECT_EQ(invalid, 0u);
-        EXPECT_FALSE(renderer.mesh_pyramid_load(invalid, 0.8f, -1.0f));
+        EXPECT_FALSE(renderer.resource().mesh_pyramid_load(invalid, 0.8f, -1.0f));
         EXPECT_EQ(invalid, 0u);
 
-        renderer.mesh_unload(pyramid);
+        renderer.resource().mesh_unload(pyramid);
 }
 
 /*
@@ -642,29 +642,29 @@ TEST_F(Renderer_Mesh_Test, 程序化胶囊可绘制)
         engine::Renderer renderer;
         ASSERT_TRUE(renderer.init(hidden_config()));
         engine::Mesh_Handle capsule = 0;
-        ASSERT_TRUE(renderer.mesh_capsule_load(capsule, 0.5f, 1.0f, 24, 8));
+        ASSERT_TRUE(renderer.resource().mesh_capsule_load(capsule, 0.5f, 1.0f, 24, 8));
         EXPECT_NE(capsule, 0u);
-        EXPECT_TRUE(renderer.mesh_draw(capsule, nullptr));
+        EXPECT_TRUE(renderer.resource().mesh_draw(capsule, nullptr));
         EXPECT_TRUE(renderer.frame_render());
 
         //中段高 0 → 退化为球，仍可加载
         engine::Mesh_Handle sphere_like = 0;
-        ASSERT_TRUE(renderer.mesh_capsule_load(sphere_like, 0.5f, 0.0f, 24, 8));
+        ASSERT_TRUE(renderer.resource().mesh_capsule_load(sphere_like, 0.5f, 0.0f, 24, 8));
         EXPECT_NE(sphere_like, 0u);
 
         //非法参数整次拒绝（句柄归零）
         engine::Mesh_Handle invalid = 99;
-        EXPECT_FALSE(renderer.mesh_capsule_load(invalid, 0.0f, 1.0f, 24, 8));
+        EXPECT_FALSE(renderer.resource().mesh_capsule_load(invalid, 0.0f, 1.0f, 24, 8));
         EXPECT_EQ(invalid, 0u);
-        EXPECT_FALSE(renderer.mesh_capsule_load(invalid, 0.5f, -1.0f, 24, 8));
+        EXPECT_FALSE(renderer.resource().mesh_capsule_load(invalid, 0.5f, -1.0f, 24, 8));
         EXPECT_EQ(invalid, 0u);
-        EXPECT_FALSE(renderer.mesh_capsule_load(invalid, 0.5f, 1.0f, 2, 8));
+        EXPECT_FALSE(renderer.resource().mesh_capsule_load(invalid, 0.5f, 1.0f, 2, 8));
         EXPECT_EQ(invalid, 0u);
-        EXPECT_FALSE(renderer.mesh_capsule_load(invalid, 0.5f, 1.0f, 24, 1));
+        EXPECT_FALSE(renderer.resource().mesh_capsule_load(invalid, 0.5f, 1.0f, 24, 1));
         EXPECT_EQ(invalid, 0u);
 
-        renderer.mesh_unload(sphere_like);
-        renderer.mesh_unload(capsule);
+        renderer.resource().mesh_unload(sphere_like);
+        renderer.resource().mesh_unload(capsule);
 }
 
 /*
@@ -676,19 +676,19 @@ TEST_F(Renderer_Mesh_Test, 程序化平面可绘制)
         engine::Renderer renderer;
         ASSERT_TRUE(renderer.init(hidden_config()));
         engine::Mesh_Handle plane = 0;
-        ASSERT_TRUE(renderer.mesh_plane_load(plane, 2.0f, 2.0f));
+        ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 2.0f, 2.0f));
         EXPECT_NE(plane, 0u);
-        EXPECT_TRUE(renderer.mesh_draw(plane, nullptr));
+        EXPECT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
         EXPECT_TRUE(renderer.frame_render());
 
         //非法参数整次拒绝（句柄归零）
         engine::Mesh_Handle invalid = 55;
-        EXPECT_FALSE(renderer.mesh_plane_load(invalid, 0.0f, 2.0f));
+        EXPECT_FALSE(renderer.resource().mesh_plane_load(invalid, 0.0f, 2.0f));
         EXPECT_EQ(invalid, 0u);
-        EXPECT_FALSE(renderer.mesh_plane_load(invalid, 2.0f, -1.0f));
+        EXPECT_FALSE(renderer.resource().mesh_plane_load(invalid, 2.0f, -1.0f));
         EXPECT_EQ(invalid, 0u);
 
-        renderer.mesh_unload(plane);
+        renderer.resource().mesh_unload(plane);
 }
 
 /*
@@ -702,11 +702,11 @@ TEST_F(Renderer_Mesh_Test, 网格包围盒查询)
         float min_value[3] = {};
         float max_value[3] = {};
         //未初始化：返回假
-        EXPECT_FALSE(renderer.mesh_bounds(0, min_value, max_value));
+        EXPECT_FALSE(renderer.resource().mesh_bounds(0, min_value, max_value));
         ASSERT_TRUE(renderer.init(hidden_config()));
         engine::Mesh_Handle sphere = 0;
-        ASSERT_TRUE(renderer.mesh_sphere_load(sphere, 1.0f, 16, 8));
-        ASSERT_TRUE(renderer.mesh_bounds(sphere, min_value, max_value));
+        ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 16, 8));
+        ASSERT_TRUE(renderer.resource().mesh_bounds(sphere, min_value, max_value));
         for (int axis = 0; axis < 3; ++axis)
         {
                 EXPECT_NEAR(min_value[axis], -1.0f, 0.01f);
@@ -714,16 +714,16 @@ TEST_F(Renderer_Mesh_Test, 网格包围盒查询)
         }
         //平面：z 恒 0、x 到 ±1
         engine::Mesh_Handle plane = 0;
-        ASSERT_TRUE(renderer.mesh_plane_load(plane, 2.0f, 2.0f));
-        ASSERT_TRUE(renderer.mesh_bounds(plane, min_value, max_value));
+        ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 2.0f, 2.0f));
+        ASSERT_TRUE(renderer.resource().mesh_bounds(plane, min_value, max_value));
         EXPECT_NEAR(min_value[2], 0.0f, 0.001f);
         EXPECT_NEAR(max_value[2], 0.0f, 0.001f);
         EXPECT_NEAR(max_value[0], 1.0f, 0.001f);
         //无效句柄：返回假
-        EXPECT_FALSE(renderer.mesh_bounds(9999u, min_value, max_value));
+        EXPECT_FALSE(renderer.resource().mesh_bounds(9999u, min_value, max_value));
 
-        renderer.mesh_unload(plane);
-        renderer.mesh_unload(sphere);
+        renderer.resource().mesh_unload(plane);
+        renderer.resource().mesh_unload(sphere);
 }
 
 //程序化圆盘（第八十三轮）：可加载出帧、包围盒为 XY 平面上半径范围内的圆盘、非法参数被拒
@@ -732,16 +732,16 @@ TEST_F(Renderer_Mesh_Test, 程序化圆盘可绘制)
         engine::Renderer renderer;
         engine::Mesh_Handle handle = 7;
         //未初始化：拒绝且句柄归零
-        EXPECT_FALSE(renderer.mesh_disc_load(handle, 1.0f, 16));
+        EXPECT_FALSE(renderer.resource().mesh_disc_load(handle, 1.0f, 16));
         EXPECT_EQ(handle, 0u);
         ASSERT_TRUE(renderer.init(hidden_config()));
-        ASSERT_TRUE(renderer.mesh_disc_load(handle, 1.0f, 16));
+        ASSERT_TRUE(renderer.resource().mesh_disc_load(handle, 1.0f, 16));
         EXPECT_NE(handle, 0u);
 
         //包围盒：XY 各到 ±1、z 恒 0
         float min_value[3] = {};
         float max_value[3] = {};
-        ASSERT_TRUE(renderer.mesh_bounds(handle, min_value, max_value));
+        ASSERT_TRUE(renderer.resource().mesh_bounds(handle, min_value, max_value));
         EXPECT_NEAR(min_value[0], -1.0f, 0.02f);
         EXPECT_NEAR(max_value[0], 1.0f, 0.02f);
         EXPECT_NEAR(min_value[1], -1.0f, 0.02f);
@@ -750,24 +750,24 @@ TEST_F(Renderer_Mesh_Test, 程序化圆盘可绘制)
         EXPECT_NEAR(max_value[2], 0.0f, 0.001f);
 
         //出帧成功（登记绘制 + 渲染）
-        ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+        ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
         ASSERT_TRUE(renderer.frame_render());
 
         //非法参数：半径为 0 / 负、分段过少 / 过多，均整次拒绝且句柄归零
         engine::Mesh_Handle invalid = 9;
-        EXPECT_FALSE(renderer.mesh_disc_load(invalid, 0.0f, 16));
+        EXPECT_FALSE(renderer.resource().mesh_disc_load(invalid, 0.0f, 16));
         EXPECT_EQ(invalid, 0u);
         invalid = 9;
-        EXPECT_FALSE(renderer.mesh_disc_load(invalid, -1.0f, 16));
+        EXPECT_FALSE(renderer.resource().mesh_disc_load(invalid, -1.0f, 16));
         EXPECT_EQ(invalid, 0u);
         invalid = 9;
-        EXPECT_FALSE(renderer.mesh_disc_load(invalid, 1.0f, 2));
+        EXPECT_FALSE(renderer.resource().mesh_disc_load(invalid, 1.0f, 2));
         EXPECT_EQ(invalid, 0u);
         invalid = 9;
-        EXPECT_FALSE(renderer.mesh_disc_load(invalid, 1.0f, 257));
+        EXPECT_FALSE(renderer.resource().mesh_disc_load(invalid, 1.0f, 257));
         EXPECT_EQ(invalid, 0u);
 
-        renderer.mesh_unload(handle);
+        renderer.resource().mesh_unload(handle);
 }
 
 //纹理尺寸查询（第九十轮）：任意尺寸纹理可查回同值；未初始化 / 无效 / 已卸载句柄返回假且出参归零
@@ -776,29 +776,29 @@ TEST_F(Renderer_Mesh_Test, 纹理尺寸可查询)
         engine::Renderer renderer;
         uint32_t width = 7;
         uint32_t height = 7;
-        EXPECT_FALSE(renderer.texture_size(1, &width, &height));
+        EXPECT_FALSE(renderer.resource().texture_size(1, &width, &height));
         EXPECT_EQ(width, 0u);
         EXPECT_EQ(height, 0u);
 
         ASSERT_TRUE(renderer.init(hidden_config()));
         uint64_t texture = 0;
-        ASSERT_TRUE(renderer.texture_load_checkerboard(texture, 64, 32, 8));
+        ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 64, 32, 8));
         uint32_t queried_width = 0;
         uint32_t queried_height = 0;
-        EXPECT_TRUE(renderer.texture_size(texture, &queried_width, &queried_height));
+        EXPECT_TRUE(renderer.resource().texture_size(texture, &queried_width, &queried_height));
         EXPECT_EQ(queried_width, 64u);
         EXPECT_EQ(queried_height, 32u);
         //只取高（宽指针为空）亦有效
         uint32_t only_height = 0;
-        EXPECT_TRUE(renderer.texture_size(texture, nullptr, &only_height));
+        EXPECT_TRUE(renderer.resource().texture_size(texture, nullptr, &only_height));
         EXPECT_EQ(only_height, 32u);
         //无效句柄
-        EXPECT_FALSE(renderer.texture_size(0, &queried_width, &queried_height));
+        EXPECT_FALSE(renderer.resource().texture_size(0, &queried_width, &queried_height));
         EXPECT_EQ(queried_width, 0u);
-        EXPECT_FALSE(renderer.texture_size(texture + 99, &queried_width, &queried_height));
+        EXPECT_FALSE(renderer.resource().texture_size(texture + 99, &queried_width, &queried_height));
         //卸载后失效
-        renderer.texture_unload(texture);
-        EXPECT_FALSE(renderer.texture_size(texture, &queried_width, &queried_height));
+        renderer.resource().texture_unload(texture);
+        EXPECT_FALSE(renderer.resource().texture_size(texture, &queried_width, &queried_height));
         EXPECT_EQ(queried_height, 0u);
 }
 
@@ -808,20 +808,20 @@ TEST_F(Renderer_Mesh_Test, 细分平面与网格计数)
         engine::Renderer renderer;
         uint32_t vertex_count = 7;
         uint32_t index_count = 7;
-        EXPECT_FALSE(renderer.mesh_counts(1, &vertex_count, &index_count));
+        EXPECT_FALSE(renderer.resource().mesh_counts(1, &vertex_count, &index_count));
         EXPECT_EQ(vertex_count, 0u);
         EXPECT_EQ(index_count, 0u);
 
         ASSERT_TRUE(renderer.init(hidden_config()));
         engine::Mesh_Handle grid = 0;
-        ASSERT_TRUE(renderer.mesh_grid_load(grid, 2.0f, 2.0f, 4, 3));
-        ASSERT_TRUE(renderer.mesh_counts(grid, &vertex_count, &index_count));
+        ASSERT_TRUE(renderer.resource().mesh_grid_load(grid, 2.0f, 2.0f, 4, 3));
+        ASSERT_TRUE(renderer.resource().mesh_counts(grid, &vertex_count, &index_count));
         EXPECT_EQ(vertex_count, 20u);
         EXPECT_EQ(index_count, 72u);
 
         float min_value[3] = {};
         float max_value[3] = {};
-        ASSERT_TRUE(renderer.mesh_bounds(grid, min_value, max_value));
+        ASSERT_TRUE(renderer.resource().mesh_bounds(grid, min_value, max_value));
         EXPECT_NEAR(min_value[0], -1.0f, 0.001f);
         EXPECT_NEAR(max_value[0], 1.0f, 0.001f);
         EXPECT_NEAR(min_value[1], -1.0f, 0.001f);
@@ -829,27 +829,27 @@ TEST_F(Renderer_Mesh_Test, 细分平面与网格计数)
         EXPECT_NEAR(max_value[2], 0.0f, 0.001f);
 
         //出帧成功
-        ASSERT_TRUE(renderer.mesh_draw(grid, nullptr));
+        ASSERT_TRUE(renderer.resource().mesh_draw(grid, nullptr));
         ASSERT_TRUE(renderer.frame_render());
 
         //非法参数：宽为 0、列为 0 / 257、行为 0，均整次拒绝且句柄归零
         engine::Mesh_Handle invalid = 9;
-        EXPECT_FALSE(renderer.mesh_grid_load(invalid, 0.0f, 1.0f, 4, 3));
+        EXPECT_FALSE(renderer.resource().mesh_grid_load(invalid, 0.0f, 1.0f, 4, 3));
         EXPECT_EQ(invalid, 0u);
         invalid = 9;
-        EXPECT_FALSE(renderer.mesh_grid_load(invalid, 1.0f, 1.0f, 0, 3));
+        EXPECT_FALSE(renderer.resource().mesh_grid_load(invalid, 1.0f, 1.0f, 0, 3));
         EXPECT_EQ(invalid, 0u);
         invalid = 9;
-        EXPECT_FALSE(renderer.mesh_grid_load(invalid, 1.0f, 1.0f, 257, 3));
+        EXPECT_FALSE(renderer.resource().mesh_grid_load(invalid, 1.0f, 1.0f, 257, 3));
         EXPECT_EQ(invalid, 0u);
         invalid = 9;
-        EXPECT_FALSE(renderer.mesh_grid_load(invalid, 1.0f, 1.0f, 4, 0));
+        EXPECT_FALSE(renderer.resource().mesh_grid_load(invalid, 1.0f, 1.0f, 4, 0));
         EXPECT_EQ(invalid, 0u);
 
         //无效句柄计数失败且出参归零
-        EXPECT_FALSE(renderer.mesh_counts(grid + 99, &vertex_count, &index_count));
+        EXPECT_FALSE(renderer.resource().mesh_counts(grid + 99, &vertex_count, &index_count));
         EXPECT_EQ(vertex_count, 0u);
 
-        renderer.mesh_unload(grid);
+        renderer.resource().mesh_unload(grid);
 }
 

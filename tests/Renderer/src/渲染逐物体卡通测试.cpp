@@ -17,13 +17,13 @@ namespace
 		renderer.scene_apply(camera, light, fog);
 		//绑定材质（0 = 不绑定，保持默认管线与白纹理）
 		if (material != 0)
-			renderer.material_bind_set(material);
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+			renderer.resource().material_bind_set(material);
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		//恢复默认绑定
 		if (material != 0)
-			renderer.material_bind_set(0);
+			renderer.resource().material_bind_set(0);
 		return pixels;
 	}
 
@@ -40,7 +40,7 @@ namespace
 		data.toon_shadow_tint[1] = tint_g;
 		data.toon_shadow_tint[2] = tint_b;
 		engine::Material_Handle material = 0;
-		EXPECT_TRUE(renderer.material_load(material, data));
+		EXPECT_TRUE(renderer.resource().material_load(material, data));
 		return material;
 	}
 
@@ -119,10 +119,10 @@ TEST_F(Renderer_Scene_Test, 逐物体卡通全关等价无覆盖)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.4f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.4f)));
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	light.direction[0] = 0.6f;
@@ -137,9 +137,9 @@ TEST_F(Renderer_Scene_Test, 逐物体卡通全关等价无覆盖)
 	int difference = max_channel_diff(without, with);
 	RecordProperty("toon_object_off_max_diff", difference);
 	EXPECT_LE(difference, 2) << "卡通全关未等价于无覆盖（最大差 " << difference << "）";
-	renderer.material_unload(material);
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -155,10 +155,10 @@ TEST_F(Renderer_Scene_Test, 逐物体色阶覆盖改变分面明暗)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.4f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.4f)));
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	light.direction[0] = 0.6f;
@@ -173,9 +173,9 @@ TEST_F(Renderer_Scene_Test, 逐物体色阶覆盖改变分面明暗)
 	uint32_t changes = differing_count(plain, quantized, 20);
 	RecordProperty("toon_object_steps_changed_pixels", static_cast<int>(changes));
 	EXPECT_GE(changes, 30u) << "逐物体色阶未改变分面明暗（变化像素 " << changes << "）";
-	renderer.material_unload(material);
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -190,10 +190,10 @@ TEST_F(Renderer_Scene_Test, 逐物体边缘光抬升表面亮度)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.7071f, 0.7071f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.7071f, 0.7071f)));
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	light.intensity = 0.0f;
@@ -210,9 +210,9 @@ TEST_F(Renderer_Scene_Test, 逐物体边缘光抬升表面亮度)
 	RecordProperty("toon_object_rim_lit_outer", static_cast<uint32_t>(rim_outer));
 	EXPECT_LE(plain_outer, 20u) << "无光照且无边缘光时中心应为黑（" << pixel_text(plain_center) << "）";
 	EXPECT_GE(rim_outer, 40u) << "逐物体边缘光未抬升表面亮度（" << pixel_text(rim_center) << "）";
-	renderer.material_unload(material);
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 //非法卡通参数（色阶 9 越界）按「不覆盖」登记：画面应与不绑定材质逐通道差 ≤ 2
@@ -224,10 +224,10 @@ TEST_F(Renderer_Scene_Test, 逐物体卡通非法参数按不覆盖)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.4f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.4f)));
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	light.direction[0] = 0.6f;
@@ -242,9 +242,9 @@ TEST_F(Renderer_Scene_Test, 逐物体卡通非法参数按不覆盖)
 	int difference = max_channel_diff(plain, invalid);
 	RecordProperty("toon_object_invalid_max_diff", difference);
 	EXPECT_LE(difference, 2) << "非法卡通参数未被拒绝（最大差 " << difference << "）";
-	renderer.material_unload(material);
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -260,10 +260,10 @@ TEST_F(Renderer_Scene_Test, 逐物体暗部色调生效)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.4f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.4f)));
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	//场景：方向光自 +Z 射向 -Z（可见的 +Z 正面 ndotl = 0 → 处于暗部）、环境光 0.5 提供基底亮度
@@ -279,9 +279,9 @@ TEST_F(Renderer_Scene_Test, 逐物体暗部色调生效)
 	uint32_t darkened = darkened_count(tinted, plain, 0.05f);
 	RecordProperty("toon_object_tint_darkened_pixels", static_cast<int>(darkened));
 	EXPECT_GE(darkened, 20u) << "逐物体暗部色调未生效（压暗像素 " << darkened << "）";
-	renderer.material_unload(material);
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 //逐物体暗部色调默认 (1,1,1) 为乘性恒等：覆盖标志为真时画面仍应与不覆盖逐通道差 ≤ 2
@@ -293,10 +293,10 @@ TEST_F(Renderer_Scene_Test, 逐物体暗部色调默认可配)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, cube_data(0.4f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.4f)));
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	light.direction[0] = 0.6f;
@@ -311,7 +311,7 @@ TEST_F(Renderer_Scene_Test, 逐物体暗部色调默认可配)
 	int difference = max_channel_diff(plain, neutral);
 	RecordProperty("toon_object_tint_neutral_max_diff", difference);
 	EXPECT_LE(difference, 2) << "默认暗部色调非恒等（最大差 " << difference << "）";
-	renderer.material_unload(material);
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }

@@ -68,12 +68,12 @@ TEST_F(Renderer_Resource_Test, 资源计数随加载卸载变化)
 	uint64_t target = 0;
 	engine::Material_Handle material = 0;
 	const uint8_t pixel[4] = { 255, 255, 255, 255 };
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
-	ASSERT_TRUE(renderer.texture_load(texture, pixel, 1, 1));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, pixel, 1, 1));
 	ASSERT_TRUE(renderer.ui().font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16));
-	ASSERT_TRUE(renderer.pipeline_load(pipeline, "后处理.vert.spv", "反色.frag.spv"));
+	ASSERT_TRUE(renderer.resource().pipeline_load(pipeline, "后处理.vert.spv", "反色.frag.spv"));
 	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	ASSERT_TRUE(renderer.material_load(material, engine::Material_Data{}));
+	ASSERT_TRUE(renderer.resource().material_load(material, engine::Material_Data{}));
 
 	engine::Renderer_Resource_Counts loaded = renderer.resource_counts();
 	EXPECT_EQ(loaded.meshes, 1u);
@@ -86,12 +86,12 @@ TEST_F(Renderer_Resource_Test, 资源计数随加载卸载变化)
 	EXPECT_EQ(loaded.materials, 1u);
 
 	//卸载后回落
-	renderer.material_unload(material);
+	renderer.resource().material_unload(material);
 	renderer.render_target_destroy(target);
-	renderer.pipeline_unload(pipeline);
+	renderer.resource().pipeline_unload(pipeline);
 	renderer.ui().font_unload(font);
-	renderer.texture_unload(texture);
-	renderer.mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
 	engine::Renderer_Resource_Counts unloaded = renderer.resource_counts();
 	EXPECT_EQ(unloaded.meshes, 0u);
 	EXPECT_EQ(unloaded.textures, 2u);
@@ -138,8 +138,8 @@ TEST_F(Renderer_Resource_Test, 后处理链采样数查询)
 	//两条管线（单采样模式）
 	uint64_t first = 0;
 	uint64_t second = 0;
-	ASSERT_TRUE(renderer.pipeline_load(first, "后处理.vert.spv", "反色.frag.spv"));
-	ASSERT_TRUE(renderer.pipeline_load(second, "后处理.vert.spv", "灰度.frag.spv"));
+	ASSERT_TRUE(renderer.resource().pipeline_load(first, "后处理.vert.spv", "反色.frag.spv"));
+	ASSERT_TRUE(renderer.resource().pipeline_load(second, "后处理.vert.spv", "灰度.frag.spv"));
 	uint64_t chain[2] = { first, second };
 	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
 
@@ -155,6 +155,6 @@ TEST_F(Renderer_Resource_Test, 后处理链采样数查询)
 	EXPECT_EQ(renderer.post_chain_sample_counts(nullptr, 4), 0u);
 
 	renderer.post_chain_set(nullptr, 0);
-	renderer.pipeline_unload(second);
-	renderer.pipeline_unload(first);
+	renderer.resource().pipeline_unload(second);
+	renderer.resource().pipeline_unload(first);
 }

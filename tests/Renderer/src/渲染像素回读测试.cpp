@@ -203,11 +203,11 @@ TEST_F(Renderer_Readback_Test, 白纹理四边形中心覆盖角落留空)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//回落内置默认白纹理
-	renderer.texture_bind_set(0);
+	renderer.resource().texture_bind_set(0);
 	//加载覆盖视口中央的四边形并登记绘制
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	//中心像素为白（四通道均接近满值，与通道序无关）
@@ -216,7 +216,7 @@ TEST_F(Renderer_Readback_Test, 白纹理四边形中心覆盖角落留空)
 	//左上角在四边形之外，仍为清屏色
 	std::array<uint8_t, 4> corner = pixel_get(pixels, 1, 1);
 	EXPECT_TRUE(pixel_is_clear(corner)) << "角落被意外覆盖：像素 " << pixel_text(corner);
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }
 
 //棋盘格纹理回读出现多色调：证纹理采样与网格绘制真实发生
@@ -228,12 +228,12 @@ TEST_F(Renderer_Readback_Test, 棋盘格纹理回读呈现多色调)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//程序生成棋盘格并绑定
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, 64, 64, 8));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 64, 64, 8));
+	renderer.resource().texture_bind_set(texture);
 	//加载四边形并登记绘制
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	/*
@@ -254,6 +254,6 @@ TEST_F(Renderer_Readback_Test, 棋盘格纹理回读呈现多色调)
 				bright_found = true;
 		}
 	EXPECT_TRUE(bright_found) << "未出现亮于清屏色的纹理色像素";
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
 }

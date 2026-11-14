@@ -69,11 +69,11 @@ TEST_F(Renderer_Scene_Test, 材质无贴图逐字节不变)
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		engine::Camera_Data camera{};
 		engine::Light_Data light{};
 		light.direction[2] = 1.0f;
@@ -82,8 +82,8 @@ TEST_F(Renderer_Scene_Test, 材质无贴图逐字节不变)
 		engine::Fog_Data fog{};
 		renderer.scene_apply(camera, light, fog);
 		ASSERT_TRUE(renderer.frame_render(direct.data(), static_cast<uint32_t>(direct.size())));
-		renderer.mesh_unload(mesh);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(mesh);
+		renderer.resource().texture_unload(texture);
 	}
 	//对照帧：材质路径（无贴图）
 	std::vector<uint8_t> material(pixel_bytes());
@@ -92,15 +92,15 @@ TEST_F(Renderer_Scene_Test, 材质无贴图逐字节不变)
 		ASSERT_TRUE(renderer.init(hidden_config()));
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 		engine::Material_Data data{};
 		data.texture = texture;
 		engine::Material_Handle handle = 0;
-		ASSERT_TRUE(renderer.material_load(handle, data));
-		renderer.material_bind_set(handle);
+		ASSERT_TRUE(renderer.resource().material_load(handle, data));
+		renderer.resource().material_bind_set(handle);
 		engine::Mesh_Handle mesh = 0;
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		engine::Camera_Data camera{};
 		engine::Light_Data light{};
 		light.direction[2] = 1.0f;
@@ -109,9 +109,9 @@ TEST_F(Renderer_Scene_Test, 材质无贴图逐字节不变)
 		engine::Fog_Data fog{};
 		renderer.scene_apply(camera, light, fog);
 		ASSERT_TRUE(renderer.frame_render(material.data(), static_cast<uint32_t>(material.size())));
-		renderer.mesh_unload(mesh);
-		renderer.material_unload(handle);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(mesh);
+		renderer.resource().material_unload(handle);
+		renderer.resource().texture_unload(texture);
 	}
 
 	int maximum = 0;
@@ -141,10 +141,10 @@ TEST_F(Renderer_Scene_Test, 法线贴图改变受光)
 	//反照率（白）与法线贴图
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
-	ASSERT_TRUE(renderer.texture_load(albedo, white.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(albedo, white.data(), 2, 2));
 	uint64_t normal_texture = 0;
 	std::vector<uint8_t> normal_texels = tilted_normal_map();
-	ASSERT_TRUE(renderer.texture_load(normal_texture, normal_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(normal_texture, normal_texels.data(), 2, 2));
 	//场景：方向光沿 +Z、环境光 0
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -154,7 +154,7 @@ TEST_F(Renderer_Scene_Test, 法线贴图改变受光)
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
 	//无法线贴图（强度 0）
 	engine::Material_Data plain{};
@@ -162,9 +162,9 @@ TEST_F(Renderer_Scene_Test, 法线贴图改变受光)
 	plain.normal_texture = normal_texture;
 	plain.normal_strength = 0.0f;
 	engine::Material_Handle plain_handle = 0;
-	ASSERT_TRUE(renderer.material_load(plain_handle, plain));
-	renderer.material_bind_set(plain_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(plain_handle, plain));
+	renderer.resource().material_bind_set(plain_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> plain_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain_pixels.data(), static_cast<uint32_t>(plain_pixels.size())));
 
@@ -174,9 +174,9 @@ TEST_F(Renderer_Scene_Test, 法线贴图改变受光)
 	mapped.normal_texture = normal_texture;
 	mapped.normal_strength = 1.0f;
 	engine::Material_Handle mapped_handle = 0;
-	ASSERT_TRUE(renderer.material_load(mapped_handle, mapped));
-	renderer.material_bind_set(mapped_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(mapped_handle, mapped));
+	renderer.resource().material_bind_set(mapped_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> mapped_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(mapped_pixels.data(), static_cast<uint32_t>(mapped_pixels.size())));
 
@@ -189,11 +189,11 @@ TEST_F(Renderer_Scene_Test, 法线贴图改变受光)
 	EXPECT_LE(mapped_brightness, plain_brightness - 20u) << "法线贴图未改变受光（"
 		<< mapped_brightness << " vs " << plain_brightness << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.material_unload(plain_handle);
-	renderer.material_unload(mapped_handle);
-	renderer.texture_unload(albedo);
-	renderer.texture_unload(normal_texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().material_unload(plain_handle);
+	renderer.resource().material_unload(mapped_handle);
+	renderer.resource().texture_unload(albedo);
+	renderer.resource().texture_unload(normal_texture);
 }
 
 /*
@@ -209,14 +209,14 @@ TEST_F(Renderer_Scene_Test, 粗糙度贴图改变高光)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> gray = solid_gray();
-	ASSERT_TRUE(renderer.texture_load(albedo, gray.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(albedo, gray.data(), 2, 2));
 	//粗糙度贴图：0.2 与 1.0
 	uint64_t rough_low = 0;
 	std::vector<uint8_t> low_texels = solid_rgba(51, 51, 51);
-	ASSERT_TRUE(renderer.texture_load(rough_low, low_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(rough_low, low_texels.data(), 2, 2));
 	uint64_t rough_white = 0;
 	std::vector<uint8_t> white_texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(rough_white, white_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(rough_white, white_texels.data(), 2, 2));
 
 	//场景：PBR 开启、方向光沿 -Z（与相机同侧，使 N·L 与 N·V 均为 1，中心即高光峰值）、环境光 0
 	engine::Camera_Data camera{};
@@ -231,16 +231,16 @@ TEST_F(Renderer_Scene_Test, 粗糙度贴图改变高光)
 	//逐光高光缩放（默认 0 会把方向光高光整段乘零，故显式开启）
 	renderer.directional_specular_set(1.0f);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//粗糙度贴图 = 0.2
 	engine::Material_Data smooth{};
 	smooth.texture = albedo;
 	smooth.roughness_texture = rough_low;
 	engine::Material_Handle smooth_handle = 0;
-	ASSERT_TRUE(renderer.material_load(smooth_handle, smooth));
-	renderer.material_bind_set(smooth_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(smooth_handle, smooth));
+	renderer.resource().material_bind_set(smooth_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> smooth_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(smooth_pixels.data(), static_cast<uint32_t>(smooth_pixels.size())));
 
@@ -249,9 +249,9 @@ TEST_F(Renderer_Scene_Test, 粗糙度贴图改变高光)
 	rough.texture = albedo;
 	rough.roughness_texture = rough_white;
 	engine::Material_Handle rough_handle = 0;
-	ASSERT_TRUE(renderer.material_load(rough_handle, rough));
-	renderer.material_bind_set(rough_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(rough_handle, rough));
+	renderer.resource().material_bind_set(rough_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> rough_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(rough_pixels.data(), static_cast<uint32_t>(rough_pixels.size())));
 
@@ -268,12 +268,12 @@ TEST_F(Renderer_Scene_Test, 粗糙度贴图改变高光)
 	EXPECT_GE(static_cast<uint32_t>(std::abs(static_cast<int>(smooth_brightness) - static_cast<int>(rough_brightness))), 20u)
 		<< "粗糙度贴图未改变高光（" << smooth_brightness << " vs " << rough_brightness << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.material_unload(smooth_handle);
-	renderer.material_unload(rough_handle);
-	renderer.texture_unload(albedo);
-	renderer.texture_unload(rough_low);
-	renderer.texture_unload(rough_white);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().material_unload(smooth_handle);
+	renderer.resource().material_unload(rough_handle);
+	renderer.resource().texture_unload(albedo);
+	renderer.resource().texture_unload(rough_low);
+	renderer.resource().texture_unload(rough_white);
 }
 
 /*
@@ -289,10 +289,10 @@ TEST_F(Renderer_Scene_Test, 自发光贴图默认白逐字节不变)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
-	ASSERT_TRUE(renderer.texture_load(albedo, white.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(albedo, white.data(), 2, 2));
 	uint64_t white_map = 0;
 	std::vector<uint8_t> white_texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(white_map, white_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(white_map, white_texels.data(), 2, 2));
 	//场景：关闭方向光与环境光，画面只剩自发光项，便于直接观察贴图乘子
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -301,16 +301,16 @@ TEST_F(Renderer_Scene_Test, 自发光贴图默认白逐字节不变)
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
 	//不配贴图（仅标量自发光）
 	engine::Material_Data plain{};
 	plain.texture = albedo;
 	plain.emissive = 1.0f;
 	engine::Material_Handle plain_handle = 0;
-	ASSERT_TRUE(renderer.material_load(plain_handle, plain));
-	renderer.material_bind_set(plain_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(plain_handle, plain));
+	renderer.resource().material_bind_set(plain_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> plain_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain_pixels.data(), static_cast<uint32_t>(plain_pixels.size())));
 
@@ -320,9 +320,9 @@ TEST_F(Renderer_Scene_Test, 自发光贴图默认白逐字节不变)
 	mapped.emissive = 1.0f;
 	mapped.emissive_texture = white_map;
 	engine::Material_Handle mapped_handle = 0;
-	ASSERT_TRUE(renderer.material_load(mapped_handle, mapped));
-	renderer.material_bind_set(mapped_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(mapped_handle, mapped));
+	renderer.resource().material_bind_set(mapped_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> mapped_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(mapped_pixels.data(), static_cast<uint32_t>(mapped_pixels.size())));
 
@@ -339,11 +339,11 @@ TEST_F(Renderer_Scene_Test, 自发光贴图默认白逐字节不变)
 	RecordProperty("emissive_white_diff", maximum);
 	EXPECT_LE(maximum, 0) << "白自发光贴图改变了画面（差 " << maximum << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.material_unload(plain_handle);
-	renderer.material_unload(mapped_handle);
-	renderer.texture_unload(albedo);
-	renderer.texture_unload(white_map);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().material_unload(plain_handle);
+	renderer.resource().material_unload(mapped_handle);
+	renderer.resource().texture_unload(albedo);
+	renderer.resource().texture_unload(white_map);
 }
 
 /*
@@ -360,13 +360,13 @@ TEST_F(Renderer_Scene_Test, 自发光贴图改变发光颜色)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
-	ASSERT_TRUE(renderer.texture_load(albedo, white.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(albedo, white.data(), 2, 2));
 	uint64_t white_map = 0;
 	std::vector<uint8_t> white_texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(white_map, white_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(white_map, white_texels.data(), 2, 2));
 	uint64_t red_map = 0;
 	std::vector<uint8_t> red_texels = solid_rgba(255, 0, 0);
-	ASSERT_TRUE(renderer.texture_load(red_map, red_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(red_map, red_texels.data(), 2, 2));
 	//场景：关闭方向光与环境光
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -375,7 +375,7 @@ TEST_F(Renderer_Scene_Test, 自发光贴图改变发光颜色)
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
 	//白贴图
 	engine::Material_Data white_material{};
@@ -383,9 +383,9 @@ TEST_F(Renderer_Scene_Test, 自发光贴图改变发光颜色)
 	white_material.emissive = 1.0f;
 	white_material.emissive_texture = white_map;
 	engine::Material_Handle white_handle = 0;
-	ASSERT_TRUE(renderer.material_load(white_handle, white_material));
-	renderer.material_bind_set(white_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(white_handle, white_material));
+	renderer.resource().material_bind_set(white_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> white_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(white_pixels.data(), static_cast<uint32_t>(white_pixels.size())));
 
@@ -395,9 +395,9 @@ TEST_F(Renderer_Scene_Test, 自发光贴图改变发光颜色)
 	red_material.emissive = 1.0f;
 	red_material.emissive_texture = red_map;
 	engine::Material_Handle red_handle = 0;
-	ASSERT_TRUE(renderer.material_load(red_handle, red_material));
-	renderer.material_bind_set(red_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(red_handle, red_material));
+	renderer.resource().material_bind_set(red_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> red_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(red_pixels.data(), static_cast<uint32_t>(red_pixels.size())));
 
@@ -425,12 +425,12 @@ TEST_F(Renderer_Scene_Test, 自发光贴图改变发光颜色)
 	EXPECT_LE(white_spread, 20u) << "白自发光贴图下中心应为近白（" << pixel_text(white_center) << "）";
 	EXPECT_GE(red_spread, 120u) << "红自发光贴图未改变发光颜色（" << pixel_text(red_center) << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.material_unload(white_handle);
-	renderer.material_unload(red_handle);
-	renderer.texture_unload(albedo);
-	renderer.texture_unload(white_map);
-	renderer.texture_unload(red_map);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().material_unload(white_handle);
+	renderer.resource().material_unload(red_handle);
+	renderer.resource().texture_unload(albedo);
+	renderer.resource().texture_unload(white_map);
+	renderer.resource().texture_unload(red_map);
 }
 
 /*
@@ -446,13 +446,13 @@ TEST_F(Renderer_Scene_Test, 环境光遮蔽贴图降低环境光)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
-	ASSERT_TRUE(renderer.texture_load(albedo, white.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(albedo, white.data(), 2, 2));
 	uint64_t white_map = 0;
 	std::vector<uint8_t> white_texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(white_map, white_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(white_map, white_texels.data(), 2, 2));
 	uint64_t dark_map = 0;
 	std::vector<uint8_t> dark_texels = solid_rgba(51, 51, 51);
-	ASSERT_TRUE(renderer.texture_load(dark_map, dark_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(dark_map, dark_texels.data(), 2, 2));
 	//场景：关闭方向光、环境光 0.5
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -461,15 +461,15 @@ TEST_F(Renderer_Scene_Test, 环境光遮蔽贴图降低环境光)
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
 	//不配遮蔽贴图
 	engine::Material_Data plain{};
 	plain.texture = albedo;
 	engine::Material_Handle plain_handle = 0;
-	ASSERT_TRUE(renderer.material_load(plain_handle, plain));
-	renderer.material_bind_set(plain_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(plain_handle, plain));
+	renderer.resource().material_bind_set(plain_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> plain_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain_pixels.data(), static_cast<uint32_t>(plain_pixels.size())));
 
@@ -478,9 +478,9 @@ TEST_F(Renderer_Scene_Test, 环境光遮蔽贴图降低环境光)
 	white_material.texture = albedo;
 	white_material.ao_texture = white_map;
 	engine::Material_Handle white_handle = 0;
-	ASSERT_TRUE(renderer.material_load(white_handle, white_material));
-	renderer.material_bind_set(white_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(white_handle, white_material));
+	renderer.resource().material_bind_set(white_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> white_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(white_pixels.data(), static_cast<uint32_t>(white_pixels.size())));
 
@@ -489,9 +489,9 @@ TEST_F(Renderer_Scene_Test, 环境光遮蔽贴图降低环境光)
 	dark_material.texture = albedo;
 	dark_material.ao_texture = dark_map;
 	engine::Material_Handle dark_handle = 0;
-	ASSERT_TRUE(renderer.material_load(dark_handle, dark_material));
-	renderer.material_bind_set(dark_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(dark_handle, dark_material));
+	renderer.resource().material_bind_set(dark_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> dark_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(dark_pixels.data(), static_cast<uint32_t>(dark_pixels.size())));
 
@@ -515,13 +515,13 @@ TEST_F(Renderer_Scene_Test, 环境光遮蔽贴图降低环境光)
 	EXPECT_LE(dark_brightness, plain_brightness - 40u) << "遮蔽贴图未压暗环境光（"
 		<< dark_brightness << " vs " << plain_brightness << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.material_unload(plain_handle);
-	renderer.material_unload(white_handle);
-	renderer.material_unload(dark_handle);
-	renderer.texture_unload(albedo);
-	renderer.texture_unload(white_map);
-	renderer.texture_unload(dark_map);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().material_unload(plain_handle);
+	renderer.resource().material_unload(white_handle);
+	renderer.resource().material_unload(dark_handle);
+	renderer.resource().texture_unload(albedo);
+	renderer.resource().texture_unload(white_map);
+	renderer.resource().texture_unload(dark_map);
 }
 
 /*
@@ -538,13 +538,13 @@ TEST_F(Renderer_Scene_Test, 金属度贴图改变漫反射权重)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
-	ASSERT_TRUE(renderer.texture_load(albedo, white.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(albedo, white.data(), 2, 2));
 	uint64_t white_map = 0;
 	std::vector<uint8_t> white_texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(white_map, white_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(white_map, white_texels.data(), 2, 2));
 	uint64_t black_map = 0;
 	std::vector<uint8_t> black_texels = solid_rgba(0, 0, 0);
-	ASSERT_TRUE(renderer.texture_load(black_map, black_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(black_map, black_texels.data(), 2, 2));
 	//场景：PBR 开启、方向光沿 -Z、环境光 0、高光关闭
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -556,7 +556,7 @@ TEST_F(Renderer_Scene_Test, 金属度贴图改变漫反射权重)
 	renderer.pbr_enable_set(true);
 	renderer.specular_set(0.0f, 16.0f);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//白金属度贴图（金属度 1 → 漫反射权重 0）
 	engine::Material_Data metal{};
@@ -566,9 +566,9 @@ TEST_F(Renderer_Scene_Test, 金属度贴图改变漫反射权重)
 	metal.pbr_roughness = 1.0f;
 	metal.pbr_metallic = 1.0f;
 	engine::Material_Handle metal_handle = 0;
-	ASSERT_TRUE(renderer.material_load(metal_handle, metal));
-	renderer.material_bind_set(metal_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(metal_handle, metal));
+	renderer.resource().material_bind_set(metal_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> metal_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(metal_pixels.data(), static_cast<uint32_t>(metal_pixels.size())));
 
@@ -580,9 +580,9 @@ TEST_F(Renderer_Scene_Test, 金属度贴图改变漫反射权重)
 	dielectric.pbr_roughness = 1.0f;
 	dielectric.pbr_metallic = 1.0f;
 	engine::Material_Handle dielectric_handle = 0;
-	ASSERT_TRUE(renderer.material_load(dielectric_handle, dielectric));
-	renderer.material_bind_set(dielectric_handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(dielectric_handle, dielectric));
+	renderer.resource().material_bind_set(dielectric_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> dielectric_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(dielectric_pixels.data(), static_cast<uint32_t>(dielectric_pixels.size())));
 
@@ -594,12 +594,12 @@ TEST_F(Renderer_Scene_Test, 金属度贴图改变漫反射权重)
 	EXPECT_LE(metal_brightness, 60u) << "白金属度贴图未把漫反射权重压到 0（" << metal_brightness << "）";
 	EXPECT_GE(dielectric_brightness, 180u) << "黑金属度贴图未把漫反射权重放开（" << dielectric_brightness << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.material_unload(metal_handle);
-	renderer.material_unload(dielectric_handle);
-	renderer.texture_unload(albedo);
-	renderer.texture_unload(white_map);
-	renderer.texture_unload(black_map);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().material_unload(metal_handle);
+	renderer.resource().material_unload(dielectric_handle);
+	renderer.resource().texture_unload(albedo);
+	renderer.resource().texture_unload(white_map);
+	renderer.resource().texture_unload(black_map);
 }
 
 /*
@@ -616,19 +616,19 @@ TEST_F(Renderer_Scene_Test, 五张材质贴图同时生效)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> white = solid_white();
-	ASSERT_TRUE(renderer.texture_load(albedo, white.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(albedo, white.data(), 2, 2));
 	uint64_t white_map = 0;
 	std::vector<uint8_t> white_texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(white_map, white_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(white_map, white_texels.data(), 2, 2));
 	uint64_t tilted_normal = 0;
 	std::vector<uint8_t> normal_texels = tilted_normal_map();
-	ASSERT_TRUE(renderer.texture_load(tilted_normal, normal_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(tilted_normal, normal_texels.data(), 2, 2));
 	uint64_t red_map = 0;
 	std::vector<uint8_t> red_texels = solid_rgba(255, 0, 0);
-	ASSERT_TRUE(renderer.texture_load(red_map, red_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(red_map, red_texels.data(), 2, 2));
 	uint64_t dark_map = 0;
 	std::vector<uint8_t> dark_texels = solid_rgba(51, 51, 51);
-	ASSERT_TRUE(renderer.texture_load(dark_map, dark_texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(dark_map, dark_texels.data(), 2, 2));
 	//场景：方向光关闭、环境光 0.5
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -637,7 +637,7 @@ TEST_F(Renderer_Scene_Test, 五张材质贴图同时生效)
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
 	//五张贴图同时挂到同一材质
 	engine::Material_Data mapped{};
@@ -650,9 +650,9 @@ TEST_F(Renderer_Scene_Test, 五张材质贴图同时生效)
 	mapped.ao_texture = dark_map;
 	mapped.metallic_texture = white_map;
 	engine::Material_Handle handle = 0;
-	ASSERT_TRUE(renderer.material_load(handle, mapped));
-	renderer.material_bind_set(handle);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().material_load(handle, mapped));
+	renderer.resource().material_bind_set(handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 
@@ -674,13 +674,13 @@ TEST_F(Renderer_Scene_Test, 五张材质贴图同时生效)
 	EXPECT_GE(spread, 120u) << "自发光贴图未生效（" << pixel_text(center) << "）";
 	EXPECT_LE(lowest, 120u) << "遮蔽贴图未生效（" << pixel_text(center) << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.material_unload(handle);
-	renderer.texture_unload(albedo);
-	renderer.texture_unload(white_map);
-	renderer.texture_unload(tilted_normal);
-	renderer.texture_unload(red_map);
-	renderer.texture_unload(dark_map);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().material_unload(handle);
+	renderer.resource().texture_unload(albedo);
+	renderer.resource().texture_unload(white_map);
+	renderer.resource().texture_unload(tilted_normal);
+	renderer.resource().texture_unload(red_map);
+	renderer.resource().texture_unload(dark_map);
 }
 
 /*
@@ -697,7 +697,7 @@ TEST_F(Renderer_Scene_Test, 贴图UV变换改变采样位置)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t albedo = 0;
 	std::vector<uint8_t> texels = left_right_rgba();
-	ASSERT_TRUE(renderer.texture_load(albedo, texels.data(), 4, 4));
+	ASSERT_TRUE(renderer.resource().texture_load(albedo, texels.data(), 4, 4));
 	//场景：环境光 1、方向光关闭（画面 = 反照率 × 色调）
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -706,18 +706,18 @@ TEST_F(Renderer_Scene_Test, 贴图UV变换改变采样位置)
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
 	//渲染一帧并返回中心像素
 	auto render_center = [&](const engine::Material_Data& data)
 	{
 		engine::Material_Handle handle = 0;
-		EXPECT_TRUE(renderer.material_load(handle, data));
-		renderer.material_bind_set(handle);
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().material_load(handle, data));
+		renderer.resource().material_bind_set(handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.material_unload(handle);
+		renderer.resource().material_unload(handle);
 		return pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	};
 	//两像素逐通道最大差
@@ -764,6 +764,6 @@ TEST_F(Renderer_Scene_Test, 贴图UV变换改变采样位置)
 	EXPECT_GE(scale_diff, 40) << "UV 缩放未改变采样位置（" << pixel_text(plain_center) << " vs " << pixel_text(scaled_center) << "）";
 	EXPECT_GE(offset_diff, 40) << "UV 偏移未改变采样位置（" << pixel_text(plain_center) << " vs " << pixel_text(shifted_center) << "）";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(albedo);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(albedo);
 }

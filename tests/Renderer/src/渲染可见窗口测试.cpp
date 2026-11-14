@@ -87,20 +87,20 @@ TEST_F(Renderer_Visible_Test, 可见窗口呈现三角形与棋盘格)
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	//生成并绑定棋盘格纹理
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, 64, 64, 8));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 64, 64, 8));
+	renderer.resource().texture_bind_set(texture);
 	//加载三角形网格
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	//连续呈现 120 帧供目视确认（三角形与棋盘格纹理）
 	for (uint32_t index = 0; index < 120; ++index)
 	{
-		EXPECT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		EXPECT_TRUE(renderer.frame_render());
 		//若窗口被关闭则提前收敛
 		if (renderer.close_requested())
 			break;
 	}
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }

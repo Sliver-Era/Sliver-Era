@@ -42,8 +42,8 @@ namespace
 	{
 		const std::array<float, 16> mirror_position = mirror_matrix();
 		const std::array<float, 16> target_position = target_matrix();
-		ASSERT_TRUE(renderer.mesh_draw(mirror, mirror_position.data()));
-		ASSERT_TRUE(renderer.mesh_draw(target, target_position.data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mirror, mirror_position.data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(target, target_position.data()));
 	}
 
 	//统计两帧之间逐通道差达到 threshold 的像素数（通道序无关）
@@ -89,15 +89,15 @@ namespace
 			renderer.post_stage_color4_set(0, edge, 0.0f, 0.0f, 0.0f);
 		renderer.render_target_present_set(scene_target);
 		engine::Mesh_Handle mirror = 0;
-		EXPECT_TRUE(renderer.mesh_load(mirror, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_load(mirror, quad_data()));
 		engine::Mesh_Handle target = 0;
-		EXPECT_TRUE(renderer.mesh_cube_load(target, 0.4f));
+		EXPECT_TRUE(renderer.resource().mesh_cube_load(target, 0.4f));
 		scene_mirror(renderer, mirror, target);
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.mesh_unload(mirror);
-		renderer.mesh_unload(target);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(mirror);
+		renderer.resource().mesh_unload(target);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
 		return pixels;
 	}

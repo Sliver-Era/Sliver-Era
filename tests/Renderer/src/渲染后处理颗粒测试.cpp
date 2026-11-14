@@ -66,14 +66,14 @@ TEST_F(Renderer_Post_Chain_Test, 胶片颗粒增加高频噪声)
 		if (!renderer.readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
 	}
 	//对照帧：单级胶片颗粒链（强度 0.4）
 	std::vector<uint8_t> grained(pixel_bytes());
@@ -90,16 +90,16 @@ TEST_F(Renderer_Post_Chain_Test, 胶片颗粒增加高频噪声)
 		//颗粒强度专设（阈值 / 软膝由校验规则要求合法，本片元不使用）
 		renderer.post_stage_param_set(0, 1.0f, 0.0f, 0.3f);
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		renderer.render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(grained.data(), static_cast<uint32_t>(grained.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(target);
 	}
 
@@ -173,14 +173,14 @@ TEST_F(Renderer_Post_Chain_Test, 像素化形成马赛克块)
 		if (!renderer.readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 64, 1));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 64, 1));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
 	}
 	//对照帧：单级像素化链（块尺寸 6）
 	std::vector<uint8_t> pixelated(pixel_bytes());
@@ -197,16 +197,16 @@ TEST_F(Renderer_Post_Chain_Test, 像素化形成马赛克块)
 		//块尺寸专设（阈值 / 软膝由校验规则要求合法，本片元不使用）
 		renderer.post_stage_param_set(0, 1.0f, 0.0f, 6.0f);
 		uint64_t texture = 0;
-		ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 64, 1));
-		renderer.texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 64, 1));
+		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		renderer.render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(pixelated.data(), static_cast<uint32_t>(pixelated.size())));
-		renderer.mesh_unload(handle);
-		renderer.texture_unload(texture);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(target);
 	}
 

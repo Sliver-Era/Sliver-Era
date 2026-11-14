@@ -51,10 +51,10 @@ TEST_F(Renderer_Post_Chain_Test, 模糊半径可配)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//棋盘格纹理与中等四边形
 	uint64_t texture = 0;
-	ASSERT_TRUE(renderer.texture_load_checkerboard(texture, 64, 64, 8));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 64, 64, 8));
+	renderer.resource().texture_bind_set(texture);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	//单级模糊链
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
@@ -67,7 +67,7 @@ TEST_F(Renderer_Post_Chain_Test, 模糊半径可配)
 	auto render_with_radius = [&](float radius, std::vector<uint8_t>& pixels)
 	{
 		renderer.post_stage_param_set(0, 1.0f, 0.0f, radius);
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		pixels.assign(pixel_bytes(), 0);
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	};
@@ -87,8 +87,8 @@ TEST_F(Renderer_Post_Chain_Test, 模糊半径可配)
 	EXPECT_LE(wide_spread * 2, narrow_spread) << "半径 4 的抹平幅度不足（" << wide_spread
 		<< " vs " << narrow_spread << "）";
 
-	renderer.mesh_unload(handle);
-	renderer.texture_unload(texture);
-	renderer.pipeline_unload(pass);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().texture_unload(texture);
+	renderer.resource().pipeline_unload(pass);
 	renderer.render_target_destroy(target);
 }

@@ -37,7 +37,7 @@ namespace
 		engine::Fog_Data fog{};
 		renderer.scene_apply(camera, light, fog);
 		renderer.shadow_enable_set(true);
-		EXPECT_TRUE(renderer.mesh_draw(mesh, translate_model(0.0f, 0.0f, 0.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, translate_model(0.0f, 0.0f, 0.0f).data()));
 		EXPECT_TRUE(renderer.frame_render());
 		return renderer.frame_stats_get();
 	}
@@ -53,18 +53,18 @@ TEST_F(Renderer_Scene_Test, 阴影预算关闭不干预)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	engine::Light_Data light = positive_z_light();
 	light.shadow_budget_bytes = 0;
 	EXPECT_EQ(render_frame(renderer, mesh, camera, light).shadow_resolution, 1024u);
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -79,10 +79,10 @@ TEST_F(Renderer_Scene_Test, 阴影预算折算边长)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 	engine::Camera_Data camera{};
 
 	//单级 512² × 4
@@ -107,8 +107,8 @@ TEST_F(Renderer_Scene_Test, 阴影预算折算边长)
 	light.shadow_budget_bytes = 256u * 256u * 4u / 2u;
 	EXPECT_EQ(render_frame(renderer, mesh, camera, light).shadow_resolution, 512u);
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -121,10 +121,10 @@ TEST_F(Renderer_Scene_Test, 阴影预算扁平入口透传)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Scene_Data scene{};
 	scene.shadow_enabled = 1;
@@ -132,10 +132,10 @@ TEST_F(Renderer_Scene_Test, 阴影预算扁平入口透传)
 	engine::Fog_Data fog{};
 	renderer.scene_apply(scene);
 	renderer.shadow_enable_set(true);
-	EXPECT_TRUE(renderer.mesh_draw(mesh, translate_model(0.0f, 0.0f, 0.0f).data()));
+	EXPECT_TRUE(renderer.resource().mesh_draw(mesh, translate_model(0.0f, 0.0f, 0.0f).data()));
 	EXPECT_TRUE(renderer.frame_render());
 	EXPECT_EQ(renderer.frame_stats_get().shadow_resolution, 512u);
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }

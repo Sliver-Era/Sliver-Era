@@ -57,10 +57,10 @@ TEST_F(Renderer_Cache_Shadow_Test, 管线缓存写入与载入)
 		config.pipeline_cache_path = PIPELINE_CACHE_PATH;
 		ASSERT_TRUE(renderer.init(config));
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, triangle_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, triangle_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
-		renderer.mesh_unload(handle);
+		renderer.resource().mesh_unload(handle);
 		renderer.shutdown();
 	}
 	//缓存文件应已生成且非空
@@ -74,10 +74,10 @@ TEST_F(Renderer_Cache_Shadow_Test, 管线缓存写入与载入)
 		config.pipeline_cache_path = PIPELINE_CACHE_PATH;
 		ASSERT_TRUE(renderer.init(config));
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, triangle_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, triangle_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
-		renderer.mesh_unload(handle);
+		renderer.resource().mesh_unload(handle);
 	}
 }
 
@@ -117,11 +117,11 @@ TEST_F(Renderer_Cache_Shadow_Test, 阴影视锥范围可配)
 
 	//开启阴影后仍可正常出帧（视锥改用新范围）
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, triangle_data()));
 	renderer.shadow_enable_set(true);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_GE(renderer.shadow_pass_count(), 1u);
 	renderer.shadow_enable_set(false);
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }

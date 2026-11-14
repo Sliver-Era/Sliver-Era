@@ -68,8 +68,8 @@ TEST_F(Renderer_Post_Chain_Test, 单级链反色生效)
 	std::array<uint8_t, 4> corner = pixel_get(pixels, 1, 1);
 	int corner_min = *std::min_element(corner.begin(), corner.begin() + 3);
 	EXPECT_GE(corner_min, 200) << "角落应为反色后的亮色：" << pixel_text(corner);
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(invert);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(invert);
 	renderer.render_target_destroy(scene_target);
 }
 
@@ -86,7 +86,7 @@ TEST_F(Renderer_Post_Chain_Test, 两级反色恒等于原画面)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
+		renderer.resource().mesh_unload(handle);
 	}
 	//对照帧：两级「反色 → 反色」链
 	std::vector<uint8_t> chained(pixel_bytes());
@@ -115,9 +115,9 @@ TEST_F(Renderer_Post_Chain_Test, 两级反色恒等于原画面)
 		ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 2));
 		ASSERT_TRUE(renderer.frame_render(chained.data(), static_cast<uint32_t>(chained.size())));
 		EXPECT_EQ(renderer.frame_count(), 1u);
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(stages[0]);
-		renderer.pipeline_unload(stages[1]);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(stages[0]);
+		renderer.resource().pipeline_unload(stages[1]);
 		renderer.render_target_destroy(scene_target);
 		renderer.render_target_destroy(second_target);
 	}
@@ -164,9 +164,9 @@ TEST_F(Renderer_Post_Chain_Test, 两级反色与阈值叠加)
 	std::array<uint8_t, 4> corner = pixel_get(pixels, 1, 1);
 	EXPECT_GE(*std::min_element(corner.begin(), corner.begin() + 3), SATURATION_THRESHOLD) << "角落应为纯白：" << pixel_text(corner);
 	EXPECT_GE(corner[3], SATURATION_THRESHOLD);
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(stages[0]);
-	renderer.pipeline_unload(stages[1]);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(stages[0]);
+	renderer.resource().pipeline_unload(stages[1]);
 	renderer.render_target_destroy(scene_target);
 	renderer.render_target_destroy(second_target);
 }
@@ -192,7 +192,7 @@ TEST_F(Renderer_Post_Chain_Test, 单级链与既有单级路径等价)
 		scene_register(renderer, handle);
 		renderer.render_target_present_set(scene_target);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
+		renderer.resource().mesh_unload(handle);
 		renderer.render_target_destroy(scene_target);
 	}
 	//对照帧：链长 1（同一片元着色器，经 pipeline_load 登记）
@@ -211,8 +211,8 @@ TEST_F(Renderer_Post_Chain_Test, 单级链与既有单级路径等价)
 		scene_register(renderer, handle);
 		renderer.render_target_present_set(scene_target);
 		ASSERT_TRUE(renderer.frame_render(chained.data(), static_cast<uint32_t>(chained.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(stage);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(stage);
 		renderer.render_target_destroy(scene_target);
 	}
 	//两条路径共用同一录制实现 → 画面应逐字节相同
@@ -252,8 +252,8 @@ TEST_F(Renderer_Post_Chain_Test, 目标尺寸不一致仍走后处理)
 	std::array<uint8_t, 4> corner = pixel_get(pixels, 1, 1);
 	EXPECT_GE(*std::min_element(corner.begin(), corner.begin() + 3), 200)
 		<< "角落未被反色：" << pixel_text(corner);
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(invert);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(invert);
 	renderer.render_target_destroy(narrow_target);
 }
 
@@ -302,7 +302,7 @@ TEST_F(Renderer_Post_Chain_Test, 链计数与级序可读)
 	EXPECT_EQ(renderer.post_chain_get(nullptr, 4), 0u);
 
 	//卸载中间一级 → 该句柄被摘除、后续级序前移（计数 3 → 2）
-	renderer.pipeline_unload(threshold);
+	renderer.resource().pipeline_unload(threshold);
 	EXPECT_EQ(renderer.post_chain_count(), 2u);
 	uint64_t compressed[4] = { 0, 0, 0, 0 };
 	ASSERT_EQ(renderer.post_chain_get(compressed, 4), 2u);
@@ -313,8 +313,8 @@ TEST_F(Renderer_Post_Chain_Test, 链计数与级序可读)
 	ASSERT_TRUE(renderer.post_chain_set(nullptr, 0));
 	EXPECT_EQ(renderer.post_chain_count(), 0u);
 	EXPECT_EQ(renderer.post_chain_get(compressed, 4), 0u);
-	renderer.pipeline_unload(invert);
-	renderer.pipeline_unload(invert_again);
+	renderer.resource().pipeline_unload(invert);
+	renderer.resource().pipeline_unload(invert_again);
 }
 
 /*
@@ -348,8 +348,8 @@ TEST_F(Renderer_Post_Chain_Test, 灰度预设去色生效)
 	EXPECT_GE(center[0], 200) << "去色后中心过暗：" << pixel_text(center);
 	EXPECT_GT(corner[0], 4) << "角落去色后被压成纯黑（应保留清屏色亮度）：" << pixel_text(corner);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(gray);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(gray);
 	renderer.render_target_destroy(scene_target);
 }
 
@@ -382,7 +382,7 @@ TEST_F(Renderer_Post_Chain_Test, 描边预设压暗边界)
 	ASSERT_TRUE(renderer.frame_render(gray_pixels.data(), static_cast<uint32_t>(gray_pixels.size())));
 
 	//第二帧：描边（同一场景重登记绘制项）
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	ASSERT_TRUE(renderer.post_chain_set(&edge, 1));
 	std::vector<uint8_t> edge_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(edge_pixels.data(), static_cast<uint32_t>(edge_pixels.size())));
@@ -397,9 +397,9 @@ TEST_F(Renderer_Post_Chain_Test, 描边预设压暗边界)
 	EXPECT_LE(luma_of(gray_center) - luma_of(edge_center), 20.0f)
 		<< "中心被过度压暗（描边泄漏到内部）：灰 " << pixel_text(gray_center) << " / 边 " << pixel_text(edge_center);
 
-	renderer.mesh_unload(scene_mesh);
-	renderer.pipeline_unload(gray);
-	renderer.pipeline_unload(edge);
+	renderer.resource().mesh_unload(scene_mesh);
+	renderer.resource().pipeline_unload(gray);
+	renderer.resource().pipeline_unload(edge);
 	renderer.render_target_destroy(scene_target);
 }
 
@@ -430,8 +430,8 @@ TEST_F(Renderer_Post_Chain_Test, 色调映射压缩高亮)
 	EXPECT_LE(center[0], 246) << "高光未被压缩（仍接近 255）：" << pixel_text(center);
 	EXPECT_LE(std::abs(static_cast<int>(center[0]) - static_cast<int>(center[1])), 2);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(tone);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(tone);
 	renderer.render_target_destroy(scene_target);
 }
 
@@ -469,9 +469,9 @@ TEST_F(Renderer_Post_Chain_Test, 预设可串联)
 	EXPECT_LE(std::abs(static_cast<int>(center[0]) - static_cast<int>(center[2])), 4)
 		<< "两级链后中心未保持去色：" << pixel_text(center);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(gray);
-	renderer.pipeline_unload(edge);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(gray);
+	renderer.resource().pipeline_unload(edge);
 	renderer.render_target_destroy(second_target);
 	renderer.render_target_destroy(scene_target);
 }
@@ -520,8 +520,8 @@ TEST_F(Renderer_Post_Chain_Test, 链参数可批量读回)
 	EXPECT_EQ(renderer.post_chain_params_get(single, 4), 1u);
 	EXPECT_FLOAT_EQ(single[0], 0.7f);
 
-	renderer.pipeline_unload(invert);
-	renderer.pipeline_unload(threshold);
+	renderer.resource().pipeline_unload(invert);
+	renderer.resource().pipeline_unload(threshold);
 }
 
 /*
@@ -559,8 +559,8 @@ TEST_F(Renderer_Post_Chain_Test, 逐级额外四参不改变画面)
 	std::vector<uint8_t> 越界后(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(越界后.data(), static_cast<uint32_t>(越界后.size())));
 	EXPECT_EQ(max_channel_diff(非法后, 越界后), 0);
-	renderer.pipeline_unload(invert);
-	renderer.mesh_unload(quad);
+	renderer.resource().pipeline_unload(invert);
+	renderer.resource().mesh_unload(quad);
 }
 
 /*
@@ -635,7 +635,7 @@ TEST_F(Renderer_Post_Chain_Test, 后处理链上UI不被处理)
 
 	//收尾：清回调并释放
 	channel->draw_callback_clear();
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(gray);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(gray);
 	renderer.render_target_destroy(scene_target);
 }

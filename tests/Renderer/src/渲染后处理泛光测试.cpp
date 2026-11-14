@@ -53,10 +53,10 @@ TEST_F(Renderer_Post_Chain_Test, 三级链亮部提取模糊灰度)
 	EXPECT_LE(*std::max_element(corner.begin(), corner.begin() + 3), DARK_THRESHOLD) << "暗部被提亮（应保持近黑）：" << pixel_text(corner);
 	EXPECT_GE(corner[3], SATURATION_THRESHOLD);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(bright);
-	renderer.pipeline_unload(blur);
-	renderer.pipeline_unload(gray);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(bright);
+	renderer.resource().pipeline_unload(blur);
+	renderer.resource().pipeline_unload(gray);
 	renderer.render_target_destroy(third_target);
 	renderer.render_target_destroy(second_target);
 	renderer.render_target_destroy(scene_target);
@@ -92,7 +92,7 @@ TEST_F(Renderer_Post_Chain_Test, 二级链模糊确实参与)
 	ASSERT_TRUE(renderer.frame_render(single_pixels.data(), static_cast<uint32_t>(single_pixels.size())));
 
 	//第二帧：二级链「亮部提取 → 模糊」（同一场景重登记绘制项）
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	uint64_t chain[2] = { bright, blur };
 	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
 	uint64_t chain_targets[2] = { scene_target, second_target };
@@ -110,9 +110,9 @@ TEST_F(Renderer_Post_Chain_Test, 二级链模糊确实参与)
 	EXPECT_GE(center[0], 240) << "模糊后中心过暗：" << pixel_text(center);
 	EXPECT_LE(*std::max_element(corner.begin(), corner.begin() + 3), DARK_THRESHOLD) << "模糊后暗部被提亮：" << pixel_text(corner);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(bright);
-	renderer.pipeline_unload(blur);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(bright);
+	renderer.resource().pipeline_unload(blur);
 	renderer.render_target_destroy(second_target);
 	renderer.render_target_destroy(scene_target);
 }
@@ -152,9 +152,9 @@ TEST_F(Renderer_Post_Chain_Test, 目标组不足时回落)
 	EXPECT_LE(*std::max_element(corner.begin(), corner.begin() + 3), 200)
 		<< "目标组不足时未回落（角落被反色 / 阈值化为白）：" << pixel_text(corner);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(invert);
-	renderer.pipeline_unload(threshold);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(invert);
+	renderer.resource().pipeline_unload(threshold);
 	renderer.render_target_destroy(scene_target);
 }
 
@@ -180,22 +180,22 @@ TEST_F(Renderer_Post_Chain_Test, 双源叠加形成泛光)
 		if (!renderer.readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t gray_texture = 0;
-		ASSERT_TRUE(renderer.texture_load(gray_texture, gray_pixels.data(), 16, 16));
+		ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
 		uint64_t scene_target = 0;
 		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.texture_bind_set(gray_texture);
+		renderer.resource().texture_bind_set(gray_texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		renderer.render_target_present_set(scene_target);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(pass);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(pass);
 		renderer.render_target_destroy(scene_target);
-		renderer.texture_unload(gray_texture);
+		renderer.resource().texture_unload(gray_texture);
 	}
 	//对照帧：三级叠加链（3 个目标 > 链长）
 	std::vector<uint8_t> overlaid(pixel_bytes());
@@ -205,7 +205,7 @@ TEST_F(Renderer_Post_Chain_Test, 双源叠加形成泛光)
 		if (!renderer.readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t gray_texture = 0;
-		ASSERT_TRUE(renderer.texture_load(gray_texture, gray_pixels.data(), 16, 16));
+		ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
 		uint64_t scene_target = 0;
 		uint64_t second_target = 0;
 		uint64_t third_target = 0;
@@ -222,19 +222,19 @@ TEST_F(Renderer_Post_Chain_Test, 双源叠加形成泛光)
 		ASSERT_TRUE(renderer.post_chain_set(chain, 3));
 		uint64_t chain_targets[3] = { scene_target, second_target, third_target };
 		ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 3));
-		renderer.texture_bind_set(gray_texture);
+		renderer.resource().texture_bind_set(gray_texture);
 		engine::Mesh_Handle handle = 0;
-		ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		ASSERT_TRUE(renderer.frame_render(overlaid.data(), static_cast<uint32_t>(overlaid.size())));
-		renderer.mesh_unload(handle);
-		renderer.pipeline_unload(bright);
-		renderer.pipeline_unload(blur);
-		renderer.pipeline_unload(overlay);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(bright);
+		renderer.resource().pipeline_unload(blur);
+		renderer.resource().pipeline_unload(overlay);
 		renderer.render_target_destroy(third_target);
 		renderer.render_target_destroy(second_target);
 		renderer.render_target_destroy(scene_target);
-		renderer.texture_unload(gray_texture);
+		renderer.resource().texture_unload(gray_texture);
 	}
 
 	//中心：亮部被叠加提亮（参考约 222，叠加后趋饱和）
@@ -298,9 +298,9 @@ TEST_F(Renderer_Post_Chain_Test, 半尺寸目标链可用)
 	EXPECT_LE(*std::max_element(corner.begin(), corner.begin() + 3), DARK_THRESHOLD)
 		<< "半尺寸链后暗部被提亮：" << pixel_text(corner);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(bright);
-	renderer.pipeline_unload(blur);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(bright);
+	renderer.resource().pipeline_unload(blur);
 	renderer.render_target_destroy(half_target);
 	renderer.render_target_destroy(scene_target);
 }
@@ -319,7 +319,7 @@ TEST_F(Renderer_Post_Chain_Test, 降采样泛光扩散更广)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;
-	ASSERT_TRUE(renderer.texture_load(gray_texture, gray_pixels.data(), 16, 16));
+	ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
 	//四个目标：t0 全尺寸、t1/t2 半尺寸、t3 全尺寸
 	uint64_t target0 = 0;
 	uint64_t target1 = 0;
@@ -338,14 +338,14 @@ TEST_F(Renderer_Post_Chain_Test, 降采样泛光扩散更广)
 	ASSERT_NE(blur, 0u);
 	ASSERT_NE(overlay, 0u);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	renderer.texture_bind_set(gray_texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	renderer.resource().texture_bind_set(gray_texture);
 
 	//参考帧：无泛光（直通）
 	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
 	uint64_t ref_targets[1] = { target0 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(ref_targets, 1));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> reference(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 
@@ -354,7 +354,7 @@ TEST_F(Renderer_Post_Chain_Test, 降采样泛光扩散更广)
 	ASSERT_TRUE(renderer.post_chain_set(single_chain, 3));
 	uint64_t single_targets[3] = { target0, target1, target3 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(single_targets, 3));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> single_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(single_pixels.data(), static_cast<uint32_t>(single_pixels.size())));
 
@@ -363,7 +363,7 @@ TEST_F(Renderer_Post_Chain_Test, 降采样泛光扩散更广)
 	ASSERT_TRUE(renderer.post_chain_set(double_chain, 4));
 	uint64_t double_targets[4] = { target0, target1, target2, target3 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(double_targets, 4));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> double_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(double_pixels.data(), static_cast<uint32_t>(double_pixels.size())));
 
@@ -384,16 +384,16 @@ TEST_F(Renderer_Post_Chain_Test, 降采样泛光扩散更广)
 				<< "角落被泛光污染：" << pixel_text(corner) << " / 参考 " << pixel_text(ref_corner);
 	}
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(pass);
-	renderer.pipeline_unload(bright);
-	renderer.pipeline_unload(blur);
-	renderer.pipeline_unload(overlay);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(pass);
+	renderer.resource().pipeline_unload(bright);
+	renderer.resource().pipeline_unload(blur);
+	renderer.resource().pipeline_unload(overlay);
 	renderer.render_target_destroy(target3);
 	renderer.render_target_destroy(target2);
 	renderer.render_target_destroy(target1);
 	renderer.render_target_destroy(target0);
-	renderer.texture_unload(gray_texture);
+	renderer.resource().texture_unload(gray_texture);
 }
 
 /*
@@ -409,7 +409,7 @@ TEST_F(Renderer_Post_Chain_Test, 升采样链可用)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;
-	ASSERT_TRUE(renderer.texture_load(gray_texture, gray_pixels.data(), 16, 16));
+	ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
 	uint64_t target0 = 0;
 	uint64_t target1 = 0;
 	uint64_t target2 = 0;
@@ -431,9 +431,9 @@ TEST_F(Renderer_Post_Chain_Test, 升采样链可用)
 	uint64_t chain_targets[4] = { target0, target1, target2, target3 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 4));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
-	renderer.texture_bind_set(gray_texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	renderer.resource().texture_bind_set(gray_texture);
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 
@@ -445,16 +445,16 @@ TEST_F(Renderer_Post_Chain_Test, 升采样链可用)
 	EXPECT_LE(*std::max_element(corner.begin(), corner.begin() + 3), 120)
 		<< "升采样链后角落异常发亮：" << pixel_text(corner);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(bright);
-	renderer.pipeline_unload(blur);
-	renderer.pipeline_unload(upsample);
-	renderer.pipeline_unload(overlay);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(bright);
+	renderer.resource().pipeline_unload(blur);
+	renderer.resource().pipeline_unload(upsample);
+	renderer.resource().pipeline_unload(overlay);
 	renderer.render_target_destroy(target3);
 	renderer.render_target_destroy(target2);
 	renderer.render_target_destroy(target1);
 	renderer.render_target_destroy(target0);
-	renderer.texture_unload(gray_texture);
+	renderer.resource().texture_unload(gray_texture);
 }
 
 /*
@@ -473,7 +473,7 @@ TEST_F(Renderer_Post_Chain_Test, 多级降采样链扩散更广)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;
-	ASSERT_TRUE(renderer.texture_load(gray_texture, gray_pixels.data(), 16, 16));
+	ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
 	//四个目标：全 / 半 / 四分之一 / 半
 	uint64_t target0 = 0;
 	uint64_t target1 = 0;
@@ -492,14 +492,14 @@ TEST_F(Renderer_Post_Chain_Test, 多级降采样链扩散更广)
 	ASSERT_NE(blur, 0u);
 	ASSERT_NE(overlay, 0u);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	renderer.texture_bind_set(gray_texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	renderer.resource().texture_bind_set(gray_texture);
 
 	//参考帧：无泛光
 	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
 	uint64_t ref_targets[1] = { target0 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(ref_targets, 1));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> reference(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 
@@ -508,7 +508,7 @@ TEST_F(Renderer_Post_Chain_Test, 多级降采样链扩散更广)
 	ASSERT_TRUE(renderer.post_chain_set(single_chain, 3));
 	uint64_t single_targets[3] = { target0, target1, target3 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(single_targets, 3));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> single_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(single_pixels.data(), static_cast<uint32_t>(single_pixels.size())));
 
@@ -517,7 +517,7 @@ TEST_F(Renderer_Post_Chain_Test, 多级降采样链扩散更广)
 	ASSERT_TRUE(renderer.post_chain_set(multi_chain, 4));
 	uint64_t multi_targets[4] = { target0, target1, target2, target3 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(multi_targets, 4));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> multi_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(multi_pixels.data(), static_cast<uint32_t>(multi_pixels.size())));
 
@@ -534,16 +534,16 @@ TEST_F(Renderer_Post_Chain_Test, 多级降采样链扩散更广)
 		EXPECT_LE(std::abs(static_cast<int>(corner[index]) - static_cast<int>(ref_corner[index])), CHAIN_TOLERANCE)
 			<< "角落被泛光污染：" << pixel_text(corner) << " / 参考 " << pixel_text(ref_corner);
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(pass);
-	renderer.pipeline_unload(bright);
-	renderer.pipeline_unload(blur);
-	renderer.pipeline_unload(overlay);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(pass);
+	renderer.resource().pipeline_unload(bright);
+	renderer.resource().pipeline_unload(blur);
+	renderer.resource().pipeline_unload(overlay);
 	renderer.render_target_destroy(target3);
 	renderer.render_target_destroy(target2);
 	renderer.render_target_destroy(target1);
 	renderer.render_target_destroy(target0);
-	renderer.texture_unload(gray_texture);
+	renderer.resource().texture_unload(gray_texture);
 }
 
 /*
@@ -560,7 +560,7 @@ TEST_F(Renderer_Post_Chain_Test, 泛光参数生效)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;
-	ASSERT_TRUE(renderer.texture_load(gray_texture, gray_pixels.data(), 16, 16));
+	ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
 	uint64_t target0 = 0;
 	uint64_t target1 = 0;
 	uint64_t target2 = 0;
@@ -576,14 +576,14 @@ TEST_F(Renderer_Post_Chain_Test, 泛光参数生效)
 	ASSERT_NE(blur, 0u);
 	ASSERT_NE(overlay, 0u);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	renderer.texture_bind_set(gray_texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	renderer.resource().texture_bind_set(gray_texture);
 
 	//参考帧：直通
 	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
 	uint64_t ref_targets[1] = { target0 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(ref_targets, 1));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> reference(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 
@@ -592,19 +592,19 @@ TEST_F(Renderer_Post_Chain_Test, 泛光参数生效)
 	ASSERT_TRUE(renderer.post_chain_set(chain, 3));
 	uint64_t chain_targets[3] = { target0, target1, target2 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 3));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> full_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(full_pixels.data(), static_cast<uint32_t>(full_pixels.size())));
 
 	//强度 0.1（灰 0.72 + 0.072 = 0.79 未饱和，可与默认 1.0 区分）
 	renderer.bloom_param_set(0.6f, 0.1f, 0.1f);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> half_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(half_pixels.data(), static_cast<uint32_t>(half_pixels.size())));
 
 	//阈值 0.9（灰 0.72 被提零）
 	renderer.bloom_param_set(0.9f, 0.1f, 1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> high_threshold_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(high_threshold_pixels.data(), static_cast<uint32_t>(high_threshold_pixels.size())));
 
@@ -625,15 +625,15 @@ TEST_F(Renderer_Post_Chain_Test, 泛光参数生效)
 
 	//恢复默认参数（避免影响后续用例语义）
 	renderer.bloom_param_set(0.6f, 0.1f, 1.0f);
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(pass);
-	renderer.pipeline_unload(bright);
-	renderer.pipeline_unload(blur);
-	renderer.pipeline_unload(overlay);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(pass);
+	renderer.resource().pipeline_unload(bright);
+	renderer.resource().pipeline_unload(blur);
+	renderer.resource().pipeline_unload(overlay);
 	renderer.render_target_destroy(target2);
 	renderer.render_target_destroy(target1);
 	renderer.render_target_destroy(target0);
-	renderer.texture_unload(gray_texture);
+	renderer.resource().texture_unload(gray_texture);
 }
 
 /*
@@ -651,7 +651,7 @@ TEST_F(Renderer_Post_Chain_Test, 逐级泛光参数覆盖全局)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	std::vector<uint8_t> gray_pixels(16 * 16 * 4, 222);
 	uint64_t gray_texture = 0;
-	ASSERT_TRUE(renderer.texture_load(gray_texture, gray_pixels.data(), 16, 16));
+	ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
 	uint64_t target0 = 0;
 	uint64_t target1 = 0;
 	uint64_t target2 = 0;
@@ -669,25 +669,25 @@ TEST_F(Renderer_Post_Chain_Test, 逐级泛光参数覆盖全局)
 	uint64_t chain_targets[3] = { target0, target1, target2 };
 	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 3));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	renderer.texture_bind_set(gray_texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	renderer.resource().texture_bind_set(gray_texture);
 
 	//全局阈值 0.9 的对照帧
 	renderer.bloom_param_set(0.9f, 0.1f, 1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> global_high(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(global_high.data(), static_cast<uint32_t>(global_high.size())));
 
 	//复位全局参数，仅第 0 级设 0.9
 	renderer.bloom_param_set(0.6f, 0.1f, 1.0f);
 	renderer.post_stage_param_set(0, 0.9f, 0.1f, 1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> stage_high(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(stage_high.data(), static_cast<uint32_t>(stage_high.size())));
 
 	//链外级序：整次忽略（画面应仍等于逐级 0.9 的结果）
 	renderer.post_stage_param_set(5, 0.6f, 0.1f, 1.0f);
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> invalid_stage(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(invalid_stage.data(), static_cast<uint32_t>(invalid_stage.size())));
 
@@ -704,12 +704,12 @@ TEST_F(Renderer_Post_Chain_Test, 逐级泛光参数覆盖全局)
 	EXPECT_LE(std::abs(invalid_stage_luma - stage_high_luma), 2)
 		<< "链外级序设置未被忽略";
 
-	renderer.mesh_unload(handle);
-	renderer.pipeline_unload(bright);
-	renderer.pipeline_unload(blur);
-	renderer.pipeline_unload(overlay);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(bright);
+	renderer.resource().pipeline_unload(blur);
+	renderer.resource().pipeline_unload(overlay);
 	renderer.render_target_destroy(target2);
 	renderer.render_target_destroy(target1);
 	renderer.render_target_destroy(target0);
-	renderer.texture_unload(gray_texture);
+	renderer.resource().texture_unload(gray_texture);
 }

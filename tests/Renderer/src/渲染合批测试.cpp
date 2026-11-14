@@ -26,13 +26,13 @@ TEST_F(Renderer_Scene_Test, 相邻同等绘制自动合批)
 		if (!renderer.readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		ASSERT_TRUE(renderer.static_batching()) << "合批默认应开启";
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 		for (uint32_t index = 0; index < 5; ++index)
-			ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		batched_pixels.resize(pixel_bytes());
 		ASSERT_TRUE(renderer.frame_render(batched_pixels.data(), static_cast<uint32_t>(batched_pixels.size())));
 		batched_stats = renderer.frame_stats_get();
-		renderer.mesh_unload(mesh);
+		renderer.resource().mesh_unload(mesh);
 	}
 	//关闭合批的渲染器（对照）
 	std::vector<uint8_t> plain_pixels;
@@ -43,13 +43,13 @@ TEST_F(Renderer_Scene_Test, 相邻同等绘制自动合批)
 		config.static_batching = false;
 		ASSERT_TRUE(renderer.init(config));
 		ASSERT_FALSE(renderer.static_batching());
-		ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 		for (uint32_t index = 0; index < 5; ++index)
-			ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		plain_pixels.resize(pixel_bytes());
 		ASSERT_TRUE(renderer.frame_render(plain_pixels.data(), static_cast<uint32_t>(plain_pixels.size())));
 		plain_stats = renderer.frame_stats_get();
-		renderer.mesh_unload(mesh);
+		renderer.resource().mesh_unload(mesh);
 	}
 
 	RecordProperty("batching_drawn_items", static_cast<int>(batched_stats.drawn_items));
@@ -79,7 +79,7 @@ TEST_F(Renderer_Scene_Test, 不同色调材质不合并)
 	if (!renderer.readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//红色调材质
 	engine::Material_Data red{};
@@ -89,21 +89,21 @@ TEST_F(Renderer_Scene_Test, 不同色调材质不合并)
 	red.tint[2] = 0.0f;
 	red.tint[3] = 1.0f;
 	engine::Material_Handle material_red = 0;
-	ASSERT_TRUE(renderer.material_load(material_red, red));
+	ASSERT_TRUE(renderer.resource().material_load(material_red, red));
 	//蓝色调材质
 	engine::Material_Data blue = red;
 	blue.tint[0] = 0.0f;
 	blue.tint[2] = 1.0f;
 	engine::Material_Handle material_blue = 0;
-	ASSERT_TRUE(renderer.material_load(material_blue, blue));
+	ASSERT_TRUE(renderer.resource().material_load(material_blue, blue));
 
 	//红 ×2 → 蓝 ×2
-	renderer.material_bind_set(material_red);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
-	renderer.material_bind_set(material_blue);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	renderer.resource().material_bind_set(material_red);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
+	renderer.resource().material_bind_set(material_blue);
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -116,9 +116,9 @@ TEST_F(Renderer_Scene_Test, 不同色调材质不合并)
 	//画面：中心应为蓝色调（后登记覆盖先登记）
 	EXPECT_GT(center_brightness(pixels), 0u) << "未绘制出内容";
 
-	renderer.material_unload(material_red);
-	renderer.material_unload(material_blue);
-	renderer.mesh_unload(mesh);
+	renderer.resource().material_unload(material_red);
+	renderer.resource().material_unload(material_blue);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -130,14 +130,14 @@ TEST_F(Renderer_Scene_Test, 合批开关运行时可切换)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//关闭合批：3 项全部实际绘制
 	renderer.static_batching_set(false);
 	ASSERT_FALSE(renderer.static_batching());
 	uint64_t before = renderer.frame_stats_get().drawn_items;
 	for (uint32_t index = 0; index < 3; ++index)
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	const uint64_t plain_delta = renderer.frame_stats_get().drawn_items - before;
 
@@ -146,7 +146,7 @@ TEST_F(Renderer_Scene_Test, 合批开关运行时可切换)
 	ASSERT_TRUE(renderer.static_batching());
 	before = renderer.frame_stats_get().drawn_items;
 	for (uint32_t index = 0; index < 3; ++index)
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	const uint64_t batched_delta = renderer.frame_stats_get().drawn_items - before;
 
@@ -155,7 +155,7 @@ TEST_F(Renderer_Scene_Test, 合批开关运行时可切换)
 	EXPECT_EQ(plain_delta, 3u) << "关闭合批时实际绘制量异常";
 	EXPECT_EQ(batched_delta, 1u) << "开启合批后未合并";
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -175,8 +175,8 @@ TEST_F(Renderer_Scene_Test, 阴影列表同样合批)
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-		ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+		ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 		//场景：方向光沿 +Z、强度 1
 		engine::Camera_Data camera{};
 		engine::Light_Data light{};
@@ -193,14 +193,14 @@ TEST_F(Renderer_Scene_Test, 阴影列表同样合批)
 		transform[10] = 0.6f;
 		transform[14] = -0.5f;
 		transform[15] = 1.0f;
-		ASSERT_TRUE(renderer.mesh_draw(occluder, transform));
-		ASSERT_TRUE(renderer.mesh_draw(occluder, transform));
-		ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(occluder, transform));
+		ASSERT_TRUE(renderer.resource().mesh_draw(occluder, transform));
+		ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 		batched_pixels.resize(pixel_bytes());
 		ASSERT_TRUE(renderer.frame_render(batched_pixels.data(), static_cast<uint32_t>(batched_pixels.size())));
 		batched_stats = renderer.frame_stats_get();
-		renderer.mesh_unload(receiver);
-		renderer.mesh_unload(occluder);
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().mesh_unload(occluder);
 	}
 	//关合批（对照）
 	std::vector<uint8_t> plain_pixels;
@@ -212,8 +212,8 @@ TEST_F(Renderer_Scene_Test, 阴影列表同样合批)
 		ASSERT_TRUE(renderer.init(config));
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-		ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+		ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 		engine::Camera_Data camera{};
 		engine::Light_Data light{};
 		light.direction[2] = 1.0f;
@@ -228,14 +228,14 @@ TEST_F(Renderer_Scene_Test, 阴影列表同样合批)
 		transform[10] = 0.6f;
 		transform[14] = -0.5f;
 		transform[15] = 1.0f;
-		ASSERT_TRUE(renderer.mesh_draw(occluder, transform));
-		ASSERT_TRUE(renderer.mesh_draw(occluder, transform));
-		ASSERT_TRUE(renderer.mesh_draw(receiver, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(occluder, transform));
+		ASSERT_TRUE(renderer.resource().mesh_draw(occluder, transform));
+		ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 		plain_pixels.resize(pixel_bytes());
 		ASSERT_TRUE(renderer.frame_render(plain_pixels.data(), static_cast<uint32_t>(plain_pixels.size())));
 		plain_stats = renderer.frame_stats_get();
-		renderer.mesh_unload(receiver);
-		renderer.mesh_unload(occluder);
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().mesh_unload(occluder);
 	}
 
 	RecordProperty("shadow_batching_drawn", static_cast<int>(batched_stats.drawn_items));
@@ -326,21 +326,21 @@ TEST_F(Renderer_Scene_Test, 透明档几何不参与合批)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//Alpha 混合档：同网格连续两次不合并
-	renderer.blend_mode_set(engine::Blend_Mode::Alpha);
+	renderer.resource().blend_mode_set(engine::Blend_Mode::Alpha);
 	uint64_t before = renderer.frame_stats_get().draw_items;
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	const uint64_t transparent_delta = renderer.frame_stats_get().draw_items - before;
 
 	//恢复不透明档：同网格连续两次合并为一项
-	renderer.blend_mode_set(engine::Blend_Mode::Opaque);
+	renderer.resource().blend_mode_set(engine::Blend_Mode::Opaque);
 	before = renderer.frame_stats_get().draw_items;
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	const uint64_t opaque_delta = renderer.frame_stats_get().draw_items - before;
 
@@ -349,7 +349,7 @@ TEST_F(Renderer_Scene_Test, 透明档几何不参与合批)
 	EXPECT_EQ(transparent_delta, 2u) << "透明混合项被误合批";
 	EXPECT_EQ(opaque_delta, 1u) << "恢复不透明后未合批";
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -362,12 +362,12 @@ TEST_F(Renderer_Scene_Test, 合批收益可观测)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//关闭合批：不产生合并
 	renderer.static_batching_set(false);
 	for (uint32_t index = 0; index < 5; ++index)
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats plain = renderer.frame_stats_get();
 	EXPECT_EQ(plain.last_merged_items, 0u) << "关闭合批时不应有合并";
@@ -376,7 +376,7 @@ TEST_F(Renderer_Scene_Test, 合批收益可观测)
 	//开启合批：5 项合并为 1 项
 	renderer.static_batching_set(true);
 	for (uint32_t index = 0; index < 5; ++index)
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats batched = renderer.frame_stats_get();
 	RecordProperty("merged_last_frame", static_cast<int>(batched.last_merged_items));
@@ -384,7 +384,7 @@ TEST_F(Renderer_Scene_Test, 合批收益可观测)
 	EXPECT_EQ(batched.merged_items, 4u) << "累计合并项数不符";
 	EXPECT_EQ(batched.last_instances, 5u) << "合并后实例数应保持";
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -397,12 +397,12 @@ TEST_F(Renderer_Scene_Test, 合批缓冲跨帧复用无残留)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	for (uint32_t frame = 0; frame < 16; ++frame)
 	{
 		for (uint32_t index = 0; index < 3; ++index)
-			ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 		//每帧合并量须恒为 2（复用缓冲不得带入上一帧残留）
 		ASSERT_EQ(renderer.frame_stats_get().last_merged_items, 2u) << "第 " << frame << " 帧合并量异常";
@@ -413,5 +413,5 @@ TEST_F(Renderer_Scene_Test, 合批缓冲跨帧复用无残留)
 	EXPECT_EQ(stats.instances, 48u);
 	EXPECT_EQ(stats.drawn_instances, 48u);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }

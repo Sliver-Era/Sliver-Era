@@ -26,7 +26,7 @@ namespace
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f,
 		};
-		EXPECT_TRUE(renderer.mesh_draw(mesh, identity.data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, identity.data()));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
 		return pixels;
@@ -45,10 +45,10 @@ TEST_F(Renderer_Scene_Test, 曝光默认口径逐字节一致)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	engine::Light_Data light = positive_z_light();
@@ -63,8 +63,8 @@ TEST_F(Renderer_Scene_Test, 曝光默认口径逐字节一致)
 	const std::vector<uint8_t> again = draw_face(renderer, mesh);
 	EXPECT_TRUE(reference == again) << "显式 EV 0 后画面与默认不一致";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -79,10 +79,10 @@ TEST_F(Renderer_Scene_Test, 曝光单调性)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_gray();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
 
@@ -107,8 +107,8 @@ TEST_F(Renderer_Scene_Test, 曝光单调性)
 	EXPECT_GT(brighter, base) << "+1 EV 未变亮";
 	EXPECT_LT(darker, base) << "−1 EV 未变暗";
 
-	renderer.mesh_unload(mesh);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }
 
 /*

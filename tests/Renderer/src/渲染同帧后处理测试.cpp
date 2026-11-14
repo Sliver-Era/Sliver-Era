@@ -114,10 +114,10 @@ namespace
 	void scene_register(engine::Renderer& renderer, engine::Mesh_Handle& handle_out)
 	{
 		//回落内置默认白纹理
-		renderer.texture_bind_set(0);
+		renderer.resource().texture_bind_set(0);
 		//加载四边形并登记绘制
-		ASSERT_TRUE(renderer.mesh_load(handle_out, quad_data()));
-		ASSERT_TRUE(renderer.mesh_draw(handle_out, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle_out, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle_out, nullptr));
 	}
 
 	//两帧回读画面的最大逐通道差
@@ -198,7 +198,7 @@ TEST_F(Renderer_Post_Process_Test, 同帧后处理呈现且画面正确)
 	//左上角在四边形之外，仍为清屏色
 	std::array<uint8_t, 4> corner = pixel_get(pixels, 1, 1);
 	EXPECT_TRUE(pixel_is_clear(corner)) << "角落被意外覆盖：像素 " << pixel_text(corner);
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 	renderer.render_target_destroy(target);
 }
 
@@ -215,7 +215,7 @@ TEST_F(Renderer_Post_Process_Test, 与交换链路径画面一致)
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
-		renderer.mesh_unload(handle);
+		renderer.resource().mesh_unload(handle);
 	}
 	//对照帧：同帧多 pass 后处理路径
 	std::vector<uint8_t> processed(pixel_bytes());
@@ -230,7 +230,7 @@ TEST_F(Renderer_Post_Process_Test, 与交换链路径画面一致)
 		scene_register(renderer, handle);
 		renderer.render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(processed.data(), static_cast<uint32_t>(processed.size())));
-		renderer.mesh_unload(handle);
+		renderer.resource().mesh_unload(handle);
 		renderer.render_target_destroy(target);
 	}
 	//两路径画面逐通道一致（仅容取整误差）

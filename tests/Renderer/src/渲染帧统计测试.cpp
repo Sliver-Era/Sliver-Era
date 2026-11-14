@@ -74,7 +74,7 @@ TEST_F(Renderer_Stats_Test, 绘制计数与登记项一致)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	//初始统计为零
 	engine::Frame_Stats initial = renderer.frame_stats_get();
 	EXPECT_EQ(initial.frames, 0u);
@@ -82,7 +82,7 @@ TEST_F(Renderer_Stats_Test, 绘制计数与登记项一致)
 	EXPECT_EQ(initial.instances, 0u);
 
 	//第一帧：登记一个逐次绘制项（1 实例）
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats after_first = renderer.frame_stats_get();
 	EXPECT_EQ(after_first.frames, 1u);
@@ -91,7 +91,7 @@ TEST_F(Renderer_Stats_Test, 绘制计数与登记项一致)
 	EXPECT_GT(after_first.frame_ms, 0.0);
 
 	//第二帧：登记一个 3 实例的实例化绘制项
-	ASSERT_TRUE(renderer.mesh_draw_instanced(mesh, nullptr, 3));
+	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, nullptr, 3));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats after_second = renderer.frame_stats_get();
 	EXPECT_EQ(after_second.frames, 2u);
@@ -99,7 +99,7 @@ TEST_F(Renderer_Stats_Test, 绘制计数与登记项一致)
 	EXPECT_EQ(after_second.instances, 4u);
 	EXPECT_GT(after_second.frame_ms, 0.0);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 //累计主机侧耗时单调不减，且等于逐帧快照 frame_ms 之和
@@ -108,14 +108,14 @@ TEST_F(Renderer_Stats_Test, 累计主机侧耗时单调不减)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	//上一帧的累计值（用于单调性比较）
 	double previous_total = 0.0;
 	//逐帧快照 frame_ms 之和
 	double sum_frame_ms = 0.0;
 	for (uint32_t index = 0; index < 5; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 		engine::Frame_Stats stats = renderer.frame_stats_get();
 		//累计值不得回退
@@ -129,7 +129,7 @@ TEST_F(Renderer_Stats_Test, 累计主机侧耗时单调不减)
 	EXPECT_GT(stats.frame_total_ms, 0.0);
 	//累计值恰为各帧快照之和（同一累加顺序，故按位相等）
 	EXPECT_DOUBLE_EQ(stats.frame_total_ms, sum_frame_ms);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 //GPU 样本数与帧数关系符合「按帧槽环形读回」口径；不支持时两字段恒 0（优雅降级）
@@ -170,14 +170,14 @@ TEST_F(Renderer_Stats_Test, 实际绘制量等于登记量)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	//本用例验证「登记项完整性」，故关闭静态合批（合批会让相邻等价项合并为一次实例化绘制）
 	renderer.static_batching_set(false);
 	//三帧：分别登记 1 / 2 / 0 个绘制项
 	for (uint32_t index = 0; index < 2; ++index)
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -187,7 +187,7 @@ TEST_F(Renderer_Stats_Test, 实际绘制量等于登记量)
 	//所有登记项均完整 → 实际绘制量与登记量相等
 	EXPECT_EQ(stats.drawn_items, stats.draw_items);
 	EXPECT_EQ(stats.drawn_instances, stats.instances);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 //不使用材质 / 纹理的纯空帧：实际绘制量恒为 0（清屏不产生绘制项）
@@ -225,10 +225,10 @@ TEST_F(Renderer_Stats_Test, 视锥外实例被剔除)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	//平移到视口外后登记（应被剔除）
 	std::array<float, 16> matrix = translated_x(100.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, matrix.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, matrix.data()));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.frames, 1u);
@@ -237,7 +237,7 @@ TEST_F(Renderer_Stats_Test, 视锥外实例被剔除)
 	EXPECT_EQ(stats.drawn_items, 0u);
 	//剔除计数（第二十三轮）：完全不可见项计 1
 	EXPECT_EQ(stats.culled_items, 1u);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -249,9 +249,9 @@ TEST_F(Renderer_Stats_Test, 部分相交实例不被剔除)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	std::array<float, 16> matrix = translated_x(3.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, matrix.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, matrix.data()));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.frames, 1u);
@@ -259,7 +259,7 @@ TEST_F(Renderer_Stats_Test, 部分相交实例不被剔除)
 	EXPECT_EQ(stats.drawn_items, 1u);
 	//相交即保留 → 不得计入剔除
 	EXPECT_EQ(stats.culled_items, 0u);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -276,9 +276,9 @@ TEST_F(Renderer_Stats_Test, 关闭剔除后视锥外实例仍登记)
 	renderer.cull_enabled_set(false);
 	EXPECT_FALSE(renderer.cull_enabled());
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	std::array<float, 16> matrix = translated_x(100.0f);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, matrix.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, matrix.data()));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.draw_items, 1u);
@@ -287,12 +287,12 @@ TEST_F(Renderer_Stats_Test, 关闭剔除后视锥外实例仍登记)
 
 	//重新开启：同一实例被剔除
 	renderer.cull_enabled_set(true);
-	ASSERT_TRUE(renderer.mesh_draw(mesh, matrix.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, matrix.data()));
 	ASSERT_TRUE(renderer.frame_render());
 	stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.draw_items, 1u);
 	EXPECT_EQ(stats.culled_items, 1u);
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -320,9 +320,9 @@ TEST_F(Renderer_Stats_Test, 按需上传字节入统计)
         engine::Renderer renderer;
         ASSERT_TRUE(renderer.init(hidden_config()));
         engine::Mesh_Handle mesh = 0;
-        ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+        ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
         //首帧：场景 UBO 与实例缓冲均需写入
-        ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+        ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
         ASSERT_TRUE(renderer.frame_render());
         engine::Frame_Stats stats = renderer.frame_stats_get();
         EXPECT_EQ(stats.scene_upload_bytes, renderer.scene_upload_bytes());
@@ -333,13 +333,13 @@ TEST_F(Renderer_Stats_Test, 按需上传字节入统计)
         uint64_t before = stats.instance_upload_bytes;
         for (uint32_t index = 0; index < 4; ++index)
         {
-                ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+                ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
                 ASSERT_TRUE(renderer.frame_render());
         }
         engine::Frame_Stats later = renderer.frame_stats_get();
         EXPECT_EQ(later.instance_upload_bytes, renderer.instance_upload_bytes());
         EXPECT_LT(later.instance_upload_bytes, before + 400u) << "静止帧仍在整块上传实例";
-        renderer.mesh_unload(mesh);
+        renderer.resource().mesh_unload(mesh);
 }
 
 //帧统计清零（第九十一轮）：清零累计量后帧数 / 绘制项 / 上传字节归零，随后渲染重新累计
@@ -348,8 +348,8 @@ TEST_F(Renderer_Stats_Test, 帧统计可清零)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, triangle_data()));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats before = renderer.frame_stats_get();
 	EXPECT_EQ(before.frames, 1u);
@@ -366,12 +366,12 @@ TEST_F(Renderer_Stats_Test, 帧统计可清零)
 	EXPECT_EQ(cleared.culled_items, 0u);
 
 	//清零后重新渲染，累计量从 1 开始
-        ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+        ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
         ASSERT_TRUE(renderer.frame_render());
         engine::Frame_Stats after = renderer.frame_stats_get();
         EXPECT_EQ(after.frames, 1u);
         EXPECT_GE(after.draw_items, 1u);
-        renderer.mesh_unload(handle);
+        renderer.resource().mesh_unload(handle);
 }
 
 /*
@@ -386,18 +386,18 @@ TEST_F(Renderer_Stats_Test, 最近一帧绘制量与累计一致)
 	config.static_batching = false;
 	ASSERT_TRUE(renderer.init(config));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 
 	//首帧：3 项 / 3 实例
 	for (uint32_t index = 0; index < 3; ++index)
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats first = renderer.frame_stats_get();
 	EXPECT_EQ(first.last_draw_items, 3u);
 	EXPECT_EQ(first.last_instances, 3u);
 
 	//次帧：1 项 / 1 实例，累计 4
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats second = renderer.frame_stats_get();
 	EXPECT_EQ(second.last_draw_items, 1u) << "最近一帧量未随帧切换";
@@ -411,7 +411,7 @@ TEST_F(Renderer_Stats_Test, 最近一帧绘制量与累计一致)
 	EXPECT_EQ(cleared.last_draw_items, 1u) << "清零不应改动最近一帧即时量";
 	EXPECT_EQ(cleared.last_instances, 1u);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -424,7 +424,7 @@ TEST_F(Renderer_Stats_Test, 最近一帧剔除量)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	ASSERT_TRUE(renderer.cull_enabled());
 
 	//视锥外：平移 x = 100（列主序平移位于下标 12）
@@ -434,7 +434,7 @@ TEST_F(Renderer_Stats_Test, 最近一帧剔除量)
 	transform[10] = 1.0f;
 	transform[12] = 100.0f;
 	transform[15] = 1.0f;
-	ASSERT_TRUE(renderer.mesh_draw(mesh, transform));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, transform));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats culled = renderer.frame_stats_get();
 	EXPECT_EQ(culled.culled_items, 1u);
@@ -442,14 +442,14 @@ TEST_F(Renderer_Stats_Test, 最近一帧剔除量)
 	EXPECT_EQ(culled.last_draw_items, 0u);
 
 	//可见：最近一帧剔除归零，累计保持 1
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats visible = renderer.frame_stats_get();
 	EXPECT_EQ(visible.culled_items, 1u);
 	EXPECT_EQ(visible.last_culled_items, 0u) << "最近一帧剔除量未按帧重置";
 	EXPECT_EQ(visible.last_draw_items, 1u);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -461,8 +461,8 @@ TEST_F(Renderer_Stats_Test, 主机侧分段与总耗时一致)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	RecordProperty("host_record_ms", stats.host_record_ms);
@@ -485,7 +485,7 @@ TEST_F(Renderer_Stats_Test, 主机侧分段与总耗时一致)
 	EXPECT_EQ(cleared.host_submit_ms, stats.host_submit_ms);
 	EXPECT_EQ(cleared.host_present_ms, stats.host_present_ms);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -501,8 +501,8 @@ TEST_F(Renderer_Stats_Test, 离屏路径无呈现段)
 	//设为本帧渲染目标（无返回值入口）
 	renderer.render_target_set(target);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	RecordProperty("offscreen_record_ms", stats.host_record_ms);
@@ -512,7 +512,7 @@ TEST_F(Renderer_Stats_Test, 离屏路径无呈现段)
 	EXPECT_EQ(stats.host_present_ms, 0.0) << "离屏路径不应有呈现段";
 	EXPECT_LE(stats.host_record_ms + stats.host_submit_ms, stats.frame_ms + 0.01);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 	renderer.render_target_destroy(target);
 }
 
@@ -525,10 +525,10 @@ TEST_F(Renderer_Stats_Test, 主机侧分段累计)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 4; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -550,7 +550,7 @@ TEST_F(Renderer_Stats_Test, 主机侧分段累计)
 	EXPECT_EQ(cleared.host_present_total_ms, 0.0);
 	EXPECT_EQ(cleared.host_record_ms, record_last);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }
 
 /*
@@ -565,10 +565,10 @@ TEST_F(Renderer_Stats_Test, 离屏累计不含呈现段)
 	ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 	renderer.render_target_set(target);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 2; ++index)
 	{
-		ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 		ASSERT_TRUE(renderer.frame_render());
 	}
 	engine::Frame_Stats stats = renderer.frame_stats_get();
@@ -576,7 +576,7 @@ TEST_F(Renderer_Stats_Test, 离屏累计不含呈现段)
 	EXPECT_EQ(stats.host_present_total_ms, 0.0) << "离屏帧不应累计呈现段";
 	EXPECT_LE(stats.host_record_total_ms + stats.host_submit_total_ms, stats.frame_total_ms + 0.01);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 	renderer.render_target_destroy(target);
 }
 
@@ -600,10 +600,10 @@ TEST_F(Renderer_Stats_Test, 阴影重绘与复用计数)
 	renderer.scene_apply(camera, light, fog);
 	renderer.shadow_enable_set(true);
 	engine::Mesh_Handle mesh = 0;
-	ASSERT_TRUE(renderer.mesh_load(mesh, triangle_data()));
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 
 	//第一帧：必须重绘
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats first = renderer.frame_stats_get();
 	EXPECT_EQ(first.shadow_redraws, 1u) << "首帧未重绘阴影图";
@@ -612,7 +612,7 @@ TEST_F(Renderer_Stats_Test, 阴影重绘与复用计数)
 	EXPECT_EQ(first.shadow_last_redrawn, 1u);
 
 	//第二帧：输入一致 → 复用
-	ASSERT_TRUE(renderer.mesh_draw(mesh, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats second = renderer.frame_stats_get();
 	EXPECT_EQ(second.shadow_redraws, 1u) << "输入未变却重绘了阴影图";
@@ -625,7 +625,7 @@ TEST_F(Renderer_Stats_Test, 阴影重绘与复用计数)
 	scaled[5] = 0.5f;
 	scaled[10] = 0.5f;
 	scaled[15] = 1.0f;
-	ASSERT_TRUE(renderer.mesh_draw(mesh, scaled));
+	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, scaled));
 	ASSERT_TRUE(renderer.frame_render());
 	engine::Frame_Stats third = renderer.frame_stats_get();
 	EXPECT_EQ(third.shadow_redraws, 2u) << "输入变化后未重绘阴影图";
@@ -640,5 +640,5 @@ TEST_F(Renderer_Stats_Test, 阴影重绘与复用计数)
 	EXPECT_EQ(cleared.shadow_reuses, 0u);
 	EXPECT_EQ(cleared.last_shadow_items, last_items);
 
-	renderer.mesh_unload(mesh);
+	renderer.resource().mesh_unload(mesh);
 }

@@ -216,10 +216,10 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 重建后几何仍生效)
 	std::vector<uint8_t> warmup(static_cast<std::size_t>(160) * 120 * 4);
 	ASSERT_TRUE(renderer.frame_render(warmup.data(), static_cast<uint32_t>(warmup.size())));
 	//回落内置默认白纹理，加载覆盖视口中央的四边形并登记绘制
-	renderer.texture_bind_set(0);
+	renderer.resource().texture_bind_set(0);
 	engine::Mesh_Handle handle = 0;
-	ASSERT_TRUE(renderer.mesh_load(handle, quad_data()));
-	ASSERT_TRUE(renderer.mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	//再次出帧并回读
 	std::vector<uint8_t> pixels(static_cast<std::size_t>(160) * 120 * 4);
 	uint32_t width = 0;
@@ -233,5 +233,5 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 重建后几何仍生效)
 	//左上角在四边形之外，仍为清屏色
 	std::array<uint8_t, 4> corner = pixel_get(pixels, width, 1, 1);
 	EXPECT_TRUE(pixel_is_clear(corner)) << "角落被意外覆盖：像素 " << pixel_text(corner);
-	renderer.mesh_unload(handle);
+	renderer.resource().mesh_unload(handle);
 }

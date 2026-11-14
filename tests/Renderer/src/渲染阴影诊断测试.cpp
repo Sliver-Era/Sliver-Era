@@ -51,8 +51,8 @@ namespace
 	//绘制固定场景并推进一帧（遮挡面 z = -10、接收面 z = -9.5）
 	void draw_scene(engine::Renderer& renderer, engine::Mesh_Handle occluder, engine::Mesh_Handle receiver)
 	{
-		EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -10.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, translate_model(0.0f, 0.0f, -9.5f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -10.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, translate_model(0.0f, 0.0f, -9.5f).data()));
 		EXPECT_TRUE(renderer.frame_render());
 	}
 }
@@ -68,12 +68,12 @@ TEST_F(Renderer_Scene_Test, 阴影pass数随级联数变化)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//单级
 	engine::Camera_Data camera{};
@@ -93,9 +93,9 @@ TEST_F(Renderer_Scene_Test, 阴影pass数随级联数变化)
 	RecordProperty("dual_passes", stats.shadow_passes);
 	EXPECT_EQ(stats.shadow_passes, 2u) << "双级阴影 pass 数应为 2";
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -108,12 +108,12 @@ TEST_F(Renderer_Scene_Test, 静止帧阴影pass归零)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	engine::Camera_Data camera{};
 	scene_apply(renderer, camera);
@@ -133,9 +133,9 @@ TEST_F(Renderer_Scene_Test, 静止帧阴影pass归零)
 	EXPECT_EQ(stats.shadow_passes, 0u) << "静止帧不应再次执行阴影 pass";
 	EXPECT_GE(stats.shadow_reuses, reuses_before + 1u) << "静止帧未计入阴影复用";
 
-	renderer.mesh_unload(occluder);
-	renderer.mesh_unload(receiver);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -149,10 +149,10 @@ TEST_F(Renderer_Scene_Test, 聚光瓦片pass计数)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//1 盏聚光灯（位于相机上方、朝下照射场景）＋ 多盏聚光阴影 ＋ 方向光阴影关闭
 	engine::Light_Data light{};
@@ -173,7 +173,7 @@ TEST_F(Renderer_Scene_Test, 聚光瓦片pass计数)
 	renderer.scene_apply(camera, light, fog);
 
 	//方向光阴影保持关闭
-	EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
+	EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
 	EXPECT_TRUE(renderer.frame_render());
 	const engine::Frame_Stats stats = renderer.frame_stats_get();
 	RecordProperty("spot_passes", stats.spot_shadow_passes);
@@ -181,8 +181,8 @@ TEST_F(Renderer_Scene_Test, 聚光瓦片pass计数)
 	EXPECT_GE(stats.spot_shadow_passes, 1u) << "聚光瓦片 pass 未执行";
 	EXPECT_EQ(stats.shadow_passes, stats.spot_shadow_passes) << "方向光阴影关闭时总 pass 数应等于聚光 pass 数";
 
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -196,10 +196,10 @@ TEST_F(Renderer_Scene_Test, 阴影提交数等于pass数)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//方向光沿 +Z、阴影开启（单级）
 	engine::Camera_Data camera{};
@@ -212,7 +212,7 @@ TEST_F(Renderer_Scene_Test, 阴影提交数等于pass数)
 	engine::Fog_Data fog{};
 	renderer.scene_apply(camera, light, fog);
 	renderer.shadow_enable_set(true);
-	EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
+	EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
 	EXPECT_TRUE(renderer.frame_render());
 	const engine::Frame_Stats single = renderer.frame_stats_get();
 	RecordProperty("single_submits", single.shadow_submits);
@@ -224,7 +224,7 @@ TEST_F(Renderer_Scene_Test, 阴影提交数等于pass数)
 	light.shadow_cascade_count = 2;
 	renderer.scene_apply(camera, light, fog);
 	renderer.shadow_enable_set(true);
-	EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
+	EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
 	EXPECT_TRUE(renderer.frame_render());
 	const engine::Frame_Stats dual = renderer.frame_stats_get();
 	RecordProperty("dual_submits", dual.shadow_submits);
@@ -232,8 +232,8 @@ TEST_F(Renderer_Scene_Test, 阴影提交数等于pass数)
 	EXPECT_EQ(dual.shadow_submits, 2u) << "双级阴影提交次数不为 2";
 	EXPECT_EQ(dual.shadow_submits, dual.shadow_passes) << "双级提交次数与 pass 数不一致";
 
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }
 
 /*
@@ -261,14 +261,14 @@ TEST_F(Renderer_Scene_Test, 阴影批量提交单次且画面不变)
 			return outcome;
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
-		if (!renderer.texture_load(texture, texels.data(), 2, 2))
+		if (!renderer.resource().texture_load(texture, texels.data(), 2, 2))
 			return outcome;
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		if (!renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
-			|| !renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
+		if (!renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
+			|| !renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
 			return outcome;
-		renderer.texture_bind_set(texture);
+		renderer.resource().texture_bind_set(texture);
 
 		//双级级联 ＋ 2 盏聚光（两盏都参与阴影，形成 2 个瓦片段）
 		engine::Light_Data light{};
@@ -299,8 +299,8 @@ TEST_F(Renderer_Scene_Test, 阴影批量提交单次且画面不变)
 		renderer.shadow_enable_set(true);
 
 		//接收面在原点、遮挡面在其前方
-		EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
 		outcome.pixels.resize(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(outcome.pixels.data(),
 			static_cast<std::uint32_t>(outcome.pixels.size())));
@@ -360,14 +360,14 @@ TEST_F(Renderer_Scene_Test, 聚光阴影图集两态画面一致)
 			return outcome;
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
-		if (!renderer.texture_load(texture, texels.data(), 2, 2))
+		if (!renderer.resource().texture_load(texture, texels.data(), 2, 2))
 			return outcome;
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		if (!renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
-			|| !renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
+		if (!renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
+			|| !renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
 			return outcome;
-		renderer.texture_bind_set(texture);
+		renderer.resource().texture_bind_set(texture);
 
 		//2 盏聚光各自投影（瓦片 0 / 1）
 		engine::Light_Data light{};
@@ -396,8 +396,8 @@ TEST_F(Renderer_Scene_Test, 聚光阴影图集两态画面一致)
 		renderer.shadow_enable_set(true);
 
 		//接收面在原点、遮挡面在其前方
-		EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
 		outcome.pixels.resize(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(outcome.pixels.data(),
 			static_cast<std::uint32_t>(outcome.pixels.size())));
@@ -444,12 +444,12 @@ TEST_F(Renderer_Scene_Test, 聚光图集阴影耗时对比)
 		if (!renderer.init(hidden_config()) || !renderer.readback_supported())
 			return outcome;
 		std::vector<uint8_t> texels = solid_white();
-		if (!renderer.texture_load(outcome.texture, texels.data(), 2, 2))
+		if (!renderer.resource().texture_load(outcome.texture, texels.data(), 2, 2))
 			return outcome;
-		if (!renderer.mesh_load(outcome.receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
-			|| !renderer.mesh_load(outcome.occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
+		if (!renderer.resource().mesh_load(outcome.receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
+			|| !renderer.resource().mesh_load(outcome.occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
 			return outcome;
-		renderer.texture_bind_set(outcome.texture);
+		renderer.resource().texture_bind_set(outcome.texture);
 
 		//单级方向光 ＋ 2 盏聚光（两盏都参与阴影）
 		engine::Light_Data light{};
@@ -479,8 +479,8 @@ TEST_F(Renderer_Scene_Test, 聚光图集阴影耗时对比)
 		renderer.scene_apply(camera, light, fog);
 		renderer.shadow_enable_set(true);
 
-		EXPECT_TRUE(renderer.mesh_draw(outcome.occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(outcome.receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(outcome.occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(outcome.receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(),
 			static_cast<std::uint32_t>(pixels.size())));
@@ -492,14 +492,14 @@ TEST_F(Renderer_Scene_Test, 聚光图集阴影耗时对比)
 		light.spot_position[0][0] += 0.01f;
 		renderer.scene_apply(camera, light, fog);
 		renderer.shadow_enable_set(true);
-		EXPECT_TRUE(renderer.mesh_draw(outcome.occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(outcome.receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(outcome.occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(outcome.receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
 		EXPECT_TRUE(renderer.frame_render(pixels.data(),
 			static_cast<std::uint32_t>(pixels.size())));
 		outcome.stats = renderer.frame_stats_get();
-		renderer.mesh_unload(outcome.occluder);
-		renderer.mesh_unload(outcome.receiver);
-		renderer.texture_unload(outcome.texture);
+		renderer.resource().mesh_unload(outcome.occluder);
+		renderer.resource().mesh_unload(outcome.receiver);
+		renderer.resource().texture_unload(outcome.texture);
 		outcome.ok = true;
 		return outcome;
 	};
@@ -551,14 +551,14 @@ TEST_F(Renderer_Scene_Test, 图集八瓦片映射与MSAA一致)
 			return outcome;
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
-		if (!renderer.texture_load(texture, texels.data(), 2, 2))
+		if (!renderer.resource().texture_load(texture, texels.data(), 2, 2))
 			return outcome;
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
-		if (!renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
-			|| !renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
+		if (!renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f))
+			|| !renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)))
 			return outcome;
-		renderer.texture_bind_set(texture);
+		renderer.resource().texture_bind_set(texture);
 
 		//8 盏聚光沿 X 均匀分布（覆盖图集 4 列 × 2 行）
 		engine::Light_Data light{};
@@ -588,16 +588,16 @@ TEST_F(Renderer_Scene_Test, 图集八瓦片映射与MSAA一致)
 		renderer.scene_apply(camera, light, fog);
 		renderer.shadow_enable_set(true);
 
-		EXPECT_TRUE(renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
-		EXPECT_TRUE(renderer.mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
 		outcome.pixels.resize(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(outcome.pixels.data(),
 			static_cast<std::uint32_t>(outcome.pixels.size())));
 		outcome.stats = renderer.frame_stats_get();
 		outcome.atlas_active = renderer.spot_shadow_atlas();
-		renderer.mesh_unload(occluder);
-		renderer.mesh_unload(receiver);
-		renderer.texture_unload(texture);
+		renderer.resource().mesh_unload(occluder);
+		renderer.resource().mesh_unload(receiver);
+		renderer.resource().texture_unload(texture);
 		outcome.ok = true;
 		return outcome;
 	};
@@ -636,9 +636,9 @@ TEST_F(Renderer_Scene_Test, 图集启用回收独立瓦片)
 		Outcome outcome;
 		renderer.scene_apply(camera, light, fog);
 		renderer.shadow_enable_set(true);
-		if (!renderer.mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()))
+		if (!renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()))
 			return outcome;
-		if (!renderer.mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()))
+		if (!renderer.resource().mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()))
 			return outcome;
 		std::vector<uint8_t> pixels(pixel_bytes());
 		if (!renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())))
@@ -654,12 +654,12 @@ TEST_F(Renderer_Scene_Test, 图集启用回收独立瓦片)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_white();
-	ASSERT_TRUE(renderer.texture_load(texture, texels.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle receiver = 0;
 	engine::Mesh_Handle occluder = 0;
-	ASSERT_TRUE(renderer.mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	ASSERT_TRUE(renderer.mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
-	renderer.texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
+	renderer.resource().texture_bind_set(texture);
 
 	//单级方向光 ＋ 1 盏聚光（参与阴影）
 	engine::Light_Data light{};
@@ -709,7 +709,7 @@ TEST_F(Renderer_Scene_Test, 图集启用回收独立瓦片)
 	EXPECT_GE(back.stats.spot_shadow_tile_targets, 1u) << "切回后未重建瓦片目标";
 	EXPECT_EQ(back.stats.shadow_atlas_bytes, 0u) << "切回后图集字节应为 0";
 
-	renderer.mesh_unload(receiver);
-	renderer.mesh_unload(occluder);
-	renderer.texture_unload(texture);
+	renderer.resource().mesh_unload(receiver);
+	renderer.resource().mesh_unload(occluder);
+	renderer.resource().texture_unload(texture);
 }

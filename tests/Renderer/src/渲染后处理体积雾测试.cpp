@@ -20,18 +20,18 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "体积雾.frag.spv");
 		EXPECT_NE(pass, 0u);
 		//链先于 present_set 设置（与既有反射用例同序）
-		EXPECT_TRUE(renderer.post_chain_set(&pass, 1));
+		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));
 		//体积雾参数走通用四参入口（第三百七十三轮；密度 / 高度衰减 / 最大距离 / 步数缩放）
-		renderer.post_stage_vec4_set(0, params[0], params[1], params[2], params[3]);
-		renderer.post_stage_color4_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2], noise);
+		renderer.device().post_stage_vec4_set(0, params[0], params[1], params[2], params[3]);
+		renderer.device().post_stage_color4_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2], noise);
 		//基准高度走逐级 extra 第一分量（未设置时为 0，与引入前逐字节一致）
 		//第二分量为抖动种子、第三分量为空间降噪强度（第四百二十轮；均 0 = 关闭）
-		renderer.post_stage_extra_set(0, base_height, seed, denoise, 0.0f);
-		renderer.render_target_present_set(scene_target);
+		renderer.device().post_stage_extra_set(0, base_height, seed, denoise, 0.0f);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle plane = 0;
 		EXPECT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
 		EXPECT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
@@ -39,7 +39,7 @@ namespace
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return pixels;
 	}
 
@@ -92,11 +92,11 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾关闭原样输出)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 	ASSERT_NE(pass, 0u);
-	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+	renderer.device().render_target_present_set(scene_target);
 	engine::Mesh_Handle plane = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
@@ -104,7 +104,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾关闭原样输出)
 	std::vector<uint8_t> direct(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(direct.data(), static_cast<uint32_t>(direct.size())));
 	renderer.resource().pipeline_unload(pass);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 
 	int difference = max_channel_diff(reference, direct);
 	RecordProperty("fog_disabled_max_diff", difference);
@@ -170,18 +170,18 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾多级链取源)
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t target0 = 0;
 		uint64_t target1 = 0;
-		EXPECT_TRUE(renderer.render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-		EXPECT_TRUE(renderer.render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
 		uint64_t fog_pass = post_pipeline_register(renderer, fog_shader);
 		uint64_t invert_pass = post_pipeline_register(renderer, "反色.frag.spv");
 		EXPECT_NE(fog_pass, 0u);
 		EXPECT_NE(invert_pass, 0u);
 		uint64_t chain[2] = { fog_pass, invert_pass };
-		EXPECT_TRUE(renderer.post_chain_set(chain, 2));
-		renderer.post_stage_vec4_set(0, density, 0.0f, 20.0f, 1.0f);
-		renderer.post_stage_color_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2]);
+		EXPECT_TRUE(renderer.device().post_chain_set(chain, 2));
+		renderer.device().post_stage_vec4_set(0, density, 0.0f, 20.0f, 1.0f);
+		renderer.device().post_stage_color_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2]);
 		uint64_t targets[2] = { target0, target1 };
-		EXPECT_TRUE(renderer.render_target_present_chain_set(targets, 2));
+		EXPECT_TRUE(renderer.device().render_target_present_chain_set(targets, 2));
 		engine::Mesh_Handle plane = 0;
 		EXPECT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
 		EXPECT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
@@ -192,8 +192,8 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾多级链取源)
 			*stages_out = renderer.frame_stats_get().post_stages;
 		renderer.resource().pipeline_unload(fog_pass);
 		renderer.resource().pipeline_unload(invert_pass);
-		renderer.render_target_destroy(target1);
-		renderer.render_target_destroy(target0);
+		renderer.resource().render_target_destroy(target1);
+		renderer.resource().render_target_destroy(target0);
 		return pixels;
 	};
 	uint32_t stages_identity = 0;
@@ -238,13 +238,13 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾步数开销)
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config));
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "体积雾.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.post_stage_vec4_set(0, 0.1f, 0.0f, 30.0f, step_scale);
-		renderer.post_stage_color_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2]);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().post_stage_vec4_set(0, 0.1f, 0.0f, 30.0f, step_scale);
+		renderer.device().post_stage_color_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2]);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
 		//八帧：前两帧预热，取第 3..8 帧均值
@@ -267,7 +267,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾步数开销)
 		gpu_out = gpu_sum / samples;
 		renderer.resource().mesh_unload(plane);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	};
 	double small_12_record = 0.0, small_12_gpu = 0.0;
 	double small_24_record = 0.0, small_24_gpu = 0.0;
@@ -328,13 +328,13 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾密度噪声)
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config));
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "体积雾.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.post_stage_vec4_set(0, 0.1f, 0.0f, 30.0f, 1.0f);
-		renderer.post_stage_color4_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2], noise);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().post_stage_vec4_set(0, 0.1f, 0.0f, 30.0f, 1.0f);
+		renderer.device().post_stage_color4_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2], noise);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
 		double gpu_sum = 0.0;
@@ -352,7 +352,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾密度噪声)
 		gpu_out = gpu_sum / samples;
 		renderer.resource().mesh_unload(plane);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	};
 	double smooth_gpu = 0.0;
 	double noisy_gpu = 0.0;
@@ -386,21 +386,21 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾与深度描边组合)
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t target0 = 0;
 		uint64_t target1 = 0;
-		EXPECT_TRUE(renderer.render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-		EXPECT_TRUE(renderer.render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
 		uint64_t first = post_pipeline_register(renderer, first_shader);
 		uint64_t outline_pass = post_pipeline_register(renderer, "深度描边.frag.spv");
 		EXPECT_NE(first, 0u);
 		EXPECT_NE(outline_pass, 0u);
 		uint64_t chain[2] = { first, outline_pass };
-		EXPECT_TRUE(renderer.post_chain_set(chain, 2));
+		EXPECT_TRUE(renderer.device().post_chain_set(chain, 2));
 		//首级：体积雾四参（通用入口）
-		renderer.post_stage_vec4_set(0, fog_density, 0.0f, 20.0f, 1.0f);
-		renderer.post_stage_color4_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2], 0.0f);
+		renderer.device().post_stage_vec4_set(0, fog_density, 0.0f, 20.0f, 1.0f);
+		renderer.device().post_stage_color4_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2], 0.0f);
 		//次级：深度描边（强度 / 保留 / 深度阈值 / 半径；调色范围校验内）
-		renderer.post_stage_param4_set(1, outline, 1.0f, 1.0f, 1.0f);
+		renderer.device().post_stage_param4_set(1, outline, 1.0f, 1.0f, 1.0f);
 		uint64_t targets[2] = { target0, target1 };
-		EXPECT_TRUE(renderer.render_target_present_chain_set(targets, 2));
+		EXPECT_TRUE(renderer.device().render_target_present_chain_set(targets, 2));
 		engine::Mesh_Handle plane = 0;
 		EXPECT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
 		EXPECT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
@@ -411,8 +411,8 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾与深度描边组合)
 			*stages_out = renderer.frame_stats_get().post_stages;
 		renderer.resource().pipeline_unload(first);
 		renderer.resource().pipeline_unload(outline_pass);
-		renderer.render_target_destroy(target1);
-		renderer.render_target_destroy(target0);
+		renderer.resource().render_target_destroy(target1);
+		renderer.resource().render_target_destroy(target0);
 		return pixels;
 	};
 	uint32_t stages = 0;
@@ -452,8 +452,8 @@ TEST_F(Renderer_Post_Chain_Test, 四级链目标轮转)
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t target0 = 0;
 		uint64_t target1 = 0;
-		EXPECT_TRUE(renderer.render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-		EXPECT_TRUE(renderer.render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
 		uint64_t first = post_pipeline_register(renderer, first_shader);
 		uint64_t outline_pass = post_pipeline_register(renderer, "深度描边.frag.spv");
 		uint64_t gray = post_pipeline_register(renderer, "灰度.frag.spv");
@@ -463,14 +463,14 @@ TEST_F(Renderer_Post_Chain_Test, 四级链目标轮转)
 		EXPECT_NE(gray, 0u);
 		EXPECT_NE(invert, 0u);
 		uint64_t chain[4] = { first, outline_pass, gray, invert };
-		EXPECT_TRUE(renderer.post_chain_set(chain, 4));
-		renderer.post_stage_vec4_set(0, fog, 0.0f, 20.0f, 1.0f);
-		renderer.post_stage_color4_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2], 0.0f);
+		EXPECT_TRUE(renderer.device().post_chain_set(chain, 4));
+		renderer.device().post_stage_vec4_set(0, fog, 0.0f, 20.0f, 1.0f);
+		renderer.device().post_stage_color4_set(0, FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2], 0.0f);
 		//描边参数只在需要时设置（默认强度 0 与「不设」在首两级恒等的判据内等价）
 		if (outline > 0.0f)
-			renderer.post_stage_param4_set(1, outline, 1.0f, 1.0f, 1.0f);
+			renderer.device().post_stage_param4_set(1, outline, 1.0f, 1.0f, 1.0f);
 		uint64_t targets[2] = { target0, target1 };
-		EXPECT_TRUE(renderer.render_target_present_chain_set(targets, 2));
+		EXPECT_TRUE(renderer.device().render_target_present_chain_set(targets, 2));
 		engine::Mesh_Handle plane = 0;
 		EXPECT_TRUE(renderer.resource().mesh_load(plane, quad_data()));
 		EXPECT_TRUE(renderer.resource().mesh_draw(plane, nullptr));
@@ -483,8 +483,8 @@ TEST_F(Renderer_Post_Chain_Test, 四级链目标轮转)
 		renderer.resource().pipeline_unload(outline_pass);
 		renderer.resource().pipeline_unload(gray);
 		renderer.resource().pipeline_unload(invert);
-		renderer.render_target_destroy(target1);
-		renderer.render_target_destroy(target0);
+		renderer.resource().render_target_destroy(target1);
+		renderer.resource().render_target_destroy(target0);
 		return pixels;
 	};
 	uint32_t stages = 0;

@@ -125,7 +125,7 @@ TEST_F(Renderer_Offscreen_Test, 未初始化创建目标失败)
 	engine::Renderer renderer;
 	//未 init 直接创建
 	uint64_t handle = 7;
-	EXPECT_FALSE(renderer.render_target_create(handle, 32, 32));
+	EXPECT_FALSE(renderer.resource().render_target_create(handle, 32, 32));
 	//句柄须被复位为 0（无效）
 	EXPECT_EQ(handle, 0u);
 }
@@ -137,16 +137,16 @@ TEST_F(Renderer_Offscreen_Test, 创建销毁目标幂等)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//首次创建
 	uint64_t first = 0;
-	ASSERT_TRUE(renderer.render_target_create(first, 32, 32));
+	ASSERT_TRUE(renderer.resource().render_target_create(first, 32, 32));
 	EXPECT_GE(first, 1u);
 	//销毁后再销毁（幂等）不崩溃
-	renderer.render_target_destroy(first);
-	renderer.render_target_destroy(first);
+	renderer.resource().render_target_destroy(first);
+	renderer.resource().render_target_destroy(first);
 	//槽可复用：再次创建成功
 	uint64_t second = 0;
-	ASSERT_TRUE(renderer.render_target_create(second, 32, 32));
+	ASSERT_TRUE(renderer.resource().render_target_create(second, 32, 32));
 	EXPECT_GE(second, 1u);
-	renderer.render_target_destroy(second);
+	renderer.resource().render_target_destroy(second);
 }
 
 //把场景渲染到离屏目标并回读目标内容
@@ -159,7 +159,7 @@ TEST_F(Renderer_Offscreen_Test, 渲染到目标并回读)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//创建与窗口同尺寸的渲染目标
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 	//加载纯绿纹理与四边形
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
@@ -168,7 +168,7 @@ TEST_F(Renderer_Offscreen_Test, 渲染到目标并回读)
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 
 	//本帧渲染到目标
-	renderer.render_target_set(target);
+	renderer.device().render_target_set(target);
 	renderer.resource().texture_bind_set(texture);
 	std::array<float, 16> full = full_screen_matrix();
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
@@ -184,7 +184,7 @@ TEST_F(Renderer_Offscreen_Test, 渲染到目标并回读)
 		<< "离屏目标右下角非纯绿：" << pixel_text(pixel_get(pixels, WINDOW_WIDTH - 3, WINDOW_HEIGHT - 3));
 
 	//渲染到目标不改变交换链路径的可用性：切回交换链再渲染一帧应正常
-	renderer.render_target_set(0);
+	renderer.device().render_target_set(0);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	std::vector<uint8_t> swapchain_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(swapchain_pixels.data(), static_cast<uint32_t>(swapchain_pixels.size())));
@@ -193,7 +193,7 @@ TEST_F(Renderer_Offscreen_Test, 渲染到目标并回读)
 
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().texture_unload(texture);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }
 
 //以目标作纹理采样：完成「离屏渲染 → 采样合成」闭环
@@ -205,7 +205,7 @@ TEST_F(Renderer_Offscreen_Test, 目标可作纹理采样闭环)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//创建渲染目标
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 	//加载纯绿纹理与四边形
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
@@ -215,7 +215,7 @@ TEST_F(Renderer_Offscreen_Test, 目标可作纹理采样闭环)
 	std::array<float, 16> full = full_screen_matrix();
 
 	//第一帧：把纯绿场景渲染进离屏目标（不呈现、不回读）
-	renderer.render_target_set(target);
+	renderer.device().render_target_set(target);
 	renderer.resource().texture_bind_set(texture);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	ASSERT_TRUE(renderer.frame_render());
@@ -225,9 +225,9 @@ TEST_F(Renderer_Offscreen_Test, 目标可作纹理采样闭环)
 	先显式绑定内置默认白纹理，使「采样失败」会呈现为白（而非恰好同为绿），
 	故本用例能真正区分「采样到目标」与「回落默认纹理」。
 	*/
-	renderer.render_target_set(0);
+	renderer.device().render_target_set(0);
 	renderer.resource().texture_bind_set(0);
-	renderer.texture_bind_target(target);
+	renderer.resource().texture_bind_target(target);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -239,7 +239,7 @@ TEST_F(Renderer_Offscreen_Test, 目标可作纹理采样闭环)
 
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().texture_unload(texture);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }
 
 //无效渲染目标句柄回落交换链路径
@@ -250,7 +250,7 @@ TEST_F(Renderer_Offscreen_Test, 无效目标句柄回落交换链)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设定一个从未创建的渲染目标句柄
-	renderer.render_target_set(9999u);
+	renderer.device().render_target_set(9999u);
 	//加载纯绿纹理与四边形
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
@@ -281,7 +281,7 @@ TEST_F(Renderer_Offscreen_Test, 读回离屏目标内容)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//创建与窗口同尺寸的目标
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 	//绿纹理与全屏四边形
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
@@ -289,7 +289,7 @@ TEST_F(Renderer_Offscreen_Test, 读回离屏目标内容)
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	std::array<float, 16> full = full_screen_matrix();
-	renderer.render_target_set(target);
+	renderer.device().render_target_set(target);
 	renderer.resource().texture_bind_set(texture);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	ASSERT_TRUE(renderer.frame_render());
@@ -298,7 +298,7 @@ TEST_F(Renderer_Offscreen_Test, 读回离屏目标内容)
 	std::vector<uint8_t> pixels(pixel_bytes());
 	uint32_t width = 0;
 	uint32_t height = 0;
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(),
 		static_cast<uint32_t>(pixels.size()), &width, &height));
 	EXPECT_EQ(width, WINDOW_WIDTH);
 	EXPECT_EQ(height, WINDOW_HEIGHT);
@@ -308,12 +308,12 @@ TEST_F(Renderer_Offscreen_Test, 读回离屏目标内容)
 
 	//第二次读回：内容不因读回而改变
 	std::vector<uint8_t> again(pixel_bytes());
-	ASSERT_TRUE(renderer.render_target_readback(target, again.data(), static_cast<uint32_t>(again.size()), nullptr, nullptr));
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, again.data(), static_cast<uint32_t>(again.size()), nullptr, nullptr));
 	EXPECT_EQ(pixels, again);
 
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().texture_unload(texture);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -326,21 +326,21 @@ TEST_F(Renderer_Offscreen_Test, 子区域读回与整幅一致)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels = solid_green(2, 2);
 	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	std::array<float, 16> full = full_screen_matrix();
-	renderer.render_target_set(target);
+	renderer.device().render_target_set(target);
 	renderer.resource().texture_bind_set(texture);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
 	ASSERT_TRUE(renderer.frame_render());
 
 	//整幅读回（基准）
 	std::vector<uint8_t> whole(pixel_bytes());
-	ASSERT_TRUE(renderer.render_target_readback(target, whole.data(), static_cast<uint32_t>(whole.size()), nullptr, nullptr));
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, whole.data(), static_cast<uint32_t>(whole.size()), nullptr, nullptr));
 
 	//四块读回并拼接
 	const uint32_t half_width = WINDOW_WIDTH / 2;
@@ -352,7 +352,7 @@ TEST_F(Renderer_Offscreen_Test, 子区域读回与整幅一致)
 		std::vector<uint8_t> block(static_cast<std::size_t>(half_width) * half_height * 4);
 		uint32_t block_width = 0;
 		uint32_t block_height = 0;
-		ASSERT_TRUE(renderer.render_target_readback_region(target, origin[0], origin[1],
+		ASSERT_TRUE(renderer.resource().render_target_readback_region(target, origin[0], origin[1],
 			half_width, half_height, block.data(), static_cast<uint32_t>(block.size()),
 			&block_width, &block_height));
 		EXPECT_EQ(block_width, half_width);
@@ -372,14 +372,14 @@ TEST_F(Renderer_Offscreen_Test, 子区域读回与整幅一致)
 	std::vector<uint8_t> probe(static_cast<std::size_t>(half_width) * half_height * 4);
 	uint32_t width = 77;
 	uint32_t height = 88;
-	EXPECT_FALSE(renderer.render_target_readback_region(target, half_width + 1, 0,
+	EXPECT_FALSE(renderer.resource().render_target_readback_region(target, half_width + 1, 0,
 		half_width, half_height, probe.data(), static_cast<uint32_t>(probe.size()), &width, &height));
 	EXPECT_EQ(width, 0u);
 	EXPECT_EQ(height, 0u);
 
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().texture_unload(texture);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -390,20 +390,20 @@ TEST_F(Renderer_Offscreen_Test, 读回参数校验)
 	engine::Renderer renderer;
 	std::vector<uint8_t> pixels(64 * 36 * 4);
 	//未初始化
-	EXPECT_FALSE(renderer.render_target_readback(1, pixels.data(), static_cast<uint32_t>(pixels.size()), nullptr, nullptr));
+	EXPECT_FALSE(renderer.resource().render_target_readback(1, pixels.data(), static_cast<uint32_t>(pixels.size()), nullptr, nullptr));
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//句柄无效（从未创建）
-	EXPECT_FALSE(renderer.render_target_readback(9999u, pixels.data(), static_cast<uint32_t>(pixels.size()), nullptr, nullptr));
+	EXPECT_FALSE(renderer.resource().render_target_readback(9999u, pixels.data(), static_cast<uint32_t>(pixels.size()), nullptr, nullptr));
 	//容量不足
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 	uint32_t width = 123;
 	uint32_t height = 456;
-	EXPECT_FALSE(renderer.render_target_readback(target, pixels.data(), 16, &width, &height));
+	EXPECT_FALSE(renderer.resource().render_target_readback(target, pixels.data(), 16, &width, &height));
 	//失败时尺寸出参保持 0
 	EXPECT_EQ(width, 0u);
         EXPECT_EQ(height, 0u);
-        renderer.render_target_destroy(target);
+        renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -416,14 +416,14 @@ TEST_F(Renderer_Offscreen_Test, 深度读回区分几何与清屏)
         engine::Renderer renderer;
         ASSERT_TRUE(renderer.init(hidden_config()));
         uint64_t target = 0;
-        ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+        ASSERT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
         uint64_t texture = 0;
         std::vector<uint8_t> texels = solid_green(2, 2);
         ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
         engine::Mesh_Handle handle = 0;
         ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
         //用单位矩阵（四边形不放大）：中心被覆盖、四角仍为清屏背景
-        renderer.render_target_set(target);
+        renderer.device().render_target_set(target);
         renderer.resource().texture_bind_set(texture);
         ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
         ASSERT_TRUE(renderer.frame_render());
@@ -432,7 +432,7 @@ TEST_F(Renderer_Offscreen_Test, 深度读回区分几何与清屏)
         std::vector<uint32_t> depth(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT);
         uint32_t width = 0;
         uint32_t height = 0;
-        ASSERT_TRUE(renderer.render_target_readback_depth(target, depth.data(),
+        ASSERT_TRUE(renderer.resource().render_target_readback_depth(target, depth.data(),
                 static_cast<uint32_t>(depth.size()), &width, &height));
         EXPECT_EQ(width, WINDOW_WIDTH);
         EXPECT_EQ(height, WINDOW_HEIGHT);
@@ -452,14 +452,14 @@ TEST_F(Renderer_Offscreen_Test, 深度读回区分几何与清屏)
         std::vector<uint32_t> tiny(16);
         uint32_t small_width = 9;
         uint32_t small_height = 9;
-        EXPECT_FALSE(renderer.render_target_readback_depth(target, tiny.data(),
+        EXPECT_FALSE(renderer.resource().render_target_readback_depth(target, tiny.data(),
                 static_cast<uint32_t>(tiny.size()), &small_width, &small_height));
         EXPECT_EQ(small_width, 0u);
         EXPECT_EQ(small_height, 0u);
 
         renderer.resource().mesh_unload(handle);
         renderer.resource().texture_unload(texture);
-        renderer.render_target_destroy(target);
+        renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -472,7 +472,7 @@ TEST_F(Renderer_Offscreen_Test, 目标尺寸可查询)
         //未初始化：返回假且出参归零
         uint32_t width = 7;
         uint32_t height = 7;
-        EXPECT_FALSE(renderer.render_target_size(1, &width, &height));
+        EXPECT_FALSE(renderer.resource().render_target_size(1, &width, &height));
         EXPECT_EQ(width, 0u);
         EXPECT_EQ(height, 0u);
 
@@ -481,29 +481,29 @@ TEST_F(Renderer_Offscreen_Test, 目标尺寸可查询)
         uint64_t target = 0;
         uint32_t target_width = WINDOW_WIDTH / 2;
         uint32_t target_height = WINDOW_HEIGHT / 2;
-        ASSERT_TRUE(renderer.render_target_create(target, target_width, target_height));
+        ASSERT_TRUE(renderer.resource().render_target_create(target, target_width, target_height));
         uint32_t queried_width = 0;
         uint32_t queried_height = 0;
-        EXPECT_TRUE(renderer.render_target_size(target, &queried_width, &queried_height));
+        EXPECT_TRUE(renderer.resource().render_target_size(target, &queried_width, &queried_height));
         EXPECT_EQ(queried_width, target_width);
         EXPECT_EQ(queried_height, target_height);
 
         //只取宽（高指针为空）亦有效
         uint32_t only_width = 0;
-        EXPECT_TRUE(renderer.render_target_size(target, &only_width, nullptr));
+        EXPECT_TRUE(renderer.resource().render_target_size(target, &only_width, nullptr));
         EXPECT_EQ(only_width, target_width);
 
         //无效句柄被拒且出参归零
         uint32_t invalid_width = 5;
         uint32_t invalid_height = 5;
-        EXPECT_FALSE(renderer.render_target_size(0, &invalid_width, &invalid_height));
+        EXPECT_FALSE(renderer.resource().render_target_size(0, &invalid_width, &invalid_height));
         EXPECT_EQ(invalid_width, 0u);
         EXPECT_EQ(invalid_height, 0u);
-        EXPECT_FALSE(renderer.render_target_size(target + 99, &invalid_width, &invalid_height));
+        EXPECT_FALSE(renderer.resource().render_target_size(target + 99, &invalid_width, &invalid_height));
 
         //销毁后同样失效
-        renderer.render_target_destroy(target);
-        EXPECT_FALSE(renderer.render_target_size(target, &invalid_width, &invalid_height));
+        renderer.resource().render_target_destroy(target);
+        EXPECT_FALSE(renderer.resource().render_target_size(target, &invalid_width, &invalid_height));
         EXPECT_EQ(invalid_width, 0u);
 }
 
@@ -518,11 +518,11 @@ TEST_F(Renderer_Offscreen_Test, 深度子区域读回)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	//渲染一帧（四边形覆盖中心）
-	renderer.render_target_set(target);
+	renderer.device().render_target_set(target);
 	renderer.resource().texture_bind_set(0);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
@@ -531,7 +531,7 @@ TEST_F(Renderer_Offscreen_Test, 深度子区域读回)
 	std::vector<uint32_t> whole(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT, 0);
 	uint32_t whole_width = 0;
 	uint32_t whole_height = 0;
-	ASSERT_TRUE(renderer.render_target_readback_depth(target, whole.data(),
+	ASSERT_TRUE(renderer.resource().render_target_readback_depth(target, whole.data(),
 		static_cast<uint32_t>(whole.size()), &whole_width, &whole_height));
 
 	//中心 8×4 区域
@@ -542,7 +542,7 @@ TEST_F(Renderer_Offscreen_Test, 深度子区域读回)
 	std::vector<uint32_t> region(region_w * region_h, 0);
 	uint32_t region_width = 0;
 	uint32_t region_height = 0;
-	ASSERT_TRUE(renderer.render_target_readback_depth_region(target, region_x, region_y,
+	ASSERT_TRUE(renderer.resource().render_target_readback_depth_region(target, region_x, region_y,
 		region_w, region_h, region.data(), static_cast<uint32_t>(region.size()), &region_width, &region_height));
 	//① 区域尺寸
 	EXPECT_EQ(region_width, region_w);
@@ -562,17 +562,17 @@ TEST_F(Renderer_Offscreen_Test, 深度子区域读回)
 	//④ 越界 / 容量不足 / 无效句柄
 	uint32_t width = 9;
 	uint32_t height = 9;
-	EXPECT_FALSE(renderer.render_target_readback_depth_region(target, WINDOW_WIDTH - 2, 0,
+	EXPECT_FALSE(renderer.resource().render_target_readback_depth_region(target, WINDOW_WIDTH - 2, 0,
 		region_w, region_h, region.data(), static_cast<uint32_t>(region.size()), &width, &height));
 	EXPECT_EQ(width, 0u);
 	EXPECT_EQ(height, 0u);
 	//容量不足（需要 32 个元素，仅给 16）
 	std::vector<uint32_t> tiny(16, 0);
-	EXPECT_FALSE(renderer.render_target_readback_depth_region(target, 0, 0,
+	EXPECT_FALSE(renderer.resource().render_target_readback_depth_region(target, 0, 0,
 		region_w, region_h, tiny.data(), static_cast<uint32_t>(tiny.size()), nullptr, nullptr));
-	EXPECT_FALSE(renderer.render_target_readback_depth_region(9999u, 0, 0,
+	EXPECT_FALSE(renderer.resource().render_target_readback_depth_region(9999u, 0, 0,
 		region_w, region_h, region.data(), static_cast<uint32_t>(region.size()), nullptr, nullptr));
 
 	renderer.resource().mesh_unload(handle);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }

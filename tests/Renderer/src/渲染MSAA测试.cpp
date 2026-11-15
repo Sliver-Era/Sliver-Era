@@ -242,8 +242,8 @@ TEST_F(Renderer_Msaa_Test, 后处理链在MSAA下可用)
 	engine::Mesh_Handle plane = 0;
 	uint64_t scene_target = 0;
 	ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	renderer.device().render_target_present_set(scene_target);
 	float transform[16] = {};
 	diamond_transform(transform);
 	renderer.resource().mesh_draw(plane, transform);
@@ -267,7 +267,7 @@ TEST_F(Renderer_Msaa_Test, 后处理链在MSAA下可用)
 	}
 	EXPECT_TRUE(lit) << "后处理链输出为空画面";
 
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().mesh_unload(plane);
 }
 
@@ -304,9 +304,9 @@ TEST_F(Renderer_Msaa_Test, 两级后处理链在MSAA下可用)
 
 	//两个同尺寸中间目标
 	uint64_t targets[2] = { 0, 0 };
-	ASSERT_TRUE(renderer.render_target_create(targets[0], renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(targets[1], renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_present_chain_set(targets, 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(targets[0], renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(targets[1], renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(targets, 2));
 
 	//两级管线（反色 → 反色，画面回到原样）
 	uint64_t invert_a = 0;
@@ -314,7 +314,7 @@ TEST_F(Renderer_Msaa_Test, 两级后处理链在MSAA下可用)
 	ASSERT_TRUE(renderer.resource().pipeline_load(invert_a, "后处理.vert.spv", "反色.frag.spv"));
 	ASSERT_TRUE(renderer.resource().pipeline_load(invert_b, "后处理.vert.spv", "反色.frag.spv"));
 	uint64_t chain[2] = { invert_a, invert_b };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 2));
 
 	engine::Mesh_Handle plane = 0;
 	ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
@@ -326,11 +326,11 @@ TEST_F(Renderer_Msaa_Test, 两级后处理链在MSAA下可用)
 	//两级均实际执行
 	EXPECT_EQ(renderer.frame_stats_get().post_stages, 2u);
 
-	renderer.render_target_present_chain_set(nullptr, 0);
+	renderer.device().render_target_present_chain_set(nullptr, 0);
 	renderer.resource().pipeline_unload(invert_a);
 	renderer.resource().pipeline_unload(invert_b);
-	renderer.render_target_destroy(targets[1]);
-	renderer.render_target_destroy(targets[0]);
+	renderer.resource().render_target_destroy(targets[1]);
+	renderer.resource().render_target_destroy(targets[0]);
 	renderer.resource().mesh_unload(plane);
 }
 
@@ -442,15 +442,15 @@ TEST_F(Renderer_Msaa_Test, 帧统计反映采样数)
 
 	//离屏目标路径同样反映采样数
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	float transform[16] = {};
 	diamond_transform(transform);
 	renderer.resource().mesh_draw(plane, transform);
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_EQ(renderer.frame_stats_get().msaa_samples, tier);
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 	renderer.resource().mesh_unload(plane);
 }
 
@@ -464,8 +464,8 @@ TEST_F(Renderer_Msaa_Test, 渲染目标随采样数重建且深度读回降级)
 	engine::Mesh_Handle plane = 0;
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	float transform[16] = {};
 	diamond_transform(transform);
 	renderer.resource().mesh_draw(plane, transform);
@@ -475,14 +475,14 @@ TEST_F(Renderer_Msaa_Test, 渲染目标随采样数重建且深度读回降级)
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
 	uint32_t height = 0;
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	EXPECT_EQ(width, 64u);
 	EXPECT_EQ(height, 64u);
 
 	//MSAA 开启时深度读回不可用（多重采样深度无法解析为单采样值）
 	std::vector<uint32_t> depth_values(64 * 64, 0);
-	bool depth_ok = renderer.render_target_readback_depth(target, depth_values.data(),
+	bool depth_ok = renderer.resource().render_target_readback_depth(target, depth_values.data(),
 		static_cast<uint32_t>(depth_values.size()), &width, &height);
 	if (renderer.msaa_samples() > 1)
 		EXPECT_FALSE(depth_ok);
@@ -491,14 +491,14 @@ TEST_F(Renderer_Msaa_Test, 渲染目标随采样数重建且深度读回降级)
 	renderer.msaa_samples_set(1);
 	renderer.resource().mesh_draw(plane, transform);
 	ASSERT_TRUE(renderer.frame_render());
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
-	EXPECT_TRUE(renderer.render_target_readback_depth(target, depth_values.data(),
+	EXPECT_TRUE(renderer.resource().render_target_readback_depth(target, depth_values.data(),
 		static_cast<uint32_t>(depth_values.size()), &width, &height));
 
 	//清理
-        renderer.render_target_set(0);
-        renderer.render_target_destroy(target);
+        renderer.device().render_target_set(0);
+        renderer.resource().render_target_destroy(target);
         renderer.resource().mesh_unload(plane);
 }
 
@@ -514,16 +514,16 @@ TEST_F(Renderer_Msaa_Test, 高组合冒烟)
         //两级链所需目标（与交换链同尺寸）
         uint64_t scene_target = 0;
         uint64_t second_target = 0;
-        ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-        ASSERT_TRUE(renderer.render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
+        ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+        ASSERT_TRUE(renderer.resource().render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
         uint64_t invert = 0;
         uint64_t threshold = 0;
         ASSERT_TRUE(renderer.resource().pipeline_load(invert, "后处理.vert.spv", "反色.frag.spv"));
         ASSERT_TRUE(renderer.resource().pipeline_load(threshold, "后处理.vert.spv", "亮度阈值.frag.spv"));
         uint64_t chain[2] = { invert, threshold };
-        ASSERT_TRUE(renderer.post_chain_set(chain, 2));
+        ASSERT_TRUE(renderer.device().post_chain_set(chain, 2));
         uint64_t targets[2] = { scene_target, second_target };
-        ASSERT_TRUE(renderer.render_target_present_chain_set(targets, 2));
+        ASSERT_TRUE(renderer.device().render_target_present_chain_set(targets, 2));
 
         //场景：方向光沿 +Z，开启阴影
         engine::Camera_Data camera{};
@@ -574,8 +574,8 @@ TEST_F(Renderer_Msaa_Test, 高组合冒烟)
         renderer.resource().mesh_unload(occluder);
         renderer.resource().pipeline_unload(invert);
         renderer.resource().pipeline_unload(threshold);
-        renderer.render_target_destroy(second_target);
-        renderer.render_target_destroy(scene_target);
+        renderer.resource().render_target_destroy(second_target);
+        renderer.resource().render_target_destroy(scene_target);
 }
 
 /*
@@ -597,20 +597,20 @@ TEST_F(Renderer_Msaa_Test, MSAA深度解析供深度描边采样)
 		uint64_t scene_target = 0;
 		uint64_t outline = 0;
 		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		renderer.device().render_target_present_set(scene_target);
 		ASSERT_TRUE(renderer.resource().pipeline_load(outline, "后处理.vert.spv", "深度描边.frag.spv"));
-		ASSERT_TRUE(renderer.post_chain_set(&outline, 1));
+		ASSERT_TRUE(renderer.device().post_chain_set(&outline, 1));
 		float transform[16] = {};
 		diamond_transform(transform);
 		//先以强度 0（等同直通）渲染一帧作为对照
-		renderer.post_stage_param_set(0, 0.0f, 0.0f, 0.5f);
-		renderer.post_stage_color_set(0, 1.0f, 0.0f, 0.0f);
+		renderer.device().post_stage_param_set(0, 0.0f, 0.0f, 0.5f);
+		renderer.device().post_stage_color_set(0, 1.0f, 0.0f, 0.0f);
 		std::vector<uint8_t> plain(static_cast<std::size_t>(renderer.extent_width()) * renderer.extent_height() * 4, 0);
 		renderer.resource().mesh_draw(plane, transform);
 		ASSERT_TRUE(renderer.frame_render(plain.data(), static_cast<uint32_t>(plain.size())));
 		//再以强度 1、阈值 0.5、描边色纯红渲染一帧
-		renderer.post_stage_param_set(0, 1.0f, 0.0f, 0.5f);
+		renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 0.5f);
 		std::vector<uint8_t> pixels(static_cast<std::size_t>(renderer.extent_width()) * renderer.extent_height() * 4, 0);
 		renderer.resource().mesh_draw(plane, transform);
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -630,10 +630,10 @@ TEST_F(Renderer_Msaa_Test, MSAA深度解析供深度描边采样)
 		}
 		ASSERT_GT(changed, 0u) << "单采样下深度描边未改变任何像素（基线无效）";
 		changed_single = changed;
-		renderer.post_chain_set(nullptr, 0);
-		renderer.render_target_present_set(0);
+		renderer.device().post_chain_set(nullptr, 0);
+		renderer.device().render_target_present_set(0);
 		renderer.resource().pipeline_unload(outline);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		renderer.resource().mesh_unload(plane);
 	}
 
@@ -648,20 +648,20 @@ TEST_F(Renderer_Msaa_Test, MSAA深度解析供深度描边采样)
 	uint64_t scene_target = 0;
 	uint64_t outline = 0;
 	ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	renderer.device().render_target_present_set(scene_target);
 	ASSERT_TRUE(renderer.resource().pipeline_load(outline, "后处理.vert.spv", "深度描边.frag.spv"));
-	ASSERT_TRUE(renderer.post_chain_set(&outline, 1));
+	ASSERT_TRUE(renderer.device().post_chain_set(&outline, 1));
 	float transform[16] = {};
 	diamond_transform(transform);
 	//先以强度 0（等同直通）渲染一帧作为对照
-	renderer.post_stage_param_set(0, 0.0f, 0.0f, 0.5f);
-	renderer.post_stage_color_set(0, 1.0f, 0.0f, 0.0f);
+	renderer.device().post_stage_param_set(0, 0.0f, 0.0f, 0.5f);
+	renderer.device().post_stage_color_set(0, 1.0f, 0.0f, 0.0f);
 	std::vector<uint8_t> plain_msaa(static_cast<std::size_t>(renderer.extent_width()) * renderer.extent_height() * 4, 0);
 	renderer.resource().mesh_draw(plane, transform);
 	ASSERT_TRUE(renderer.frame_render(plain_msaa.data(), static_cast<uint32_t>(plain_msaa.size())));
 	//再以强度 1、阈值 0.5、描边色纯红渲染一帧
-	renderer.post_stage_param_set(0, 1.0f, 0.0f, 0.5f);
+	renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 0.5f);
 	std::vector<uint8_t> pixels(static_cast<std::size_t>(renderer.extent_width()) * renderer.extent_height() * 4, 0);
 	renderer.resource().mesh_draw(plane, transform);
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -692,10 +692,10 @@ TEST_F(Renderer_Msaa_Test, MSAA深度解析供深度描边采样)
 	renderer.msaa_depth_resolve_set(true);
 	EXPECT_TRUE(renderer.msaa_depth_resolve());
 
-	renderer.post_chain_set(nullptr, 0);
-	renderer.render_target_present_set(0);
+	renderer.device().post_chain_set(nullptr, 0);
+	renderer.device().render_target_present_set(0);
 	renderer.resource().pipeline_unload(outline);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().mesh_unload(plane);
 }
 
@@ -717,11 +717,11 @@ TEST_F(Renderer_Msaa_Test, 关闭深度解析后仍可出帧)
 	uint64_t scene_target = 0;
 	uint64_t outline = 0;
 	ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	renderer.device().render_target_present_set(scene_target);
 	ASSERT_TRUE(renderer.resource().pipeline_load(outline, "后处理.vert.spv", "深度描边.frag.spv"));
-	ASSERT_TRUE(renderer.post_chain_set(&outline, 1));
-	renderer.post_stage_param_set(0, 1.0f, 0.0f, 0.5f);
+	ASSERT_TRUE(renderer.device().post_chain_set(&outline, 1));
+	renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 0.5f);
 
 	float transform[16] = {};
 	diamond_transform(transform);
@@ -745,9 +745,9 @@ TEST_F(Renderer_Msaa_Test, 关闭深度解析后仍可出帧)
 	renderer.resource().mesh_draw(plane, transform);
 	ASSERT_TRUE(renderer.frame_render(pixels_on.data(), static_cast<uint32_t>(pixels_on.size())));
 
-	renderer.post_chain_set(nullptr, 0);
-	renderer.render_target_present_set(0);
+	renderer.device().post_chain_set(nullptr, 0);
+	renderer.device().render_target_present_set(0);
 	renderer.resource().pipeline_unload(outline);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().mesh_unload(plane);
 }

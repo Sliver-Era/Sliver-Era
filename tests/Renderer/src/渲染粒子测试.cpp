@@ -352,13 +352,13 @@ TEST(Renderer_Particle_Test, 粒子billboard定位)
 	//登记一个实例化绘制项
 	ASSERT_TRUE(renderer.particle().particle_draw(0.5f));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	ASSERT_TRUE(renderer.frame_render());
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
 	uint32_t height = 0;
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	EXPECT_EQ(width, 64u);
 	EXPECT_EQ(height, 64u);
@@ -372,8 +372,8 @@ TEST(Renderer_Particle_Test, 粒子billboard定位)
 	ASSERT_TRUE(renderer.particle().particle_enable_set(false));
 	EXPECT_FALSE(renderer.particle().particle_draw(0.5f));
 	EXPECT_FALSE(renderer.particle().particle_gpu_available());
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -410,8 +410,8 @@ TEST(Renderer_Particle_Test, 粒子年龄颜色曲线)
 	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(1), 1u);
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	std::size_t center = (static_cast<std::size_t>(32) * 64 + 32) * 4;
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
@@ -419,7 +419,7 @@ TEST(Renderer_Particle_Test, 粒子年龄颜色曲线)
 	//第一帧：年龄 0（暖白）
 	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	uint8_t young_green = pixels[center + 1];
 	uint8_t young_red = pixels[center + 2];
@@ -431,7 +431,7 @@ TEST(Renderer_Particle_Test, 粒子年龄颜色曲线)
 	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	uint8_t old_green = pixels[center + 1];
 	uint8_t old_red = pixels[center + 2];
@@ -440,8 +440,8 @@ TEST(Renderer_Particle_Test, 粒子年龄颜色曲线)
 	EXPECT_GT(static_cast<uint32_t>(young_green), static_cast<uint32_t>(old_green) + 30u);
 	EXPECT_GT(young_red, 100u);
 	EXPECT_GT(old_red, 100u);
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -481,8 +481,8 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	ASSERT_TRUE(renderer.particle().particle_emitter_set(emitter));
 	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	const std::size_t center = (static_cast<std::size_t>(32) * 64 + 32) * 4;
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
@@ -492,7 +492,7 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	EXPECT_GT(pixels[center + 0], 100u);
 	EXPECT_GT(static_cast<uint32_t>(pixels[center + 0]), static_cast<uint32_t>(pixels[center + 1]) + 60u);
@@ -503,7 +503,7 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	EXPECT_GT(pixels[center + 1], 100u);
 	EXPECT_GT(static_cast<uint32_t>(pixels[center + 1]), static_cast<uint32_t>(pixels[center + 0]) + 60u);
@@ -515,7 +515,7 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	ASSERT_TRUE(renderer.particle().particle_gpu_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	EXPECT_GT(pixels[center + 0], 100u);
 	EXPECT_GT(static_cast<uint32_t>(pixels[center + 0]), static_cast<uint32_t>(pixels[center + 1]) + 60u);
@@ -523,12 +523,12 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	ASSERT_TRUE(renderer.particle().particle_indirect_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	EXPECT_GT(pixels[center + 0], 100u);
 	EXPECT_GT(static_cast<uint32_t>(pixels[center + 0]), static_cast<uint32_t>(pixels[center + 1]) + 60u);
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -568,8 +568,8 @@ TEST(Renderer_Particle_Test, 粒子软边可配)
 	ASSERT_TRUE(renderer.particle().particle_params_set(params));
 	ASSERT_EQ(粒子.emit(1), 1u);
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
 	uint32_t height = 0;
@@ -577,7 +577,7 @@ TEST(Renderer_Particle_Test, 粒子软边可配)
 	auto blue_sum = [&](void) -> uint64_t
 	{
 		std::fill(pixels.begin(), pixels.end(), 0);
-		EXPECT_TRUE(renderer.render_target_readback(target, pixels.data(),
+		EXPECT_TRUE(renderer.resource().render_target_readback(target, pixels.data(),
 			static_cast<uint32_t>(pixels.size()), &width, &height));
 		uint64_t sum = 0;
 		for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
@@ -598,8 +598,8 @@ TEST(Renderer_Particle_Test, 粒子软边可配)
 	EXPECT_GT(hard_sum, 0u);
 	EXPECT_LT(soft_sum, hard_sum);
 	EXPECT_LT(soft_sum * 100u, hard_sum * 85u);
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -643,8 +643,8 @@ TEST(Renderer_Particle_Test, 粒子颜色分桶绘制)
 	ASSERT_TRUE(renderer.particle().particle_sort_buckets_set(4));
 	EXPECT_EQ(renderer.particle().particle_sort_buckets_get(), 4u);
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	//分桶开启：出帧后统计蓝优像素
 	ASSERT_TRUE(renderer.particle().particle_draw(0.4f));
 	ASSERT_TRUE(renderer.frame_render());
@@ -652,7 +652,7 @@ TEST(Renderer_Particle_Test, 粒子颜色分桶绘制)
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
 	uint32_t height = 0;
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	uint32_t blue_pixels = 0;
 	for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
@@ -662,8 +662,8 @@ TEST(Renderer_Particle_Test, 粒子颜色分桶绘制)
 	std::cout << "[颜色分桶] 桶数=4 绘制项=" << renderer.frame_stats_get().drawn_items
 		<< " 蓝优像素=" << blue_pixels << std::endl;
 	EXPECT_GT(blue_pixels, 0u);
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -705,8 +705,8 @@ TEST(Renderer_Particle_Test, 粒子混合档与深度写入)
 	//非法档拒绝
 	EXPECT_FALSE(renderer.particle().particle_blend_set(engine::Blend_Mode::Opaque));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	std::size_t center = (static_cast<std::size_t>(32) * 64 + 32) * 4;
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
@@ -715,7 +715,7 @@ TEST(Renderer_Particle_Test, 粒子混合档与深度写入)
 	ASSERT_TRUE(renderer.particle().particle_blend_set(engine::Blend_Mode::Alpha));
 	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	uint8_t alpha_blue = pixels[center + 0];
 	//Additive 档：叠加增亮
@@ -724,7 +724,7 @@ TEST(Renderer_Particle_Test, 粒子混合档与深度写入)
 	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
 	ASSERT_TRUE(renderer.frame_render());
 	std::fill(pixels.begin(), pixels.end(), 0);
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	uint8_t additive_blue = pixels[center + 0];
 	EXPECT_GT(static_cast<uint32_t>(additive_blue), static_cast<uint32_t>(alpha_blue) + 30u);
@@ -734,8 +734,8 @@ TEST(Renderer_Particle_Test, 粒子混合档与深度写入)
 	ASSERT_TRUE(renderer.particle().particle_depth_write_set(false));
 	EXPECT_FALSE(renderer.particle().particle_depth_write_get());
 	ASSERT_TRUE(renderer.particle().particle_draw(0.6f));
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -779,8 +779,8 @@ TEST(Renderer_Particle_Test, 粒子深度分桶稳定性)
 	ASSERT_TRUE(renderer.particle().particle_sort_buckets_set(4));
 	EXPECT_EQ(renderer.particle().particle_sort_buckets_get(), 4u);
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	std::vector<uint8_t> first(64 * 64 * 4, 0);
 	std::vector<uint8_t> second(64 * 64 * 4, 0);
 	uint32_t width = 0;
@@ -788,12 +788,12 @@ TEST(Renderer_Particle_Test, 粒子深度分桶稳定性)
 	//第一帧
 	ASSERT_TRUE(renderer.particle().particle_draw(0.25f));
 	ASSERT_TRUE(renderer.frame_render());
-	ASSERT_TRUE(renderer.render_target_readback(target, first.data(), static_cast<uint32_t>(first.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, first.data(), static_cast<uint32_t>(first.size()),
 		&width, &height));
 	//第二帧（同状态）
 	ASSERT_TRUE(renderer.particle().particle_draw(0.25f));
 	ASSERT_TRUE(renderer.frame_render());
-	ASSERT_TRUE(renderer.render_target_readback(target, second.data(), static_cast<uint32_t>(second.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, second.data(), static_cast<uint32_t>(second.size()),
 		&width, &height));
 	EXPECT_EQ(first, second);
 	//桶数钳制与关闭
@@ -802,8 +802,8 @@ TEST(Renderer_Particle_Test, 粒子深度分桶稳定性)
 	ASSERT_TRUE(renderer.particle().particle_sort_buckets_set(0));
 	EXPECT_EQ(renderer.particle().particle_sort_buckets_get(), 0u);
 	ASSERT_TRUE(renderer.particle().particle_draw(0.25f));
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -1222,7 +1222,7 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 	auto render_once = [](engine::Renderer& renderer, engine::Mesh_Handle plane, uint64_t target,
 		bool with_particle, std::vector<uint8_t>& out)
 	{
-		renderer.render_target_set(target);
+		renderer.device().render_target_set(target);
 		float transform[16] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 			0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 		renderer.resource().mesh_draw(plane, transform);
@@ -1233,7 +1233,7 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		out.assign(64 * 64 * 4, 0);
 		uint32_t width = 0;
 		uint32_t height = 0;
-		EXPECT_TRUE(renderer.render_target_readback(target, out.data(), static_cast<uint32_t>(out.size()),
+		EXPECT_TRUE(renderer.resource().render_target_readback(target, out.data(), static_cast<uint32_t>(out.size()),
 			&width, &height));
 	};
 	//初始化配置（可切换计算路径）
@@ -1259,9 +1259,9 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, false, plain_off);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 		renderer.resource().mesh_unload(plane);
 	}
 	//(2) 计算关闭 ＋ 粒子开启（不绘制）
@@ -1273,9 +1273,9 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, false, plain_off_particles_enabled);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 		renderer.resource().mesh_unload(plane);
 	}
 	EXPECT_EQ(plain_off, plain_off_particles_enabled);
@@ -1287,9 +1287,9 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, false, plain_on);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 		renderer.resource().mesh_unload(plane);
 	}
 	EXPECT_EQ(plain_off, plain_on);
@@ -1325,9 +1325,9 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 4.0f, 4.0f));
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, true, particle_off);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 		renderer.resource().mesh_unload(plane);
 	}
 	//(5) 计算开启 ＋ 粒子开启 ＋ 绘制（同一 CPU 状态）
@@ -1346,9 +1346,9 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 4.0f, 4.0f));
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
 		render_once(renderer, plane, target, true, particle_on);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 		renderer.resource().mesh_unload(plane);
 	}
 	//(6) 计算开关不影响 CPU 绘制结果；粒子确实改变画面
@@ -1645,15 +1645,15 @@ TEST(Renderer_Particle_Test, 粒子GPU绘制)
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_gpu_draw(0.6f));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_GT(renderer.frame_stats_get().drawn_items, 0u);
 	EXPECT_EQ(renderer.frame_stats_get().drawn_instances, 256u);
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
 	uint32_t height = 0;
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	uint32_t visible = 0;
 	uint32_t max_channel = 0;
@@ -1670,8 +1670,8 @@ TEST(Renderer_Particle_Test, 粒子GPU绘制)
 		<< " 绘制项=" << renderer.frame_stats_get().drawn_items
 		<< " 实例=" << renderer.frame_stats_get().drawn_instances << std::endl;
 	EXPECT_GT(visible, 0u);
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -1725,15 +1725,15 @@ TEST(Renderer_Particle_Test, 粒子间接绘制)
 	EXPECT_EQ(command[4], 0u);
 	//出帧
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_GT(renderer.frame_stats_get().drawn_items, 0u);
 	EXPECT_EQ(renderer.frame_stats_get().drawn_instances, 256u);
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
 	uint32_t height = 0;
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	uint32_t visible = 0;
 	for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
@@ -1743,8 +1743,8 @@ TEST(Renderer_Particle_Test, 粒子间接绘制)
 	std::cout << "[间接绘制] 可见=" << visible << " 绘制项=" << renderer.frame_stats_get().drawn_items
 		<< " 实例=" << renderer.frame_stats_get().drawn_instances << std::endl;
 	EXPECT_GT(visible, 0u);
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -2002,8 +2002,8 @@ TEST(Renderer_Particle_Test, 常驻绘制)
 	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
+	renderer.device().render_target_set(target);
 	//常驻绘制与出帧
 	ASSERT_TRUE(renderer.particle().particle_draw(0.1f));
 	ASSERT_TRUE(renderer.frame_render());
@@ -2011,7 +2011,7 @@ TEST(Renderer_Particle_Test, 常驻绘制)
 	std::vector<uint8_t> pixels(64 * 64 * 4, 0);
 	uint32_t width = 0;
 	uint32_t height = 0;
-	ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+	ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 		&width, &height));
 	uint32_t visible = 0;
 	for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
@@ -2024,8 +2024,8 @@ TEST(Renderer_Particle_Test, 常驻绘制)
 	//超过 65536 容量：常驻绘制返回假（留待间接绘制）
 	ASSERT_TRUE(粒子.capacity_set(engine::PARTICLE_CAPACITY_MAX));
 	EXPECT_FALSE(renderer.particle().particle_draw(0.1f));
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -2174,8 +2174,8 @@ TEST(Renderer_Particle_Test, 粒子三路径绘制对照)
 	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
 	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, 320, 180));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 320, 180));
+	renderer.device().render_target_set(target);
 	//单路径测量结果
 	struct 路径结果
 	{
@@ -2211,7 +2211,7 @@ TEST(Renderer_Particle_Test, 粒子三路径绘制对照)
 		std::vector<uint8_t> 像素(320u * 180u * 4u, 0u);
 		uint32_t 宽 = 0;
 		uint32_t 高 = 0;
-		if (renderer.render_target_readback(target, 像素.data(), static_cast<uint32_t>(像素.size()), &宽, &高))
+		if (renderer.resource().render_target_readback(target, 像素.data(), static_cast<uint32_t>(像素.size()), &宽, &高))
 			for (std::size_t 偏移 = 0; 偏移 + 3 < 像素.size(); 偏移 += 4)
 				//任意通道明显高于清屏色即视为粒子像素
 				if (像素[偏移] > 8u || 像素[偏移 + 1] > 8u || 像素[偏移 + 2] > 8u)
@@ -2256,8 +2256,8 @@ TEST(Renderer_Particle_Test, 粒子三路径绘制对照)
 		<< "  GPU差异=" << GPU差异 << " 间接差异=" << 间接差异 << std::endl;
 	EXPECT_LT(GPU差异, 0.05);
 	EXPECT_LT(间接差异, 0.05);
-	renderer.render_target_set(0);
-	renderer.render_target_destroy(target);
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -2416,8 +2416,8 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 		ASSERT_TRUE(renderer.resource().material_tint_set(0.0f, 0.0f, 0.0f, 1.0f));
 		//离屏目标与交换链同尺寸（Hi-Z 按交换链范围构建，尺寸不一致时回调跳过）
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, 64, 36));
-		renderer.render_target_set(target);
+		ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 36));
+		renderer.device().render_target_set(target);
 		//三帧：前两帧建历史，末帧回读
 		for (uint32_t frame = 0; frame < 3; ++frame)
 		{
@@ -2433,15 +2433,15 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 		std::vector<uint8_t> pixels(64 * 36 * 4, 0);
 		uint32_t width = 0;
 		uint32_t height = 0;
-		ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+		ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 			&width, &height));
 		uint64_t sum = 0;
 		//蓝通道（BGR 与 RGB 口径不确定，取红 / 蓝两通道较大者）
 		for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
 			sum += pixels[index] > pixels[index + 2] ? pixels[index] : pixels[index + 2];
 		blue_sum_out = sum;
-		renderer.render_target_set(0);
-		renderer.render_target_destroy(target);
+		renderer.device().render_target_set(0);
+		renderer.resource().render_target_destroy(target);
 		renderer.resource().mesh_unload(wall);
 	};
 	uint64_t direct_off = 0;
@@ -2633,8 +2633,8 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 		ASSERT_TRUE(renderer.resource().mesh_plane_load(wall, 4.0f, 4.0f));
 		ASSERT_TRUE(renderer.resource().material_tint_set(0.0f, 0.0f, 0.0f, 1.0f));
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, 64, 36));
-		renderer.render_target_set(target);
+		ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 36));
+		renderer.device().render_target_set(target);
 		//三帧：前两帧建历史，末帧回读
 		for (uint32_t frame = 0; frame < 3; ++frame)
 		{
@@ -2647,14 +2647,14 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 		std::vector<uint8_t> pixels(64 * 36 * 4, 0);
 		uint32_t width = 0;
 		uint32_t height = 0;
-		ASSERT_TRUE(renderer.render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
+		ASSERT_TRUE(renderer.resource().render_target_readback(target, pixels.data(), static_cast<uint32_t>(pixels.size()),
 			&width, &height));
 		uint64_t sum = 0;
 		//蓝通道（BGR 与 RGB 口径不确定，取红 / 蓝两通道较大者）
 		for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
 			sum += pixels[index] > pixels[index + 2] ? pixels[index] : pixels[index + 2];
-		renderer.render_target_set(0);
-		renderer.render_target_destroy(target);
+		renderer.device().render_target_set(0);
+		renderer.resource().render_target_destroy(target);
 		renderer.resource().mesh_unload(wall);
 		sum_out = sum;
 	};

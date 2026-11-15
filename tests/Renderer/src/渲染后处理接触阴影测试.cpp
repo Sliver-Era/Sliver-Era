@@ -54,17 +54,17 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, frag);
 		EXPECT_NE(pass, 0u);
-		EXPECT_TRUE(renderer.post_chain_set(&pass, 1));
+		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));
 		//强度 / 最大距离 / 步数缩放 / 深度偏置
-		renderer.post_stage_vec4_set(0, strength, 4.0f, 2.0f, 0.01f);
+		renderer.device().post_stage_vec4_set(0, strength, 4.0f, 2.0f, 0.01f);
 		//阴影色调（黑：直接压暗）＋ 抖动种子（第四分量）
-		renderer.post_stage_color4_set(0, 0.0f, 0.0f, 0.0f, seed);
+		renderer.device().post_stage_color4_set(0, 0.0f, 0.0f, 0.0f, seed);
 		//厚度上限（0 = 自动；经 offset 128 的逐级 extra 下发）
-		renderer.post_stage_extra_set(0, thickness, 0.0f, 0.0f, 0.0f);
-		renderer.render_target_present_set(scene_target);
+		renderer.device().post_stage_extra_set(0, thickness, 0.0f, 0.0f, 0.0f);
+		renderer.device().render_target_present_set(scene_target);
 
 		//方向光自相机一侧斜射（光线朝左后方，便于接收面射线扫过侧后方的遮挡板）
 		engine::Light_Data light{};
@@ -89,7 +89,7 @@ namespace
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return pixels;
 	}
 
@@ -123,17 +123,17 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "接触阴影.frag.spv");
 		EXPECT_NE(pass, 0u);
-		EXPECT_TRUE(renderer.post_chain_set(&pass, 1));
+		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));
 		//强度 / 最大距离 / 步数缩放 / 深度偏置
-		renderer.post_stage_vec4_set(0, strength, 4.0f, 2.0f, 0.01f);
+		renderer.device().post_stage_vec4_set(0, strength, 4.0f, 2.0f, 0.01f);
 		//阴影色调（黑）＋ 抖动种子 0（固定中点）
-		renderer.post_stage_color4_set(0, 0.0f, 0.0f, 0.0f, 0.0f);
+		renderer.device().post_stage_color4_set(0, 0.0f, 0.0f, 0.0f, 0.0f);
 		//厚度 0（自动）/ 光源模式 1（聚光灯）/ 槽位
-		renderer.post_stage_extra_set(0, 0.0f, 1.0f, static_cast<float>(slot), 0.0f);
-		renderer.render_target_present_set(scene_target);
+		renderer.device().post_stage_extra_set(0, 0.0f, 1.0f, static_cast<float>(slot), 0.0f);
+		renderer.device().render_target_present_set(scene_target);
 
 		//方向光关闭（强度 0），环境光 0.3
 		engine::Light_Data light{};
@@ -162,7 +162,7 @@ namespace
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return pixels;
 	}
 
@@ -178,17 +178,17 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "接触阴影.frag.spv");
 		EXPECT_NE(pass, 0u);
-		EXPECT_TRUE(renderer.post_chain_set(&pass, 1));
+		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));
 		//强度 / 最大距离 / 步数缩放 / 深度偏置
-		renderer.post_stage_vec4_set(0, strength, 4.0f, 2.0f, 0.01f);
+		renderer.device().post_stage_vec4_set(0, strength, 4.0f, 2.0f, 0.01f);
 		//阴影色调（黑）＋ 抖动种子 0（固定中点）
-		renderer.post_stage_color4_set(0, 0.0f, 0.0f, 0.0f, 0.0f);
+		renderer.device().post_stage_color4_set(0, 0.0f, 0.0f, 0.0f, 0.0f);
 		//厚度 0（自动）/ 光源模式 2（点光源）/ 槽位
-		renderer.post_stage_extra_set(0, 0.0f, 2.0f, static_cast<float>(slot), 0.0f);
-		renderer.render_target_present_set(scene_target);
+		renderer.device().post_stage_extra_set(0, 0.0f, 2.0f, static_cast<float>(slot), 0.0f);
+		renderer.device().render_target_present_set(scene_target);
 
 		//方向光关闭（强度 0），环境光 0.3
 		engine::Light_Data light{};
@@ -228,7 +228,7 @@ namespace
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return pixels;
 	}
 }

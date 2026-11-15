@@ -31,16 +31,16 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, shader);
 		EXPECT_NE(pass, 0u);
 		//链先于 present_set 设置（与既有描边 / 反射用例同序）
-		EXPECT_TRUE(renderer.post_chain_set(&pass, 1));
+		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));
 		//后处理参数走通用四参入口（强度 / 法线阈值 / 深度阈值 / 半径）
-		renderer.post_stage_vec4_set(0, params[0], params[1], params[2], params[3]);
+		renderer.device().post_stage_vec4_set(0, params[0], params[1], params[2], params[3]);
 		//描边色（默认黑 = 压暗轮廓）
-		renderer.post_stage_color_set(0, color[0], color[1], color[2]);
-		renderer.render_target_present_set(scene_target);
+		renderer.device().post_stage_color_set(0, color[0], color[1], color[2]);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle folded = 0;
 		//无网格组：只留天空（深度恒 1，法线无效，应原样输出）
 		if (!without_mesh)
@@ -52,7 +52,7 @@ namespace
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return pixels;
 	}
 

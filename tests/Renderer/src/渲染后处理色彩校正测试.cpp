@@ -34,21 +34,21 @@ namespace
 	{
 		//场景目标（与交换链同尺寸）
 		uint64_t target = 0;
-		EXPECT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+		EXPECT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 		//登记管线并设为单级链
 		uint64_t pipeline = post_pipeline_register(renderer, frag);
 		EXPECT_NE(pipeline, 0u);
-		EXPECT_TRUE(renderer.post_chain_set(&pipeline, 1));
+		EXPECT_TRUE(renderer.device().post_chain_set(&pipeline, 1));
 		//设置该级参数
-		renderer.post_stage_param_set(0, first, second, third);
+		renderer.device().post_stage_param_set(0, first, second, third);
 		//设定同帧后处理呈现并出帧
-		renderer.render_target_present_set(target);
+		renderer.device().render_target_present_set(target);
 		std::vector<uint8_t> pixels(pixel_bytes(), 0);
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		//清理
-		renderer.render_target_present_set(0);
+		renderer.device().render_target_present_set(0);
 		renderer.resource().pipeline_unload(pipeline);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 		return pixels;
 	}
 }

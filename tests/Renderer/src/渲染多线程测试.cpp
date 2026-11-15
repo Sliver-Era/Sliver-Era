@@ -132,10 +132,10 @@ TEST_F(Renderer_Thread_Test, 未初始化线程数查询与设置安全)
 {
 	engine::Renderer renderer;
 	//未初始化查询返回 0
-	EXPECT_EQ(renderer.render_threads(), 0u);
+	EXPECT_EQ(renderer.device().render_threads(), 0u);
 	//未初始化设置静默忽略
-	renderer.render_threads_set(4);
-	EXPECT_EQ(renderer.render_threads(), 0u);
+	renderer.device().render_threads_set(4);
+	EXPECT_EQ(renderer.device().render_threads(), 0u);
 }
 
 //默认配置为单线程且不派发并行任务
@@ -143,14 +143,14 @@ TEST_F(Renderer_Thread_Test, 默认单线程且无并行派发)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	EXPECT_EQ(renderer.render_threads(), 0u);
+	EXPECT_EQ(renderer.device().render_threads(), 0u);
 	//统计口径与门面一致
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.render_threads, 0u);
 	EXPECT_EQ(stats.parallel_dispatches, 0u);
 	//关闭后仍为单线程
 	renderer.shutdown();
-	EXPECT_EQ(renderer.render_threads(), 0u);
+	EXPECT_EQ(renderer.device().render_threads(), 0u);
 }
 
 //配置线程数在初始化时生效，运行时切换与钳制有效
@@ -160,18 +160,18 @@ TEST_F(Renderer_Thread_Test, 配置线程数生效与运行时切换)
 	config.render_threads = 2;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	EXPECT_EQ(renderer.render_threads(), 2u);
+	EXPECT_EQ(renderer.device().render_threads(), 2u);
 	EXPECT_EQ(renderer.frame_stats_get().render_threads, 2u);
 
 	//运行时上调
-	renderer.render_threads_set(4);
-	EXPECT_EQ(renderer.render_threads(), 4u);
+	renderer.device().render_threads_set(4);
+	EXPECT_EQ(renderer.device().render_threads(), 4u);
 	//超大值钳到上限 64
-	renderer.render_threads_set(1000);
-	EXPECT_EQ(renderer.render_threads(), 64u);
+	renderer.device().render_threads_set(1000);
+	EXPECT_EQ(renderer.device().render_threads(), 64u);
 	//回落到单线程
-	renderer.render_threads_set(0);
-	EXPECT_EQ(renderer.render_threads(), 0u);
+	renderer.device().render_threads_set(0);
+	EXPECT_EQ(renderer.device().render_threads(), 0u);
 }
 
 /*
@@ -252,7 +252,7 @@ TEST_F(Renderer_Thread_Test, 实例容量钳制与大批量登记)
 	std::vector<std::array<float, 16>> matrices = instance_matrices(17);
 
 	//关闭剔除，使实例数严格按输入计（否则视锥外实例先被剔除，容量判定不可测）
-	renderer.cull_enabled_set(false);
+	renderer.device().cull_enabled_set(false);
 
 	//17 个实例超出钳制后的容量 16，被整批拒绝
 	EXPECT_FALSE(renderer.resource().mesh_draw_instanced(handle, matrices[0].data(), 17));
@@ -280,16 +280,16 @@ TEST_F(Renderer_Thread_Test, 并行录制场景通道与单线程一致)
 		if (!renderer.compute().readback_supported())
 			return false;
 		//关闭静态合批：本用例要求 64 个独立绘制项（合批会把同管线的相邻项并成 1 项）
-		renderer.static_batching_set(false);
+		renderer.device().static_batching_set(false);
 		uint64_t scene_target = 0;
-		if (!renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
+		if (!renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
 			return false;
 		uint64_t pass = 0;
 		if (!renderer.resource().pipeline_load(pass, "后处理.vert.spv", "后处理.frag.spv"))
 			return false;
-		if (!renderer.post_chain_set(&pass, 1))
+		if (!renderer.device().post_chain_set(&pass, 1))
 			return false;
-		renderer.render_target_present_set(scene_target);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle quad = 0;
 		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
@@ -313,10 +313,10 @@ TEST_F(Renderer_Thread_Test, 并行录制场景通道与单线程一致)
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		stats = renderer.frame_stats_get();
 		renderer.resource().mesh_unload(quad);
-		renderer.post_chain_set(nullptr, 0);
-		renderer.render_target_present_set(0);
+		renderer.device().post_chain_set(nullptr, 0);
+		renderer.device().render_target_present_set(0);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return ok;
 	};
 
@@ -362,7 +362,7 @@ TEST_F(Renderer_Thread_Test, 并行录制交换链直通路径与单线程一致
 		if (!renderer.compute().readback_supported())
 			return false;
 		//关闭静态合批：保持 64 个独立绘制项（≥ 32 才启用并行录制）
-		renderer.static_batching_set(false);
+		renderer.device().static_batching_set(false);
 		engine::Mesh_Handle quad = 0;
 		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
@@ -424,11 +424,11 @@ TEST_F(Renderer_Thread_Test, 并行录制离屏目标路径与单线程一致)
 		if (!renderer.compute().readback_supported())
 			return false;
 		//关闭静态合批：保持 64 个独立绘制项（≥ 32 才启用并行录制）
-		renderer.static_batching_set(false);
+		renderer.device().static_batching_set(false);
 		uint64_t target = 0;
-		if (!renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()))
+		if (!renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()))
 			return false;
-		renderer.render_target_set(target);
+		renderer.device().render_target_set(target);
 		engine::Mesh_Handle quad = 0;
 		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
@@ -450,9 +450,9 @@ TEST_F(Renderer_Thread_Test, 并行录制离屏目标路径与单线程一致)
 		}
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		stats = renderer.frame_stats_get();
-		renderer.render_target_set(0);
+		renderer.device().render_target_set(0);
 		renderer.resource().mesh_unload(quad);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 		return ok;
 	};
 
@@ -505,18 +505,18 @@ TEST_F(Renderer_Thread_Test, MSAA下并行录制与单线程一致)
 			return false;
 		if (renderer.msaa_samples() <= 1)
 			return false;
-		renderer.static_batching_set(false);
+		renderer.device().static_batching_set(false);
 		uint64_t scene_target = 0;
-		if (!renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
+		if (!renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
 			return false;
 		uint64_t pass = 0;
 		if (!renderer.resource().pipeline_load(pass, "后处理.vert.spv", "深度描边.frag.spv"))
 			return false;
-		if (!renderer.post_chain_set(&pass, 1))
+		if (!renderer.device().post_chain_set(&pass, 1))
 			return false;
-		renderer.post_stage_param_set(0, 1.0f, 0.0f, 0.5f);
-		renderer.post_stage_color_set(0, 1.0f, 0.0f, 0.0f);
-		renderer.render_target_present_set(scene_target);
+		renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 0.5f);
+		renderer.device().post_stage_color_set(0, 1.0f, 0.0f, 0.0f);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle quad = 0;
 		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
@@ -539,10 +539,10 @@ TEST_F(Renderer_Thread_Test, MSAA下并行录制与单线程一致)
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		stats = renderer.frame_stats_get();
 		renderer.resource().mesh_unload(quad);
-		renderer.post_chain_set(nullptr, 0);
-		renderer.render_target_present_set(0);
+		renderer.device().post_chain_set(nullptr, 0);
+		renderer.device().render_target_present_set(0);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return ok;
 	};
 
@@ -584,7 +584,7 @@ TEST_F(Renderer_Thread_Test, 并行录制阈值可配)
 			return false;
 		if (!renderer.compute().readback_supported())
 			return false;
-		renderer.static_batching_set(false);
+		renderer.device().static_batching_set(false);
 		engine::Mesh_Handle quad = 0;
 		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
@@ -644,7 +644,7 @@ TEST_F(Renderer_Thread_Test, 并行录制段数上限可配)
 			return false;
 		if (!renderer.compute().readback_supported())
 			return false;
-		renderer.static_batching_set(false);
+		renderer.device().static_batching_set(false);
 		engine::Mesh_Handle quad = 0;
 		if (!renderer.resource().mesh_load(quad, quad_data(QUAD_HALF)))
 			return false;
@@ -711,14 +711,14 @@ TEST_F(Renderer_Thread_Test, 实例剔除并行阈值可配)
 	ASSERT_TRUE(fallback.init(fallback_config));
 
 	//配置默认值与运行时钳制
-	EXPECT_EQ(forced.cull_parallel_min_instances(), 1u);
-	EXPECT_EQ(fallback.cull_parallel_min_instances(), 256u);
-	forced.cull_parallel_min_instances_set(0);
-	EXPECT_EQ(forced.cull_parallel_min_instances(), 1u) << "0 应钳到 1";
-	forced.cull_parallel_min_instances_set(100000);
-	EXPECT_EQ(forced.cull_parallel_min_instances(), 65536u) << "超大值应钳到 65536";
+	EXPECT_EQ(forced.device().cull_parallel_min_instances(), 1u);
+	EXPECT_EQ(fallback.device().cull_parallel_min_instances(), 256u);
+	forced.device().cull_parallel_min_instances_set(0);
+	EXPECT_EQ(forced.device().cull_parallel_min_instances(), 1u) << "0 应钳到 1";
+	forced.device().cull_parallel_min_instances_set(100000);
+	EXPECT_EQ(forced.device().cull_parallel_min_instances(), 65536u) << "超大值应钳到 65536";
 	//恢复强制并行
-	forced.cull_parallel_min_instances_set(1);
+	forced.device().cull_parallel_min_instances_set(1);
 
 	//同一批 64 个实例矩阵
 	const uint32_t small_count = 64;

@@ -83,24 +83,24 @@ TEST_F(Renderer_Post_Chain_Test, 胶片颗粒增加高频噪声)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "胶片颗粒.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
 		//颗粒强度专设（阈值 / 软膝由校验规则要求合法，本片元不使用）
-		renderer.post_stage_param_set(0, 1.0f, 0.0f, 0.3f);
+		renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 0.3f);
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
-		renderer.render_target_present_set(target);
+		renderer.device().render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(grained.data(), static_cast<uint32_t>(grained.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().texture_unload(texture);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 	}
 
 	//高频能量：平坦画面近 0，加颗粒后显著增大
@@ -190,24 +190,24 @@ TEST_F(Renderer_Post_Chain_Test, 像素化形成马赛克块)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "像素化.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
 		//块尺寸专设（阈值 / 软膝由校验规则要求合法，本片元不使用）
-		renderer.post_stage_param_set(0, 1.0f, 0.0f, 6.0f);
+		renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 6.0f);
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 64, 1));
 		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
-		renderer.render_target_present_set(target);
+		renderer.device().render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(pixelated.data(), static_cast<uint32_t>(pixelated.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().texture_unload(texture);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 	}
 
 	//渐变直通灰度级多，马赛克后显著减少

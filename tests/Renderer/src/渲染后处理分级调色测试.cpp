@@ -85,18 +85,18 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色恒等与直通一致)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t passes[2] = {};
 		passes[0] = post_pipeline_register(renderer, "后处理.frag.spv");
 		passes[1] = post_pipeline_register(renderer, "反色.frag.spv");
 		ASSERT_NE(passes[0], 0u);
 		ASSERT_NE(passes[1], 0u);
-		ASSERT_TRUE(renderer.post_chain_set(passes, 2));
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(passes, 2));
+		renderer.device().render_target_present_set(scene_target);
 		reference = render_with_chain(renderer, std::vector<uint8_t>(2 * 2 * 4, 255));
 		renderer.resource().pipeline_unload(passes[0]);
 		renderer.resource().pipeline_unload(passes[1]);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 	//对照帧：分级调色（恒等）→ 反色
 	std::vector<uint8_t> graded(pixel_bytes());
@@ -106,19 +106,19 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色恒等与直通一致)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t passes[2] = {};
 		passes[0] = post_pipeline_register(renderer, "分级调色.frag.spv");
 		passes[1] = post_pipeline_register(renderer, "反色.frag.spv");
 		ASSERT_NE(passes[0], 0u);
 		ASSERT_NE(passes[1], 0u);
-		ASSERT_TRUE(renderer.post_chain_set(passes, 2));
-		renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(passes, 2));
+		renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
+		renderer.device().render_target_present_set(scene_target);
 		graded = render_with_chain(renderer, std::vector<uint8_t>(2 * 2 * 4, 255));
 		renderer.resource().pipeline_unload(passes[0]);
 		renderer.resource().pipeline_unload(passes[1]);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 
 	const int difference = max_channel_diff(reference, graded);
@@ -138,26 +138,26 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色增益与伽马方向)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	uint64_t grade = post_pipeline_register(renderer, "分级调色.frag.spv");
 	ASSERT_NE(grade, 0u);
-	ASSERT_TRUE(renderer.post_chain_set(&grade, 1));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.device().post_chain_set(&grade, 1));
+	renderer.device().render_target_present_set(scene_target);
 
 	//恒等
-	renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
+	renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
 	const int identity = static_cast<int>(luma_of(pixel_get(render_with_chain(renderer, gray_texels()),
 		WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)));
 	//增益 0.5
-	renderer.post_stage_param4_set(0, 0.0f, 1.0f, 0.5f, 1.0f);
+	renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 0.5f, 1.0f);
 	const int half_gain = static_cast<int>(luma_of(pixel_get(render_with_chain(renderer, gray_texels()),
 		WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)));
 	//伽马 2.0（提亮）
-	renderer.post_stage_param4_set(0, 0.0f, 2.0f, 1.0f, 1.0f);
+	renderer.device().post_stage_param4_set(0, 0.0f, 2.0f, 1.0f, 1.0f);
 	const int bright_gamma = static_cast<int>(luma_of(pixel_get(render_with_chain(renderer, gray_texels()),
 		WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)));
 	//伽马 0.5（压暗）
-	renderer.post_stage_param4_set(0, 0.0f, 0.5f, 1.0f, 1.0f);
+	renderer.device().post_stage_param4_set(0, 0.0f, 0.5f, 1.0f, 1.0f);
 	const int dark_gamma = static_cast<int>(luma_of(pixel_get(render_with_chain(renderer, gray_texels()),
 		WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)));
 
@@ -172,7 +172,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色增益与伽马方向)
 	EXPECT_LE(dark_gamma, identity - 30) << "gamma 0.5 未压暗（" << dark_gamma << "）";
 
 	renderer.resource().pipeline_unload(grade);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 }
 
 /*
@@ -187,18 +187,18 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色饱和度归零)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	uint64_t grade = post_pipeline_register(renderer, "分级调色.frag.spv");
 	ASSERT_NE(grade, 0u);
-	ASSERT_TRUE(renderer.post_chain_set(&grade, 1));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.device().post_chain_set(&grade, 1));
+	renderer.device().render_target_present_set(scene_target);
 
 	//恒等：红色仍饱和
-	renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
+	renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
 	std::vector<uint8_t> saturated = render_with_chain(renderer, red_texels());
 	const std::array<uint8_t, 4> saturated_center = pixel_get(saturated, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	//饱和度 0：三通道趋于一致
-	renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 0.0f);
+	renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 0.0f);
 	std::vector<uint8_t> gray = render_with_chain(renderer, red_texels());
 	const std::array<uint8_t, 4> gray_center = pixel_get(gray, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 
@@ -217,7 +217,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色饱和度归零)
 	*/
 
 	renderer.resource().pipeline_unload(grade);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 }
 
 /*
@@ -231,27 +231,27 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色非法参数忽略)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t pass = post_pipeline_register(renderer, "分级调色.frag.spv");
 	ASSERT_NE(pass, 0u);
-	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
+	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
 
 	//设定恒等
-	renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
+	renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
 	float params[4] = {};
-	ASSERT_EQ(renderer.post_stage_param_get(0, params), 1u);
+	ASSERT_EQ(renderer.device().post_stage_param_get(0, params), 1u);
 	EXPECT_FLOAT_EQ(params[1], 1.0f);
 
 	//越界伽马
-	renderer.post_stage_param4_set(0, 0.0f, 0.0f, 1.0f, 1.0f);
-	ASSERT_EQ(renderer.post_stage_param_get(0, params), 1u);
+	renderer.device().post_stage_param4_set(0, 0.0f, 0.0f, 1.0f, 1.0f);
+	ASSERT_EQ(renderer.device().post_stage_param_get(0, params), 1u);
 	EXPECT_FLOAT_EQ(params[1], 1.0f) << "越界伽马未被忽略";
 
 	//越界饱和度
-	renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 5.0f);
-	ASSERT_EQ(renderer.post_stage_param_get(0, params), 1u);
+	renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 5.0f);
+	ASSERT_EQ(renderer.device().post_stage_param_get(0, params), 1u);
 	EXPECT_FLOAT_EQ(params[3], 1.0f) << "越界饱和度未被忽略";
 
 	//链外级序
-	renderer.post_stage_param4_set(3, 0.0f, 1.0f, 1.0f, 1.0f);
-	ASSERT_EQ(renderer.post_stage_param_get(0, params), 1u);
+	renderer.device().post_stage_param4_set(3, 0.0f, 1.0f, 1.0f, 1.0f);
+	ASSERT_EQ(renderer.device().post_stage_param_get(0, params), 1u);
 	EXPECT_FLOAT_EQ(params[0], 0.0f) << "链外级序影响了当前级";
 
 	renderer.resource().pipeline_unload(pass);
@@ -272,15 +272,15 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色串联反色可逆)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t grade = post_pipeline_register(renderer, "分级调色.frag.spv");
 		ASSERT_NE(grade, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&grade, 1));
-		renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&grade, 1));
+		renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
+		renderer.device().render_target_present_set(scene_target);
 		single = render_with_chain(renderer, gray_texels());
 		renderer.resource().pipeline_unload(grade);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 	//链 A：恒等调色 → 反色 → 反色
 	std::vector<uint8_t> inverted(pixel_bytes());
@@ -290,7 +290,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色串联反色可逆)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t passes[3] = {};
 		passes[0] = post_pipeline_register(renderer, "分级调色.frag.spv");
 		passes[1] = post_pipeline_register(renderer, "反色.frag.spv");
@@ -298,14 +298,14 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色串联反色可逆)
 		ASSERT_NE(passes[0], 0u);
 		ASSERT_NE(passes[1], 0u);
 		ASSERT_NE(passes[2], 0u);
-		ASSERT_TRUE(renderer.post_chain_set(passes, 3));
-		renderer.post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(passes, 3));
+		renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
+		renderer.device().render_target_present_set(scene_target);
 		inverted = render_with_chain(renderer, gray_texels());
 		renderer.resource().pipeline_unload(passes[0]);
 		renderer.resource().pipeline_unload(passes[1]);
 		renderer.resource().pipeline_unload(passes[2]);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 
 	const int difference = max_channel_diff(single, inverted);

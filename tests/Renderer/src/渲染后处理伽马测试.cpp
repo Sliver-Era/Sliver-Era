@@ -36,11 +36,11 @@ TEST_F(Renderer_Post_Chain_Test, 伽马校正改变中间调)
 
 	//单级伽马链
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 	uint64_t pass = post_pipeline_register(renderer, "伽马校正.frag.spv");
 	ASSERT_NE(pass, 0u);
-	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-	renderer.render_target_present_set(target);
+	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+	renderer.device().render_target_present_set(target);
 	uint64_t texture2 = 0;
 	ASSERT_TRUE(renderer.resource().texture_load(texture2, texels.data(), 2, 2));
 	renderer.resource().texture_bind_set(texture2);
@@ -49,7 +49,7 @@ TEST_F(Renderer_Post_Chain_Test, 伽马校正改变中间调)
 
 	auto render_with_gamma = [&](float gamma, std::vector<uint8_t>& pixels)
 	{
-		renderer.post_stage_param_set(0, 1.0f, 0.0f, gamma);
+		renderer.device().post_stage_param_set(0, 1.0f, 0.0f, gamma);
 		ASSERT_TRUE(renderer.resource().mesh_draw(handle2, nullptr));
 		pixels.assign(pixel_bytes(), 0);
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -76,5 +76,5 @@ TEST_F(Renderer_Post_Chain_Test, 伽马校正改变中间调)
 	renderer.resource().mesh_unload(handle2);
 	renderer.resource().texture_unload(texture2);
 	renderer.resource().pipeline_unload(pass);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }

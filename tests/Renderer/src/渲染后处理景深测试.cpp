@@ -34,17 +34,17 @@ TEST_F(Renderer_Post_Chain_Test, 景深对焦面保持清晰)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 	//对照帧：景深（对焦在 3）
 	std::vector<uint8_t> dof(pixel_bytes());
@@ -54,18 +54,18 @@ TEST_F(Renderer_Post_Chain_Test, 景深对焦面保持清晰)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "景深.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.post_stage_param_set(0, 3.0f, 1.0f, 6.0f);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().post_stage_param_set(0, 3.0f, 1.0f, 6.0f);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(dof.data(), static_cast<uint32_t>(dof.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 
 	//中心像素（四边形内部）
@@ -101,17 +101,17 @@ TEST_F(Renderer_Post_Chain_Test, 景深离焦使边缘变软)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 	//对照帧：景深（严重离焦）
 	std::vector<uint8_t> dof(pixel_bytes());
@@ -121,18 +121,18 @@ TEST_F(Renderer_Post_Chain_Test, 景深离焦使边缘变软)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "景深.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.post_stage_param_set(0, 0.6f, 1.0f, 6.0f);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().post_stage_param_set(0, 0.6f, 1.0f, 6.0f);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(dof.data(), static_cast<uint32_t>(dof.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 
 	//按参考帧定位四边形上边缘，再在同一行比较（避免模糊改变阈值穿越位置）
@@ -167,17 +167,17 @@ TEST_F(Renderer_Post_Chain_Test, 景深最大模糊近零近似直通)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 	//对照帧：景深（模糊半径近零）
 	std::vector<uint8_t> dof(pixel_bytes());
@@ -187,18 +187,18 @@ TEST_F(Renderer_Post_Chain_Test, 景深最大模糊近零近似直通)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "景深.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.post_stage_param_set(0, 0.6f, 1.0f, 0.001f);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().post_stage_param_set(0, 0.6f, 1.0f, 0.001f);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		ASSERT_TRUE(renderer.frame_render(dof.data(), static_cast<uint32_t>(dof.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 
 	const int difference = max_channel_diff(reference, dof);
@@ -223,21 +223,21 @@ TEST_F(Renderer_Post_Chain_Test, 景深在MSAA下区分对焦与离焦)
 		if (!renderer.compute().readback_supported())
 			return false;
 		uint64_t scene_target = 0;
-		if (!renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
+		if (!renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
 			return false;
 		uint64_t pass = post_pipeline_register(renderer, "景深.frag.spv");
 		if (pass == 0)
 			return false;
-		if (!renderer.post_chain_set(&pass, 1))
+		if (!renderer.device().post_chain_set(&pass, 1))
 			return false;
-		renderer.post_stage_param_set(0, focus, 1.0f, 6.0f);
-		renderer.render_target_present_set(scene_target);
+		renderer.device().post_stage_param_set(0, focus, 1.0f, 6.0f);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		bool ok = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return ok;
 	};
 	//差异像素统计（任一通道差 > 12 视为改变）

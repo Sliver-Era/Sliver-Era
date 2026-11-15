@@ -66,24 +66,24 @@ TEST_F(Renderer_Post_Chain_Test, 色相旋转改变主通道)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "色相旋转.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
 		//偏移 90°（红 → 黄绿；注意门面逐级参数要求 intensity < 100）
-		renderer.post_stage_param_set(0, 1.0f, 0.0f, 90.0f);
+		renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 90.0f);
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 		renderer.resource().texture_bind_set(texture);
 		engine::Mesh_Handle handle = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
-		renderer.render_target_present_set(target);
+		renderer.device().render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(rotated.data(), static_cast<uint32_t>(rotated.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().texture_unload(texture);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 	}
 
 	uint32_t reference_dominant = dominant_channel(reference);
@@ -131,11 +131,11 @@ TEST_F(Renderer_Post_Chain_Test, 曝光倍数单调改变亮度)
 
 	//单级曝光链
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 	uint64_t pass = post_pipeline_register(renderer, "曝光.frag.spv");
 	ASSERT_NE(pass, 0u);
-	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-	renderer.render_target_present_set(target);
+	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+	renderer.device().render_target_present_set(target);
 	uint64_t texture2 = 0;
 	ASSERT_TRUE(renderer.resource().texture_load(texture2, texels.data(), 2, 2));
 	renderer.resource().texture_bind_set(texture2);
@@ -144,7 +144,7 @@ TEST_F(Renderer_Post_Chain_Test, 曝光倍数单调改变亮度)
 
 	auto render_with_multiplier = [&](float multiplier, std::vector<uint8_t>& pixels)
 	{
-		renderer.post_stage_param_set(0, 1.0f, 0.0f, multiplier);
+		renderer.device().post_stage_param_set(0, 1.0f, 0.0f, multiplier);
 		ASSERT_TRUE(renderer.resource().mesh_draw(handle2, nullptr));
 		pixels.assign(pixel_bytes(), 0);
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -171,5 +171,5 @@ TEST_F(Renderer_Post_Chain_Test, 曝光倍数单调改变亮度)
 	renderer.resource().mesh_unload(handle2);
 	renderer.resource().texture_unload(texture2);
 	renderer.resource().pipeline_unload(pass);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }

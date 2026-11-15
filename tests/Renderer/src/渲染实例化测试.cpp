@@ -351,7 +351,7 @@ TEST_F(Renderer_Instanced_Test, 实例级视锥剔除)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(QUAD_HALF)));
-	renderer.cull_enabled_set(true);
+	renderer.device().cull_enabled_set(true);
 	//两个可见 + 两个远在视锥外
 	std::array<float, 16> transforms[4] = {
 		translation(0.0f, 0.0f, 0.0f),

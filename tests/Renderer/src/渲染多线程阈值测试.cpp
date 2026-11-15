@@ -116,14 +116,14 @@ TEST(Renderer_Thread_Threshold_Test, 实例扫描并行阈值可配)
 	ASSERT_TRUE(fallback.init(fallback_config));
 
 	//默认值与运行时钳制
-	EXPECT_EQ(forced.instance_scan_parallel_min(), 1u);
-	EXPECT_EQ(fallback.instance_scan_parallel_min(), 512u);
+	EXPECT_EQ(forced.device().instance_scan_parallel_min(), 1u);
+	EXPECT_EQ(fallback.device().instance_scan_parallel_min(), 512u);
 	EXPECT_EQ(engine::Renderer_Config{}.instance_scan_parallel_min, 512u) << "配置默认值应为 512";
-	fallback.instance_scan_parallel_min_set(0);
-	EXPECT_EQ(fallback.instance_scan_parallel_min(), 1u) << "0 应钳到 1";
-	fallback.instance_scan_parallel_min_set(100000);
-	EXPECT_EQ(fallback.instance_scan_parallel_min(), 65536u) << "超大值应钳到 65536";
-	fallback.instance_scan_parallel_min_set(512);
+	fallback.device().instance_scan_parallel_min_set(0);
+	EXPECT_EQ(fallback.device().instance_scan_parallel_min(), 1u) << "0 应钳到 1";
+	fallback.device().instance_scan_parallel_min_set(100000);
+	EXPECT_EQ(fallback.device().instance_scan_parallel_min(), 65536u) << "超大值应钳到 65536";
+	fallback.device().instance_scan_parallel_min_set(512);
 
 	//同一批实例矩阵
 	std::vector<std::array<float, 16>> matrices = instance_matrices(INSTANCE_COUNT);

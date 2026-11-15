@@ -172,7 +172,7 @@ TEST_F(Renderer_Stats_Test, 实际绘制量等于登记量)
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	//本用例验证「登记项完整性」，故关闭静态合批（合批会让相邻等价项合并为一次实例化绘制）
-	renderer.static_batching_set(false);
+	renderer.device().static_batching_set(false);
 	//三帧：分别登记 1 / 2 / 0 个绘制项
 	for (uint32_t index = 0; index < 2; ++index)
 		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
@@ -271,10 +271,10 @@ TEST_F(Renderer_Stats_Test, 关闭剔除后视锥外实例仍登记)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//默认开启
-	EXPECT_TRUE(renderer.cull_enabled());
+	EXPECT_TRUE(renderer.device().cull_enabled());
 	//关闭剔除
-	renderer.cull_enabled_set(false);
-	EXPECT_FALSE(renderer.cull_enabled());
+	renderer.device().cull_enabled_set(false);
+	EXPECT_FALSE(renderer.device().cull_enabled());
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	std::array<float, 16> matrix = translated_x(100.0f);
@@ -286,7 +286,7 @@ TEST_F(Renderer_Stats_Test, 关闭剔除后视锥外实例仍登记)
 	EXPECT_EQ(stats.culled_items, 0u);
 
 	//重新开启：同一实例被剔除
-	renderer.cull_enabled_set(true);
+	renderer.device().cull_enabled_set(true);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, matrix.data()));
 	ASSERT_TRUE(renderer.frame_render());
 	stats = renderer.frame_stats_get();
@@ -425,7 +425,7 @@ TEST_F(Renderer_Stats_Test, 最近一帧剔除量)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
-	ASSERT_TRUE(renderer.cull_enabled());
+	ASSERT_TRUE(renderer.device().cull_enabled());
 
 	//视锥外：平移 x = 100（列主序平移位于下标 12）
 	float transform[16] = {};
@@ -497,9 +497,9 @@ TEST_F(Renderer_Stats_Test, 离屏路径无呈现段)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 	//设为本帧渲染目标（无返回值入口）
-	renderer.render_target_set(target);
+	renderer.device().render_target_set(target);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
@@ -513,7 +513,7 @@ TEST_F(Renderer_Stats_Test, 离屏路径无呈现段)
 	EXPECT_LE(stats.host_record_ms + stats.host_submit_ms, stats.frame_ms + 0.01);
 
 	renderer.resource().mesh_unload(mesh);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*
@@ -562,8 +562,8 @@ TEST_F(Renderer_Stats_Test, 离屏累计不含呈现段)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
-	renderer.render_target_set(target);
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	renderer.device().render_target_set(target);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 2; ++index)
@@ -577,7 +577,7 @@ TEST_F(Renderer_Stats_Test, 离屏累计不含呈现段)
 	EXPECT_LE(stats.host_record_total_ms + stats.host_submit_total_ms, stats.frame_total_ms + 0.01);
 
 	renderer.resource().mesh_unload(mesh);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }
 
 /*

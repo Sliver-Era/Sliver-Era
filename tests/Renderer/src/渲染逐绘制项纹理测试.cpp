@@ -245,7 +245,7 @@ TEST_F(Renderer_Per_Draw_Texture_Test, 静态合批不跨纹理合并)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	apply_scene(renderer);
-	renderer.static_batching_set(true);
+	renderer.device().static_batching_set(true);
 	const uint64_t white_texture = solid_texture(renderer, 235, 235, 235);
 	const uint64_t black_texture = solid_texture(renderer, 20, 20, 20);
 	ASSERT_NE(white_texture, 0u);

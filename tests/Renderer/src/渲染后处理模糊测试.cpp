@@ -57,16 +57,16 @@ TEST_F(Renderer_Post_Chain_Test, 模糊半径可配)
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	//单级模糊链
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 	uint64_t pass = post_pipeline_register(renderer, "模糊.frag.spv");
 	ASSERT_NE(pass, 0u);
-	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-	renderer.render_target_present_set(target);
+	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+	renderer.device().render_target_present_set(target);
 
 	//按给定半径渲染一帧并量测中心区域对比度
 	auto render_with_radius = [&](float radius, std::vector<uint8_t>& pixels)
 	{
-		renderer.post_stage_param_set(0, 1.0f, 0.0f, radius);
+		renderer.device().post_stage_param_set(0, 1.0f, 0.0f, radius);
 		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		pixels.assign(pixel_bytes(), 0);
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
@@ -90,5 +90,5 @@ TEST_F(Renderer_Post_Chain_Test, 模糊半径可配)
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().texture_unload(texture);
 	renderer.resource().pipeline_unload(pass);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }

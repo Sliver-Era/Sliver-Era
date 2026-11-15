@@ -15,15 +15,15 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, shader);
 		EXPECT_NE(pass, 0u);
 		//链先于 present_set 设置（与既有遮蔽 / 反射用例同序）
-		EXPECT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.post_stage_param4_set(0, params[0], params[1], params[2], params[3]);
+		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().post_stage_param4_set(0, params[0], params[1], params[2], params[3]);
 		//描边色（默认黑 = 压暗轮廓）
-		renderer.post_stage_color_set(0, color[0], color[1], color[2]);
-		renderer.render_target_present_set(scene_target);
+		renderer.device().post_stage_color_set(0, color[0], color[1], color[2]);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle cube = 0;
 		EXPECT_TRUE(renderer.resource().mesh_cube_load(cube, 0.4f));
 		EXPECT_TRUE(renderer.resource().mesh_draw(cube, nullptr));
@@ -31,7 +31,7 @@ namespace
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		renderer.resource().mesh_unload(cube);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return pixels;
 	}
 }
@@ -70,9 +70,9 @@ TEST_F(Renderer_Post_Chain_Test, 深度描边在轮廓处产生差异)
 TEST_F(Renderer_Post_Chain_Test, 深度描边未初始化设置无副作用)
 {
 	engine::Renderer renderer;
-	renderer.post_stage_param4_set(0, 1.0f, 1.0f, 2.0f, 1.0f);
-	renderer.post_stage_color_set(0, 1.0f, 0.0f, 0.0f);
-	renderer.post_chain_set(nullptr, 0);
+	renderer.device().post_stage_param4_set(0, 1.0f, 1.0f, 2.0f, 1.0f);
+	renderer.device().post_stage_color_set(0, 1.0f, 0.0f, 0.0f);
+	renderer.device().post_chain_set(nullptr, 0);
 	SUCCEED();
 }
 

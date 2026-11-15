@@ -72,7 +72,7 @@ TEST_F(Renderer_Resource_Test, 资源计数随加载卸载变化)
 	ASSERT_TRUE(renderer.resource().texture_load(texture, pixel, 1, 1));
 	ASSERT_TRUE(renderer.ui().font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16));
 	ASSERT_TRUE(renderer.resource().pipeline_load(pipeline, "后处理.vert.spv", "反色.frag.spv"));
-	ASSERT_TRUE(renderer.render_target_create(target, 64, 64));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
 	ASSERT_TRUE(renderer.resource().material_load(material, engine::Material_Data{}));
 
 	engine::Renderer_Resource_Counts loaded = renderer.resource_counts();
@@ -87,7 +87,7 @@ TEST_F(Renderer_Resource_Test, 资源计数随加载卸载变化)
 
 	//卸载后回落
 	renderer.resource().material_unload(material);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 	renderer.resource().pipeline_unload(pipeline);
 	renderer.ui().font_unload(font);
 	renderer.resource().texture_unload(texture);
@@ -133,7 +133,7 @@ TEST_F(Renderer_Resource_Test, 后处理链采样数查询)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//未设链返回 0
 	uint32_t samples[4] = {};
-	EXPECT_EQ(renderer.post_chain_sample_counts(samples, 4), 0u);
+	EXPECT_EQ(renderer.device().post_chain_sample_counts(samples, 4), 0u);
 
 	//两条管线（单采样模式）
 	uint64_t first = 0;
@@ -141,20 +141,20 @@ TEST_F(Renderer_Resource_Test, 后处理链采样数查询)
 	ASSERT_TRUE(renderer.resource().pipeline_load(first, "后处理.vert.spv", "反色.frag.spv"));
 	ASSERT_TRUE(renderer.resource().pipeline_load(second, "后处理.vert.spv", "灰度.frag.spv"));
 	uint64_t chain[2] = { first, second };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 2));
 
 	//单采样下两级均应为 1
-	EXPECT_EQ(renderer.post_chain_sample_counts(samples, 4), 2u);
+	EXPECT_EQ(renderer.device().post_chain_sample_counts(samples, 4), 2u);
 	EXPECT_EQ(samples[0], 1u);
 	EXPECT_EQ(samples[1], 1u);
 	//容量 1 只写第一级
 	uint32_t one[1] = {};
-	EXPECT_EQ(renderer.post_chain_sample_counts(one, 1), 1u);
+	EXPECT_EQ(renderer.device().post_chain_sample_counts(one, 1), 1u);
 	EXPECT_EQ(one[0], 1u);
 	//空出参返回 0
-	EXPECT_EQ(renderer.post_chain_sample_counts(nullptr, 4), 0u);
+	EXPECT_EQ(renderer.device().post_chain_sample_counts(nullptr, 4), 0u);
 
-	renderer.post_chain_set(nullptr, 0);
+	renderer.device().post_chain_set(nullptr, 0);
 	renderer.resource().pipeline_unload(second);
 	renderer.resource().pipeline_unload(first);
 }

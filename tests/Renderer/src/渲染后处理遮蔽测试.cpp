@@ -45,11 +45,11 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽强度为零原样输出)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data()));
@@ -59,7 +59,7 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽强度为零原样输出)
 		renderer.resource().mesh_unload(receiver);
 		renderer.resource().mesh_unload(occluder);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 	//对照帧：遮蔽（强度 0）
 	std::vector<uint8_t> disabled(pixel_bytes());
@@ -69,12 +69,12 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽强度为零原样输出)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "屏幕空间遮蔽.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.post_stage_param4_set(0, 0.0f, 10.0f, 0.5f, 1.0f);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().post_stage_param4_set(0, 0.0f, 10.0f, 0.5f, 1.0f);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data()));
@@ -84,7 +84,7 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽强度为零原样输出)
 		renderer.resource().mesh_unload(receiver);
 		renderer.resource().mesh_unload(occluder);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 	int difference = max_channel_diff(reference, disabled);
 	RecordProperty("ssao_disabled_max_diff", difference);
@@ -106,11 +106,11 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽在一圈轮廓外压暗)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data()));
@@ -120,7 +120,7 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽在一圈轮廓外压暗)
 		renderer.resource().mesh_unload(receiver);
 		renderer.resource().mesh_unload(occluder);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 	//对照帧：遮蔽（强度 1）
 	std::vector<uint8_t> shaded(pixel_bytes());
@@ -130,12 +130,12 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽在一圈轮廓外压暗)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "屏幕空间遮蔽.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.post_stage_param4_set(0, 1.0f, 10.0f, 0.5f, 1.0f);
-		renderer.render_target_present_set(scene_target);
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().post_stage_param4_set(0, 1.0f, 10.0f, 0.5f, 1.0f);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle receiver = 0;
 		engine::Mesh_Handle occluder = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(receiver, quad_data()));
@@ -145,7 +145,7 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽在一圈轮廓外压暗)
 		renderer.resource().mesh_unload(receiver);
 		renderer.resource().mesh_unload(occluder);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 	}
 	//轮廓外压暗像素数
 	const uint32_t darker = darker_pixels(shaded, reference, 8.0f);

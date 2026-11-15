@@ -30,17 +30,17 @@ namespace
 		float first, float second, float third)
 	{
 		uint64_t target = 0;
-		EXPECT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+		EXPECT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
 		uint64_t pipeline = post_pipeline_register(renderer, frag);
 		EXPECT_NE(pipeline, 0u);
-		EXPECT_TRUE(renderer.post_chain_set(&pipeline, 1));
-		renderer.post_stage_param_set(0, first, second, third);
-		renderer.render_target_present_set(target);
+		EXPECT_TRUE(renderer.device().post_chain_set(&pipeline, 1));
+		renderer.device().post_stage_param_set(0, first, second, third);
+		renderer.device().render_target_present_set(target);
 		std::vector<uint8_t> pixels(pixel_bytes(), 0);
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-		renderer.render_target_present_set(0);
+		renderer.device().render_target_present_set(0);
 		renderer.resource().pipeline_unload(pipeline);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 		return pixels;
 	}
 }
@@ -211,20 +211,20 @@ TEST_F(Renderer_Post_Extra_Test, FXAA强度为零原样输出)
         //单级 FXAA（强度 0：用四参入口，避免三参入口的「强度须 > 0」校验）
         ASSERT_TRUE(renderer.resource().mesh_draw(quad, transform));
         uint64_t target = 0;
-        ASSERT_TRUE(renderer.render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
+        ASSERT_TRUE(renderer.resource().render_target_create(target, WINDOW_WIDTH, WINDOW_HEIGHT));
         uint64_t pipeline = post_pipeline_register(renderer, "FXAA.frag.spv");
         ASSERT_NE(pipeline, 0u);
-        ASSERT_TRUE(renderer.post_chain_set(&pipeline, 1));
-        renderer.post_stage_param4_set(0, 0.0f, 0.01f, 0.0f, 0.0f);
-        renderer.render_target_present_set(target);
+        ASSERT_TRUE(renderer.device().post_chain_set(&pipeline, 1));
+        renderer.device().post_stage_param4_set(0, 0.0f, 0.01f, 0.0f, 0.0f);
+        renderer.device().render_target_present_set(target);
         std::vector<uint8_t> disabled(pixel_bytes(), 0);
         ASSERT_TRUE(renderer.frame_render(disabled.data(), static_cast<uint32_t>(disabled.size())));
         int difference = max_channel_diff(reference, disabled);
         RecordProperty("fxaa_disabled_max_diff", difference);
         EXPECT_LE(difference, 2) << "强度 0 未原样输出（最大差 " << difference << "）";
-        renderer.render_target_present_set(0);
+        renderer.device().render_target_present_set(0);
         renderer.resource().pipeline_unload(pipeline);
-        renderer.render_target_destroy(target);
+        renderer.resource().render_target_destroy(target);
 
         renderer.resource().mesh_unload(quad);
 }

@@ -146,7 +146,7 @@ TEST_F(Renderer_Post_Process_Test, 未初始化设置无副作用)
 {
 	engine::Renderer renderer;
 	//未初始化时调用应静默返回（不崩溃）
-	renderer.render_target_present_set(1);
+	renderer.device().render_target_present_set(1);
 	EXPECT_FALSE(renderer.valid());
 }
 
@@ -158,7 +158,7 @@ TEST_F(Renderer_Post_Process_Test, 无效句柄回落)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设定一个未登记的目标句柄（应关闭该路径）
-	renderer.render_target_present_set(999);
+	renderer.device().render_target_present_set(999);
 	std::vector<uint8_t> pixels(pixel_bytes());
 	uint32_t width = 0;
 	uint32_t height = 0;
@@ -178,12 +178,12 @@ TEST_F(Renderer_Post_Process_Test, 同帧后处理呈现且画面正确)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//创建与交换链同尺寸的渲染目标
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 	ASSERT_NE(target, 0u);
 	//登记场景并设定「同帧后处理呈现」
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
-	renderer.render_target_present_set(target);
+	renderer.device().render_target_present_set(target);
 	std::vector<uint8_t> pixels(pixel_bytes());
 	uint32_t width = 0;
 	uint32_t height = 0;
@@ -199,7 +199,7 @@ TEST_F(Renderer_Post_Process_Test, 同帧后处理呈现且画面正确)
 	std::array<uint8_t, 4> corner = pixel_get(pixels, 1, 1);
 	EXPECT_TRUE(pixel_is_clear(corner)) << "角落被意外覆盖：像素 " << pixel_text(corner);
 	renderer.resource().mesh_unload(handle);
-	renderer.render_target_destroy(target);
+	renderer.resource().render_target_destroy(target);
 }
 
 //同场景下「同帧后处理呈现」与「直接走交换链路径」回读画面一致（后处理为 1:1 取回）
@@ -225,13 +225,13 @@ TEST_F(Renderer_Post_Process_Test, 与交换链路径画面一致)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
-		renderer.render_target_present_set(target);
+		renderer.device().render_target_present_set(target);
 		ASSERT_TRUE(renderer.frame_render(processed.data(), static_cast<uint32_t>(processed.size())));
 		renderer.resource().mesh_unload(handle);
-		renderer.render_target_destroy(target);
+		renderer.resource().render_target_destroy(target);
 	}
 	//两路径画面逐通道一致（仅容取整误差）
 	int difference = max_channel_diff(reference, processed);

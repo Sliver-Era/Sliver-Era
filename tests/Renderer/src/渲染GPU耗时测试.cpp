@@ -143,18 +143,18 @@ TEST_F(Renderer_Gpu_Test, 两级链GPU耗时随能力分支断言)
 	//场景目标与第二目标（与交换链同尺寸，满足后处理 1:1 取源）
 	uint64_t scene_target = 0;
 	uint64_t second_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
 	//登记两条后处理管线并设两级链
 	uint64_t invert = 0;
 	uint64_t threshold = 0;
 	ASSERT_TRUE(renderer.resource().pipeline_load(invert, "后处理.vert.spv", "反色.frag.spv"));
 	ASSERT_TRUE(renderer.resource().pipeline_load(threshold, "后处理.vert.spv", "亮度阈值.frag.spv"));
 	uint64_t chain[2] = { invert, threshold };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 2));
 	//设定同帧后处理呈现目标组（场景目标 ＋ 中间目标）
 	uint64_t chain_targets[2] = { scene_target, second_target };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 2));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 2));
 	//登记场景绘制
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
@@ -186,8 +186,8 @@ TEST_F(Renderer_Gpu_Test, 两级链GPU耗时随能力分支断言)
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().pipeline_unload(invert);
 	renderer.resource().pipeline_unload(threshold);
-	renderer.render_target_destroy(second_target);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(second_target);
+	renderer.resource().render_target_destroy(scene_target);
 }
 
 /*
@@ -231,11 +231,11 @@ TEST_F(Renderer_Gpu_Test, 后处理链GPU分解)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	uint64_t invert = 0;
 	ASSERT_TRUE(renderer.resource().pipeline_load(invert, "后处理.vert.spv", "反色.frag.spv"));
-	ASSERT_TRUE(renderer.post_chain_set(&invert, 1));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.device().post_chain_set(&invert, 1));
+	renderer.device().render_target_present_set(scene_target);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 	for (uint32_t index = 0; index < 4; ++index)
@@ -258,7 +258,7 @@ TEST_F(Renderer_Gpu_Test, 后处理链GPU分解)
 	}
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().pipeline_unload(invert);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 }
 
 /*

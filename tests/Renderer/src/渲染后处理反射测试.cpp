@@ -78,16 +78,16 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, shader);
 		EXPECT_NE(pass, 0u);
 		//链先于 present_set 设置（与既有遮蔽用例同序）
-		EXPECT_TRUE(renderer.post_chain_set(&pass, 1));
-		renderer.post_stage_param4_set(0, params[0], params[1], params[2], params[3]);
+		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));
+		renderer.device().post_stage_param4_set(0, params[0], params[1], params[2], params[3]);
 		//边缘淡出宽度（第三百七十七轮；仅反射级读取第三组推送的 x 分量）
 		if (edge >= 0.0f)
-			renderer.post_stage_color4_set(0, edge, 0.0f, 0.0f, 0.0f);
-		renderer.render_target_present_set(scene_target);
+			renderer.device().post_stage_color4_set(0, edge, 0.0f, 0.0f, 0.0f);
+		renderer.device().render_target_present_set(scene_target);
 		engine::Mesh_Handle mirror = 0;
 		EXPECT_TRUE(renderer.resource().mesh_load(mirror, quad_data()));
 		engine::Mesh_Handle target = 0;
@@ -98,7 +98,7 @@ namespace
 		renderer.resource().mesh_unload(mirror);
 		renderer.resource().mesh_unload(target);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		return pixels;
 	}
 }
@@ -137,8 +137,8 @@ TEST_F(Renderer_Post_Chain_Test, 反射在镜面上产生差异)
 TEST_F(Renderer_Post_Chain_Test, 反射未初始化设置无副作用)
 {
 	engine::Renderer renderer;
-	renderer.post_stage_param4_set(0, 1.0f, 0.5f, 8.0f, 1.0f);
-	renderer.post_chain_set(nullptr, 0);
+	renderer.device().post_stage_param4_set(0, 1.0f, 0.5f, 8.0f, 1.0f);
+	renderer.device().post_chain_set(nullptr, 0);
 	SUCCEED();
 }
 

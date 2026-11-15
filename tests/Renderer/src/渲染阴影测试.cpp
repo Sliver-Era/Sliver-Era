@@ -710,7 +710,7 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影pass分段录制画面一致)
 		if (!renderer.init(config) || !renderer.compute().readback_supported())
 			return pixels;
 		//关闭静态合批：避免相邻等价项被并成 1 项而达不到并行阈值
-		renderer.static_batching_set(false);
+		renderer.device().static_batching_set(false);
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_white();
 		if (!renderer.resource().texture_load(texture, texels.data(), 2, 2))

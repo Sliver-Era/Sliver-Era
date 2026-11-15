@@ -20,9 +20,9 @@ TEST_F(Renderer_Post_Chain_Test, 三级链亮部提取模糊灰度)
 	uint64_t scene_target = 0;
 	uint64_t second_target = 0;
 	uint64_t third_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(third_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(third_target, renderer.extent_width(), renderer.extent_height()));
 	//三级链：亮部提取 → 模糊 → 灰度
 	uint64_t bright = post_pipeline_register(renderer, "亮部提取.frag.spv");
 	uint64_t blur = post_pipeline_register(renderer, "模糊.frag.spv");
@@ -31,10 +31,10 @@ TEST_F(Renderer_Post_Chain_Test, 三级链亮部提取模糊灰度)
 	ASSERT_NE(blur, 0u);
 	ASSERT_NE(gray, 0u);
 	uint64_t chain[3] = { bright, blur, gray };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 3));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 3));
 	//目标组：场景目标 ＋ 两个额外中间目标
 	uint64_t chain_targets[3] = { scene_target, second_target, third_target };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 3));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 3));
 	//登记场景
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
@@ -57,9 +57,9 @@ TEST_F(Renderer_Post_Chain_Test, 三级链亮部提取模糊灰度)
 	renderer.resource().pipeline_unload(bright);
 	renderer.resource().pipeline_unload(blur);
 	renderer.resource().pipeline_unload(gray);
-	renderer.render_target_destroy(third_target);
-	renderer.render_target_destroy(second_target);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(third_target);
+	renderer.resource().render_target_destroy(second_target);
+	renderer.resource().render_target_destroy(scene_target);
 }
 
 /*
@@ -76,27 +76,27 @@ TEST_F(Renderer_Post_Chain_Test, 二级链模糊确实参与)
 	//两个目标（场景目标 ＋ 模糊级宿）
 	uint64_t scene_target = 0;
 	uint64_t second_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
 	uint64_t bright = post_pipeline_register(renderer, "亮部提取.frag.spv");
 	uint64_t blur = post_pipeline_register(renderer, "模糊.frag.spv");
 	ASSERT_NE(bright, 0u);
 	ASSERT_NE(blur, 0u);
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
-	renderer.render_target_present_set(scene_target);
+	renderer.device().render_target_present_set(scene_target);
 
 	//第一帧：单级「亮部提取」
-	ASSERT_TRUE(renderer.post_chain_set(&bright, 1));
+	ASSERT_TRUE(renderer.device().post_chain_set(&bright, 1));
 	std::vector<uint8_t> single_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(single_pixels.data(), static_cast<uint32_t>(single_pixels.size())));
 
 	//第二帧：二级链「亮部提取 → 模糊」（同一场景重登记绘制项）
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	uint64_t chain[2] = { bright, blur };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 2));
 	uint64_t chain_targets[2] = { scene_target, second_target };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 2));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 2));
 	std::vector<uint8_t> blurred_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(blurred_pixels.data(), static_cast<uint32_t>(blurred_pixels.size())));
 
@@ -113,8 +113,8 @@ TEST_F(Renderer_Post_Chain_Test, 二级链模糊确实参与)
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().pipeline_unload(bright);
 	renderer.resource().pipeline_unload(blur);
-	renderer.render_target_destroy(second_target);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(second_target);
+	renderer.resource().render_target_destroy(scene_target);
 }
 
 /*
@@ -128,16 +128,16 @@ TEST_F(Renderer_Post_Chain_Test, 目标组不足时回落)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	//两级链「反色 → 亮度阈值」：若被误执行则中心纯黑、角落纯白
 	uint64_t invert = post_pipeline_register(renderer, "反色.frag.spv");
 	uint64_t threshold = post_pipeline_register(renderer, "亮度阈值.frag.spv");
 	ASSERT_NE(invert, 0u);
 	ASSERT_NE(threshold, 0u);
 	uint64_t chain[2] = { invert, threshold };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 2));
 	//只设一个目标（目标组不足 2 个）
-	renderer.render_target_present_set(scene_target);
+	renderer.device().render_target_present_set(scene_target);
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
 	std::vector<uint8_t> pixels(pixel_bytes());
@@ -155,7 +155,7 @@ TEST_F(Renderer_Post_Chain_Test, 目标组不足时回落)
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().pipeline_unload(invert);
 	renderer.resource().pipeline_unload(threshold);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 }
 
 /*
@@ -182,19 +182,19 @@ TEST_F(Renderer_Post_Chain_Test, 双源叠加形成泛光)
 		uint64_t gray_texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(gray_texture, gray_pixels.data(), 16, 16));
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
-		ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
+		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
 		renderer.resource().texture_bind_set(gray_texture);
 		engine::Mesh_Handle handle = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
-		renderer.render_target_present_set(scene_target);
+		renderer.device().render_target_present_set(scene_target);
 		ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().pipeline_unload(pass);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		renderer.resource().texture_unload(gray_texture);
 	}
 	//对照帧：三级叠加链（3 个目标 > 链长）
@@ -209,9 +209,9 @@ TEST_F(Renderer_Post_Chain_Test, 双源叠加形成泛光)
 		uint64_t scene_target = 0;
 		uint64_t second_target = 0;
 		uint64_t third_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-		ASSERT_TRUE(renderer.render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
-		ASSERT_TRUE(renderer.render_target_create(third_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(third_target, renderer.extent_width(), renderer.extent_height()));
 		uint64_t bright = post_pipeline_register(renderer, "亮部提取.frag.spv");
 		uint64_t blur = post_pipeline_register(renderer, "模糊.frag.spv");
 		uint64_t overlay = post_pipeline_register(renderer, "泛光叠加.frag.spv");
@@ -219,9 +219,9 @@ TEST_F(Renderer_Post_Chain_Test, 双源叠加形成泛光)
 		ASSERT_NE(blur, 0u);
 		ASSERT_NE(overlay, 0u);
 		uint64_t chain[3] = { bright, blur, overlay };
-		ASSERT_TRUE(renderer.post_chain_set(chain, 3));
+		ASSERT_TRUE(renderer.device().post_chain_set(chain, 3));
 		uint64_t chain_targets[3] = { scene_target, second_target, third_target };
-		ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 3));
+		ASSERT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 3));
 		renderer.resource().texture_bind_set(gray_texture);
 		engine::Mesh_Handle handle = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
@@ -231,9 +231,9 @@ TEST_F(Renderer_Post_Chain_Test, 双源叠加形成泛光)
 		renderer.resource().pipeline_unload(bright);
 		renderer.resource().pipeline_unload(blur);
 		renderer.resource().pipeline_unload(overlay);
-		renderer.render_target_destroy(third_target);
-		renderer.render_target_destroy(second_target);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(third_target);
+		renderer.resource().render_target_destroy(second_target);
+		renderer.resource().render_target_destroy(scene_target);
 		renderer.resource().texture_unload(gray_texture);
 	}
 
@@ -274,16 +274,16 @@ TEST_F(Renderer_Post_Chain_Test, 半尺寸目标链可用)
 	//全尺寸场景目标 ＋ 半尺寸中间目标
 	uint64_t scene_target = 0;
 	uint64_t half_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(half_target, renderer.extent_width() / 2, renderer.extent_height() / 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(half_target, renderer.extent_width() / 2, renderer.extent_height() / 2));
 	uint64_t bright = post_pipeline_register(renderer, "亮部提取.frag.spv");
 	uint64_t blur = post_pipeline_register(renderer, "模糊.frag.spv");
 	ASSERT_NE(bright, 0u);
 	ASSERT_NE(blur, 0u);
 	uint64_t chain[2] = { bright, blur };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 2));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 2));
 	uint64_t chain_targets[2] = { scene_target, half_target };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 2));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 2));
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
 	std::vector<uint8_t> pixels(pixel_bytes());
@@ -301,8 +301,8 @@ TEST_F(Renderer_Post_Chain_Test, 半尺寸目标链可用)
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().pipeline_unload(bright);
 	renderer.resource().pipeline_unload(blur);
-	renderer.render_target_destroy(half_target);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(half_target);
+	renderer.resource().render_target_destroy(scene_target);
 }
 
 /*
@@ -325,10 +325,10 @@ TEST_F(Renderer_Post_Chain_Test, 降采样泛光扩散更广)
 	uint64_t target1 = 0;
 	uint64_t target2 = 0;
 	uint64_t target3 = 0;
-	ASSERT_TRUE(renderer.render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
-	ASSERT_TRUE(renderer.render_target_create(target2, renderer.extent_width() / 2, renderer.extent_height() / 2));
-	ASSERT_TRUE(renderer.render_target_create(target3, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(target2, renderer.extent_width() / 2, renderer.extent_height() / 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(target3, renderer.extent_width(), renderer.extent_height()));
 	uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 	uint64_t bright = post_pipeline_register(renderer, "亮部提取.frag.spv");
 	uint64_t blur = post_pipeline_register(renderer, "模糊.frag.spv");
@@ -342,27 +342,27 @@ TEST_F(Renderer_Post_Chain_Test, 降采样泛光扩散更广)
 	renderer.resource().texture_bind_set(gray_texture);
 
 	//参考帧：无泛光（直通）
-	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
+	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
 	uint64_t ref_targets[1] = { target0 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(ref_targets, 1));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(ref_targets, 1));
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> reference(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 
 	//单级模糊：t0 → t1（半）→ t3（全）→ 叠加
 	uint64_t single_chain[3] = { bright, blur, overlay };
-	ASSERT_TRUE(renderer.post_chain_set(single_chain, 3));
+	ASSERT_TRUE(renderer.device().post_chain_set(single_chain, 3));
 	uint64_t single_targets[3] = { target0, target1, target3 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(single_targets, 3));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(single_targets, 3));
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> single_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(single_pixels.data(), static_cast<uint32_t>(single_pixels.size())));
 
 	//双级模糊：t0 → t1（半）→ t2（半）→ t3（全）→ 叠加
 	uint64_t double_chain[4] = { bright, blur, blur, overlay };
-	ASSERT_TRUE(renderer.post_chain_set(double_chain, 4));
+	ASSERT_TRUE(renderer.device().post_chain_set(double_chain, 4));
 	uint64_t double_targets[4] = { target0, target1, target2, target3 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(double_targets, 4));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(double_targets, 4));
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> double_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(double_pixels.data(), static_cast<uint32_t>(double_pixels.size())));
@@ -389,10 +389,10 @@ TEST_F(Renderer_Post_Chain_Test, 降采样泛光扩散更广)
 	renderer.resource().pipeline_unload(bright);
 	renderer.resource().pipeline_unload(blur);
 	renderer.resource().pipeline_unload(overlay);
-	renderer.render_target_destroy(target3);
-	renderer.render_target_destroy(target2);
-	renderer.render_target_destroy(target1);
-	renderer.render_target_destroy(target0);
+	renderer.resource().render_target_destroy(target3);
+	renderer.resource().render_target_destroy(target2);
+	renderer.resource().render_target_destroy(target1);
+	renderer.resource().render_target_destroy(target0);
 	renderer.resource().texture_unload(gray_texture);
 }
 
@@ -414,10 +414,10 @@ TEST_F(Renderer_Post_Chain_Test, 升采样链可用)
 	uint64_t target1 = 0;
 	uint64_t target2 = 0;
 	uint64_t target3 = 0;
-	ASSERT_TRUE(renderer.render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
-	ASSERT_TRUE(renderer.render_target_create(target2, renderer.extent_width() / 2, renderer.extent_height() / 2));
-	ASSERT_TRUE(renderer.render_target_create(target3, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(target2, renderer.extent_width() / 2, renderer.extent_height() / 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(target3, renderer.extent_width(), renderer.extent_height()));
 	uint64_t bright = post_pipeline_register(renderer, "亮部提取.frag.spv");
 	uint64_t blur = post_pipeline_register(renderer, "模糊.frag.spv");
 	uint64_t upsample = post_pipeline_register(renderer, "升采样.frag.spv");
@@ -427,9 +427,9 @@ TEST_F(Renderer_Post_Chain_Test, 升采样链可用)
 	ASSERT_NE(upsample, 0u);
 	ASSERT_NE(overlay, 0u);
 	uint64_t chain[4] = { bright, blur, upsample, overlay };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 4));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 4));
 	uint64_t chain_targets[4] = { target0, target1, target2, target3 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 4));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 4));
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
@@ -450,10 +450,10 @@ TEST_F(Renderer_Post_Chain_Test, 升采样链可用)
 	renderer.resource().pipeline_unload(blur);
 	renderer.resource().pipeline_unload(upsample);
 	renderer.resource().pipeline_unload(overlay);
-	renderer.render_target_destroy(target3);
-	renderer.render_target_destroy(target2);
-	renderer.render_target_destroy(target1);
-	renderer.render_target_destroy(target0);
+	renderer.resource().render_target_destroy(target3);
+	renderer.resource().render_target_destroy(target2);
+	renderer.resource().render_target_destroy(target1);
+	renderer.resource().render_target_destroy(target0);
 	renderer.resource().texture_unload(gray_texture);
 }
 
@@ -479,10 +479,10 @@ TEST_F(Renderer_Post_Chain_Test, 多级降采样链扩散更广)
 	uint64_t target1 = 0;
 	uint64_t target2 = 0;
 	uint64_t target3 = 0;
-	ASSERT_TRUE(renderer.render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
-	ASSERT_TRUE(renderer.render_target_create(target2, renderer.extent_width() / 4, renderer.extent_height() / 4));
-	ASSERT_TRUE(renderer.render_target_create(target3, renderer.extent_width() / 2, renderer.extent_height() / 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(target2, renderer.extent_width() / 4, renderer.extent_height() / 4));
+	ASSERT_TRUE(renderer.resource().render_target_create(target3, renderer.extent_width() / 2, renderer.extent_height() / 2));
 	uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 	uint64_t bright = post_pipeline_register(renderer, "亮部提取.frag.spv");
 	uint64_t blur = post_pipeline_register(renderer, "模糊.frag.spv");
@@ -496,27 +496,27 @@ TEST_F(Renderer_Post_Chain_Test, 多级降采样链扩散更广)
 	renderer.resource().texture_bind_set(gray_texture);
 
 	//参考帧：无泛光
-	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
+	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
 	uint64_t ref_targets[1] = { target0 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(ref_targets, 1));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(ref_targets, 1));
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> reference(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 
 	//单级半尺寸模糊（同第 18 轮：t0 → t1（半）→ t3（半）→ 叠加）
 	uint64_t single_chain[3] = { bright, blur, overlay };
-	ASSERT_TRUE(renderer.post_chain_set(single_chain, 3));
+	ASSERT_TRUE(renderer.device().post_chain_set(single_chain, 3));
 	uint64_t single_targets[3] = { target0, target1, target3 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(single_targets, 3));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(single_targets, 3));
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> single_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(single_pixels.data(), static_cast<uint32_t>(single_pixels.size())));
 
 	//多级：t0 → t1（半）→ t2（四分之一）→ t3（半）→ 交换链
 	uint64_t multi_chain[4] = { bright, blur, blur, overlay };
-	ASSERT_TRUE(renderer.post_chain_set(multi_chain, 4));
+	ASSERT_TRUE(renderer.device().post_chain_set(multi_chain, 4));
 	uint64_t multi_targets[4] = { target0, target1, target2, target3 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(multi_targets, 4));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(multi_targets, 4));
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> multi_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(multi_pixels.data(), static_cast<uint32_t>(multi_pixels.size())));
@@ -539,10 +539,10 @@ TEST_F(Renderer_Post_Chain_Test, 多级降采样链扩散更广)
 	renderer.resource().pipeline_unload(bright);
 	renderer.resource().pipeline_unload(blur);
 	renderer.resource().pipeline_unload(overlay);
-	renderer.render_target_destroy(target3);
-	renderer.render_target_destroy(target2);
-	renderer.render_target_destroy(target1);
-	renderer.render_target_destroy(target0);
+	renderer.resource().render_target_destroy(target3);
+	renderer.resource().render_target_destroy(target2);
+	renderer.resource().render_target_destroy(target1);
+	renderer.resource().render_target_destroy(target0);
 	renderer.resource().texture_unload(gray_texture);
 }
 
@@ -564,9 +564,9 @@ TEST_F(Renderer_Post_Chain_Test, 泛光参数生效)
 	uint64_t target0 = 0;
 	uint64_t target1 = 0;
 	uint64_t target2 = 0;
-	ASSERT_TRUE(renderer.render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
-	ASSERT_TRUE(renderer.render_target_create(target2, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(target2, renderer.extent_width(), renderer.extent_height()));
 	uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 	uint64_t bright = post_pipeline_register(renderer, "亮部提取.frag.spv");
 	uint64_t blur = post_pipeline_register(renderer, "模糊.frag.spv");
@@ -580,30 +580,30 @@ TEST_F(Renderer_Post_Chain_Test, 泛光参数生效)
 	renderer.resource().texture_bind_set(gray_texture);
 
 	//参考帧：直通
-	ASSERT_TRUE(renderer.post_chain_set(&pass, 1));
+	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
 	uint64_t ref_targets[1] = { target0 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(ref_targets, 1));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(ref_targets, 1));
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> reference(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(reference.data(), static_cast<uint32_t>(reference.size())));
 
 	//默认参数泛光（t0 → t1（半）→ t2（全）→ 叠加）
 	uint64_t chain[3] = { bright, blur, overlay };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 3));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 3));
 	uint64_t chain_targets[3] = { target0, target1, target2 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 3));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 3));
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> full_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(full_pixels.data(), static_cast<uint32_t>(full_pixels.size())));
 
 	//强度 0.1（灰 0.72 + 0.072 = 0.79 未饱和，可与默认 1.0 区分）
-	renderer.bloom_param_set(0.6f, 0.1f, 0.1f);
+	renderer.device().bloom_param_set(0.6f, 0.1f, 0.1f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> half_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(half_pixels.data(), static_cast<uint32_t>(half_pixels.size())));
 
 	//阈值 0.9（灰 0.72 被提零）
-	renderer.bloom_param_set(0.9f, 0.1f, 1.0f);
+	renderer.device().bloom_param_set(0.9f, 0.1f, 1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> high_threshold_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(high_threshold_pixels.data(), static_cast<uint32_t>(high_threshold_pixels.size())));
@@ -624,15 +624,15 @@ TEST_F(Renderer_Post_Chain_Test, 泛光参数生效)
 		<< "阈值 0.9 未把中灰提零（仍有泛光）";
 
 	//恢复默认参数（避免影响后续用例语义）
-	renderer.bloom_param_set(0.6f, 0.1f, 1.0f);
+	renderer.device().bloom_param_set(0.6f, 0.1f, 1.0f);
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().pipeline_unload(pass);
 	renderer.resource().pipeline_unload(bright);
 	renderer.resource().pipeline_unload(blur);
 	renderer.resource().pipeline_unload(overlay);
-	renderer.render_target_destroy(target2);
-	renderer.render_target_destroy(target1);
-	renderer.render_target_destroy(target0);
+	renderer.resource().render_target_destroy(target2);
+	renderer.resource().render_target_destroy(target1);
+	renderer.resource().render_target_destroy(target0);
 	renderer.resource().texture_unload(gray_texture);
 }
 
@@ -655,9 +655,9 @@ TEST_F(Renderer_Post_Chain_Test, 逐级泛光参数覆盖全局)
 	uint64_t target0 = 0;
 	uint64_t target1 = 0;
 	uint64_t target2 = 0;
-	ASSERT_TRUE(renderer.render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
-	ASSERT_TRUE(renderer.render_target_create(target2, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width() / 2, renderer.extent_height() / 2));
+	ASSERT_TRUE(renderer.resource().render_target_create(target2, renderer.extent_width(), renderer.extent_height()));
 	uint64_t bright = post_pipeline_register(renderer, "亮部提取.frag.spv");
 	uint64_t blur = post_pipeline_register(renderer, "模糊.frag.spv");
 	uint64_t overlay = post_pipeline_register(renderer, "泛光叠加.frag.spv");
@@ -665,28 +665,28 @@ TEST_F(Renderer_Post_Chain_Test, 逐级泛光参数覆盖全局)
 	ASSERT_NE(blur, 0u);
 	ASSERT_NE(overlay, 0u);
 	uint64_t chain[3] = { bright, blur, overlay };
-	ASSERT_TRUE(renderer.post_chain_set(chain, 3));
+	ASSERT_TRUE(renderer.device().post_chain_set(chain, 3));
 	uint64_t chain_targets[3] = { target0, target1, target2 };
-	ASSERT_TRUE(renderer.render_target_present_chain_set(chain_targets, 3));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 3));
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	renderer.resource().texture_bind_set(gray_texture);
 
 	//全局阈值 0.9 的对照帧
-	renderer.bloom_param_set(0.9f, 0.1f, 1.0f);
+	renderer.device().bloom_param_set(0.9f, 0.1f, 1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> global_high(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(global_high.data(), static_cast<uint32_t>(global_high.size())));
 
 	//复位全局参数，仅第 0 级设 0.9
-	renderer.bloom_param_set(0.6f, 0.1f, 1.0f);
-	renderer.post_stage_param_set(0, 0.9f, 0.1f, 1.0f);
+	renderer.device().bloom_param_set(0.6f, 0.1f, 1.0f);
+	renderer.device().post_stage_param_set(0, 0.9f, 0.1f, 1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> stage_high(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(stage_high.data(), static_cast<uint32_t>(stage_high.size())));
 
 	//链外级序：整次忽略（画面应仍等于逐级 0.9 的结果）
-	renderer.post_stage_param_set(5, 0.6f, 0.1f, 1.0f);
+	renderer.device().post_stage_param_set(5, 0.6f, 0.1f, 1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> invalid_stage(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(invalid_stage.data(), static_cast<uint32_t>(invalid_stage.size())));
@@ -708,8 +708,8 @@ TEST_F(Renderer_Post_Chain_Test, 逐级泛光参数覆盖全局)
 	renderer.resource().pipeline_unload(bright);
 	renderer.resource().pipeline_unload(blur);
 	renderer.resource().pipeline_unload(overlay);
-	renderer.render_target_destroy(target2);
-	renderer.render_target_destroy(target1);
-	renderer.render_target_destroy(target0);
+	renderer.resource().render_target_destroy(target2);
+	renderer.resource().render_target_destroy(target1);
+	renderer.resource().render_target_destroy(target0);
 	renderer.resource().texture_unload(gray_texture);
 }

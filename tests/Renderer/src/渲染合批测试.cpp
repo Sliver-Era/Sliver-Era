@@ -25,7 +25,7 @@ TEST_F(Renderer_Scene_Test, 相邻同等绘制自动合批)
 		ASSERT_TRUE(renderer.init(hidden_config()));
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
-		ASSERT_TRUE(renderer.static_batching()) << "合批默认应开启";
+		ASSERT_TRUE(renderer.device().static_batching()) << "合批默认应开启";
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 		for (uint32_t index = 0; index < 5; ++index)
 			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
@@ -42,7 +42,7 @@ TEST_F(Renderer_Scene_Test, 相邻同等绘制自动合批)
 		engine::Renderer_Config config = hidden_config();
 		config.static_batching = false;
 		ASSERT_TRUE(renderer.init(config));
-		ASSERT_FALSE(renderer.static_batching());
+		ASSERT_FALSE(renderer.device().static_batching());
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 		for (uint32_t index = 0; index < 5; ++index)
 			ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
@@ -133,8 +133,8 @@ TEST_F(Renderer_Scene_Test, 合批开关运行时可切换)
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//关闭合批：3 项全部实际绘制
-	renderer.static_batching_set(false);
-	ASSERT_FALSE(renderer.static_batching());
+	renderer.device().static_batching_set(false);
+	ASSERT_FALSE(renderer.device().static_batching());
 	uint64_t before = renderer.frame_stats_get().drawn_items;
 	for (uint32_t index = 0; index < 3; ++index)
 		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
@@ -142,8 +142,8 @@ TEST_F(Renderer_Scene_Test, 合批开关运行时可切换)
 	const uint64_t plain_delta = renderer.frame_stats_get().drawn_items - before;
 
 	//开启合批：3 项合并为 1 次实例化绘制
-	renderer.static_batching_set(true);
-	ASSERT_TRUE(renderer.static_batching());
+	renderer.device().static_batching_set(true);
+	ASSERT_TRUE(renderer.device().static_batching());
 	before = renderer.frame_stats_get().drawn_items;
 	for (uint32_t index = 0; index < 3; ++index)
 		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
@@ -365,7 +365,7 @@ TEST_F(Renderer_Scene_Test, 合批收益可观测)
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
 	//关闭合批：不产生合并
-	renderer.static_batching_set(false);
+	renderer.device().static_batching_set(false);
 	for (uint32_t index = 0; index < 5; ++index)
 		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
@@ -374,7 +374,7 @@ TEST_F(Renderer_Scene_Test, 合批收益可观测)
 	EXPECT_EQ(plain.merged_items, 0u);
 
 	//开启合批：5 项合并为 1 项
-	renderer.static_batching_set(true);
+	renderer.device().static_batching_set(true);
 	for (uint32_t index = 0; index < 5; ++index)
 		ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	ASSERT_TRUE(renderer.frame_render());

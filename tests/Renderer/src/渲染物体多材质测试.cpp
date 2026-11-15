@@ -65,8 +65,8 @@ TEST_F(Renderer_Scene_Test, 索引区间只画该区间)
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//离屏目标（保证每帧附加清屏，避免跨帧残留干扰覆盖统计）
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	renderer.device().render_target_present_set(scene_target);
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
@@ -121,7 +121,7 @@ TEST_F(Renderer_Scene_Test, 索引区间只画该区间)
 	EXPECT_GT(half_lit, full_lit / 4) << "半段几乎未绘制（半段 " << half_lit << " / 整段 " << full_lit << "）";
 
 	renderer.resource().mesh_unload(mesh);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().texture_unload(texture);
 }
 
@@ -140,8 +140,8 @@ TEST_F(Renderer_Scene_Test, 索引区间越界被拒绝)
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//离屏目标（保证每帧附加清屏，避免跨帧残留干扰覆盖统计）
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	renderer.device().render_target_present_set(scene_target);
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
@@ -169,7 +169,7 @@ TEST_F(Renderer_Scene_Test, 索引区间越界被拒绝)
 	EXPECT_LE(difference, 2) << "越界区间未被拒绝（最大差 " << difference << "）";
 
 	renderer.resource().mesh_unload(mesh);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().texture_unload(texture);
 }
 
@@ -191,8 +191,8 @@ TEST_F(Renderer_Scene_Test, 多材质分段使用两个材质)
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//离屏目标（保证每帧附加清屏，避免跨帧残留干扰覆盖统计）
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	renderer.render_target_present_set(scene_target);
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	renderer.device().render_target_present_set(scene_target);
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
@@ -249,7 +249,7 @@ TEST_F(Renderer_Scene_Test, 多材质分段使用两个材质)
 	renderer.resource().material_unload(red);
 	renderer.resource().material_unload(blue);
 	renderer.resource().mesh_unload(mesh);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().texture_unload(texture);
 }
 

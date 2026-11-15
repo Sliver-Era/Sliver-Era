@@ -73,15 +73,15 @@ TEST_F(Renderer_Post_Chain_Test, 恒等查找表不改变画面)
 		uint64_t stage = post_pipeline_register(renderer, "色彩查找.frag.spv");
 		ASSERT_NE(stage, 0u);
 		//绑定查找表并把该管线设为单级链
-		renderer.post_lut_bind(lut);
-		EXPECT_EQ(renderer.post_lut_get(), lut);
-		ASSERT_TRUE(renderer.post_chain_set(&stage, 1));
+		renderer.device().post_lut_bind(lut);
+		EXPECT_EQ(renderer.device().post_lut_get(), lut);
+		ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
 		//场景目标与同帧呈现
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
-		renderer.render_target_present_set(scene_target);
+		renderer.device().render_target_present_set(scene_target);
 		ASSERT_TRUE(renderer.frame_render(chained.data(), static_cast<uint32_t>(chained.size())));
 		//恒等表不改变颜色
 		int difference = max_channel_diff(reference, chained);
@@ -89,7 +89,7 @@ TEST_F(Renderer_Post_Chain_Test, 恒等查找表不改变画面)
 		EXPECT_LE(difference, CHAIN_TOLERANCE) << "恒等查找表改变了画面（最大逐通道差 " << difference << "）";
 		renderer.resource().mesh_unload(handle);
 		renderer.resource().pipeline_unload(stage);
-		renderer.render_target_destroy(scene_target);
+		renderer.resource().render_target_destroy(scene_target);
 		renderer.resource().texture_unload(lut);
 	}
 }
@@ -111,16 +111,16 @@ TEST_F(Renderer_Post_Chain_Test, 反色查找表反转颜色)
 	ASSERT_TRUE(renderer.resource().texture_load(lut, lut_pixels.data(), 4, 2));
 	uint64_t stage = post_pipeline_register(renderer, "色彩查找.frag.spv");
 	ASSERT_NE(stage, 0u);
-	renderer.post_lut_bind(lut);
-	ASSERT_TRUE(renderer.post_chain_set(&stage, 1));
+	renderer.device().post_lut_bind(lut);
+	ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
 	//逐级参数 x = 1（全量）
-	renderer.post_stage_param_set(0, 1.0f, 0.0f, 1.0f);
+	renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 1.0f);
 	//场景目标与同帧呈现
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
-	renderer.render_target_present_set(scene_target);
+	renderer.device().render_target_present_set(scene_target);
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	//中心（白 → 黑）
@@ -132,7 +132,7 @@ TEST_F(Renderer_Post_Chain_Test, 反色查找表反转颜色)
 	EXPECT_GE(*std::min_element(corner.begin(), corner.begin() + 3), 200)
 		<< "角落未反色为亮色：" << pixel_text(corner);
 	//强度归零 → 关闭该级（中心回白；逐帧登记绘制项后重新出帧）
-	renderer.post_stage_param_set(0, 0.0f, 0.0f, 1.0f);
+	renderer.device().post_stage_param_set(0, 0.0f, 0.0f, 1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	std::array<uint8_t, 4> restored = pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -140,7 +140,7 @@ TEST_F(Renderer_Post_Chain_Test, 反色查找表反转颜色)
 		<< "强度归零后中心未回白：" << pixel_text(restored);
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().pipeline_unload(stage);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().texture_unload(lut);
 }
 
@@ -160,14 +160,14 @@ TEST_F(Renderer_Post_Chain_Test, 反色查找表半量混合)
 	ASSERT_TRUE(renderer.resource().texture_load(lut, lut_pixels.data(), 4, 2));
 	uint64_t stage = post_pipeline_register(renderer, "色彩查找.frag.spv");
 	ASSERT_NE(stage, 0u);
-	renderer.post_lut_bind(lut);
-	ASSERT_TRUE(renderer.post_chain_set(&stage, 1));
-	renderer.post_stage_param_set(0, 0.5f, 0.0f, 1.0f);
+	renderer.device().post_lut_bind(lut);
+	ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
+	renderer.device().post_stage_param_set(0, 0.5f, 0.0f, 1.0f);
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
-	renderer.render_target_present_set(scene_target);
+	renderer.device().render_target_present_set(scene_target);
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	std::array<uint8_t, 4> center = pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -178,7 +178,7 @@ TEST_F(Renderer_Post_Chain_Test, 反色查找表半量混合)
 	EXPECT_LE(brightness, 205u) << "半量混合未生效：" << pixel_text(center);
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().pipeline_unload(stage);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().texture_unload(lut);
 }
 
@@ -217,21 +217,21 @@ TEST_F(Renderer_Post_Chain_Test, 查找表绑定可观测)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//未绑定
-	EXPECT_EQ(renderer.post_lut_get(), 0u);
+	EXPECT_EQ(renderer.device().post_lut_get(), 0u);
 	//合法绑定
 	uint64_t lut = 0;
 	ASSERT_TRUE(renderer.resource().texture_load_lut_identity(lut, 5));
-	renderer.post_lut_bind(lut);
-	EXPECT_EQ(renderer.post_lut_get(), lut);
+	renderer.device().post_lut_bind(lut);
+	EXPECT_EQ(renderer.device().post_lut_get(), lut);
 	//未登记句柄不改变原绑定
-	renderer.post_lut_bind(12345);
-	EXPECT_EQ(renderer.post_lut_get(), lut);
+	renderer.device().post_lut_bind(12345);
+	EXPECT_EQ(renderer.device().post_lut_get(), lut);
 	//句柄 0 表示清除绑定（第一百五十七轮）
-	renderer.post_lut_bind(0);
-	EXPECT_EQ(renderer.post_lut_get(), 0u);
+	renderer.device().post_lut_bind(0);
+	EXPECT_EQ(renderer.device().post_lut_get(), 0u);
 	//未初始化查询为 0
 	engine::Renderer uninitialized;
-	EXPECT_EQ(uninitialized.post_lut_get(), 0u);
+	EXPECT_EQ(uninitialized.device().post_lut_get(), 0u);
 	renderer.resource().texture_unload(lut);
 }
 
@@ -254,13 +254,13 @@ TEST_F(Renderer_Post_Chain_Test, 查找表运行时切换)
 	ASSERT_TRUE(renderer.resource().texture_load(inverse_lut, inverse_pixels.data(), 4, 2));
 	uint64_t stage = post_pipeline_register(renderer, "色彩查找.frag.spv");
 	ASSERT_NE(stage, 0u);
-	ASSERT_TRUE(renderer.post_chain_set(&stage, 1));
-	renderer.post_stage_param_set(0, 1.0f, 0.0f, 1.0f);
+	ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
+	renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 1.0f);
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
-	renderer.render_target_present_set(scene_target);
+	renderer.device().render_target_present_set(scene_target);
 
 	//渲染一帧并返回像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
@@ -272,29 +272,29 @@ TEST_F(Renderer_Post_Chain_Test, 查找表运行时切换)
 	};
 
 	//基线：恒等表
-	renderer.post_lut_bind(identity_lut);
+	renderer.device().post_lut_bind(identity_lut);
 	std::vector<uint8_t> baseline = render_frame();
 	std::array<uint8_t, 4> baseline_center = pixel_get(baseline, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	EXPECT_GE(*std::min_element(baseline_center.begin(), baseline_center.begin() + 3), SATURATION_THRESHOLD)
 		<< "恒等表下中心未保持亮白";
 
 	//切换到反色表：中心变黑
-	renderer.post_lut_bind(inverse_lut);
-	EXPECT_EQ(renderer.post_lut_get(), inverse_lut);
+	renderer.device().post_lut_bind(inverse_lut);
+	EXPECT_EQ(renderer.device().post_lut_get(), inverse_lut);
 	std::vector<uint8_t> inverted = render_frame();
 	std::array<uint8_t, 4> inverted_center = pixel_get(inverted, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	EXPECT_LE(*std::max_element(inverted_center.begin(), inverted_center.begin() + 3), DARK_THRESHOLD)
 		<< "切换反色表后中心未变黑：" << pixel_text(inverted_center);
 
 	//切回恒等表：逐字节回到基线
-	renderer.post_lut_bind(identity_lut);
-	EXPECT_EQ(renderer.post_lut_get(), identity_lut);
+	renderer.device().post_lut_bind(identity_lut);
+	EXPECT_EQ(renderer.device().post_lut_get(), identity_lut);
 	std::vector<uint8_t> restored = render_frame();
 	EXPECT_EQ(max_channel_diff(restored, baseline), 0) << "切回恒等表后画面未还原";
 
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().pipeline_unload(stage);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().texture_unload(identity_lut);
 	renderer.resource().texture_unload(inverse_lut);
 }
@@ -315,13 +315,13 @@ TEST_F(Renderer_Post_Chain_Test, 清除查找表绑定)
 	ASSERT_TRUE(renderer.resource().texture_load(lut, inverse_pixels.data(), 4, 2));
 	uint64_t stage = post_pipeline_register(renderer, "色彩查找.frag.spv");
 	ASSERT_NE(stage, 0u);
-	ASSERT_TRUE(renderer.post_chain_set(&stage, 1));
-	renderer.post_stage_param_set(0, 1.0f, 0.0f, 1.0f);
+	ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
+	renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 1.0f);
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
-	renderer.render_target_present_set(scene_target);
+	renderer.device().render_target_present_set(scene_target);
 
 	//渲染一帧并返回像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
@@ -333,14 +333,14 @@ TEST_F(Renderer_Post_Chain_Test, 清除查找表绑定)
 	};
 
 	//绑定反色表：中心变黑
-	renderer.post_lut_bind(lut);
+	renderer.device().post_lut_bind(lut);
 	std::vector<uint8_t> inverted = render_frame();
 	std::array<uint8_t, 4> inverted_center = pixel_get(inverted, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	EXPECT_LE(*std::max_element(inverted_center.begin(), inverted_center.begin() + 3), DARK_THRESHOLD);
 
 	//清除绑定：句柄归零，查找级退化为原样输出
-	renderer.post_lut_bind(0);
-	EXPECT_EQ(renderer.post_lut_get(), 0u) << "清除后句柄未归零";
+	renderer.device().post_lut_bind(0);
+	EXPECT_EQ(renderer.device().post_lut_get(), 0u) << "清除后句柄未归零";
 	std::vector<uint8_t> cleared = render_frame();
 	std::array<uint8_t, 4> cleared_center = pixel_get(cleared, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	EXPECT_GE(*std::min_element(cleared_center.begin(), cleared_center.begin() + 3), SATURATION_THRESHOLD)
@@ -351,6 +351,6 @@ TEST_F(Renderer_Post_Chain_Test, 清除查找表绑定)
 
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().pipeline_unload(stage);
-	renderer.render_target_destroy(scene_target);
+	renderer.resource().render_target_destroy(scene_target);
 	renderer.resource().texture_unload(lut);
 }

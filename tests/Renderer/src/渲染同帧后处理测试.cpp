@@ -178,7 +178,7 @@ TEST_F(Renderer_Post_Process_Test, 同帧后处理呈现且画面正确)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//创建与交换链同尺寸的渲染目标
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 	ASSERT_NE(target, 0u);
 	//登记场景并设定「同帧后处理呈现」
 	engine::Mesh_Handle handle = 0;
@@ -225,7 +225,7 @@ TEST_F(Renderer_Post_Process_Test, 与交换链路径画面一致)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		renderer.device().render_target_present_set(target);

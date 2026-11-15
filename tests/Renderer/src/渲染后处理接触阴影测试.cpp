@@ -54,7 +54,7 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, frag);
 		EXPECT_NE(pass, 0u);
 		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -123,7 +123,7 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "接触阴影.frag.spv");
 		EXPECT_NE(pass, 0u);
 		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -178,7 +178,7 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "接触阴影.frag.spv");
 		EXPECT_NE(pass, 0u);
 		EXPECT_TRUE(renderer.device().post_chain_set(&pass, 1));

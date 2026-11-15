@@ -116,10 +116,10 @@ TEST(Renderer_Ssaa_Test, UninitializedGuard)
 {
 	//未初始化的渲染器
 	engine::Renderer renderer;
-	EXPECT_EQ(renderer.ssaa_factor(), 1u);
+	EXPECT_EQ(renderer.device().ssaa_factor(), 1u);
 	//未初始化时设置应静默忽略
-	renderer.ssaa_factor_set(4);
-	EXPECT_EQ(renderer.ssaa_factor(), 1u);
+	renderer.device().ssaa_factor_set(4);
+	EXPECT_EQ(renderer.device().ssaa_factor(), 1u);
 }
 
 //初始化时倍率越界被钳制，运行时设置同样钳制（0 → 1、>4 → 4）
@@ -130,16 +130,16 @@ TEST(Renderer_Ssaa_Test, FactorClamp)
 	config.ssaa_factor = 9;
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(config));
-	EXPECT_EQ(renderer.ssaa_factor(), 4u);
+	EXPECT_EQ(renderer.device().ssaa_factor(), 4u);
 	//运行时设置 0 → 关闭
-	renderer.ssaa_factor_set(0);
-	EXPECT_EQ(renderer.ssaa_factor(), 1u);
+	renderer.device().ssaa_factor_set(0);
+	EXPECT_EQ(renderer.device().ssaa_factor(), 1u);
 	//运行时设置 9 → 4
-	renderer.ssaa_factor_set(9);
-	EXPECT_EQ(renderer.ssaa_factor(), 4u);
+	renderer.device().ssaa_factor_set(9);
+	EXPECT_EQ(renderer.device().ssaa_factor(), 4u);
 	//设置为 3
-	renderer.ssaa_factor_set(3);
-	EXPECT_EQ(renderer.ssaa_factor(), 3u);
+	renderer.device().ssaa_factor_set(3);
+	EXPECT_EQ(renderer.device().ssaa_factor(), 3u);
 }
 
 //2× 超采样：对角线边缘出现中间色；关闭时边缘保持硬边

@@ -282,7 +282,7 @@ TEST_F(Renderer_Thread_Test, 并行录制场景通道与单线程一致)
 		//关闭静态合批：本用例要求 64 个独立绘制项（合批会把同管线的相邻项并成 1 项）
 		renderer.device().static_batching_set(false);
 		uint64_t scene_target = 0;
-		if (!renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
+		if (!renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()))
 			return false;
 		uint64_t pass = 0;
 		if (!renderer.resource().pipeline_load(pass, "后处理.vert.spv", "后处理.frag.spv"))
@@ -426,7 +426,7 @@ TEST_F(Renderer_Thread_Test, 并行录制离屏目标路径与单线程一致)
 		//关闭静态合批：保持 64 个独立绘制项（≥ 32 才启用并行录制）
 		renderer.device().static_batching_set(false);
 		uint64_t target = 0;
-		if (!renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()))
+		if (!renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()))
 			return false;
 		renderer.device().render_target_set(target);
 		engine::Mesh_Handle quad = 0;
@@ -489,7 +489,7 @@ TEST_F(Renderer_Thread_Test, MSAA下并行录制与单线程一致)
 		engine::Renderer_Config probe_config = hidden_config();
 		probe_config.msaa_samples = 4;
 		ASSERT_TRUE(probe.init(probe_config));
-		if (probe.msaa_samples() <= 1)
+		if (probe.device().msaa_samples() <= 1)
 			GTEST_SKIP() << "当前设备不支持 MSAA";
 		if (!probe.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
@@ -503,11 +503,11 @@ TEST_F(Renderer_Thread_Test, MSAA下并行录制与单线程一致)
 		engine::Renderer renderer;
 		if (!renderer.init(config))
 			return false;
-		if (renderer.msaa_samples() <= 1)
+		if (renderer.device().msaa_samples() <= 1)
 			return false;
 		renderer.device().static_batching_set(false);
 		uint64_t scene_target = 0;
-		if (!renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
+		if (!renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()))
 			return false;
 		uint64_t pass = 0;
 		if (!renderer.resource().pipeline_load(pass, "后处理.vert.spv", "深度描边.frag.spv"))

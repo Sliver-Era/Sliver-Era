@@ -497,7 +497,7 @@ TEST_F(Renderer_Stats_Test, 离屏路径无呈现段)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 	//设为本帧渲染目标（无返回值入口）
 	renderer.device().render_target_set(target);
 	engine::Mesh_Handle mesh = 0;
@@ -562,7 +562,7 @@ TEST_F(Renderer_Stats_Test, 离屏累计不含呈现段)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 	renderer.device().render_target_set(target);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));

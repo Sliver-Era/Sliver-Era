@@ -20,7 +20,7 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "体积雾.frag.spv");
 		EXPECT_NE(pass, 0u);
 		//链先于 present_set 设置（与既有反射用例同序）
@@ -92,7 +92,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾关闭原样输出)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 	ASSERT_NE(pass, 0u);
 	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -170,8 +170,8 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾多级链取源)
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t target0 = 0;
 		uint64_t target1 = 0;
-		EXPECT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-		EXPECT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target0, renderer.device().extent_width(), renderer.device().extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target1, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t fog_pass = post_pipeline_register(renderer, fog_shader);
 		uint64_t invert_pass = post_pipeline_register(renderer, "反色.frag.spv");
 		EXPECT_NE(fog_pass, 0u);
@@ -238,7 +238,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾步数开销)
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config));
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "体积雾.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -328,7 +328,7 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾密度噪声)
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config));
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "体积雾.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -386,8 +386,8 @@ TEST_F(Renderer_Post_Chain_Test, 体积雾与深度描边组合)
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t target0 = 0;
 		uint64_t target1 = 0;
-		EXPECT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-		EXPECT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target0, renderer.device().extent_width(), renderer.device().extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target1, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t first = post_pipeline_register(renderer, first_shader);
 		uint64_t outline_pass = post_pipeline_register(renderer, "深度描边.frag.spv");
 		EXPECT_NE(first, 0u);
@@ -452,8 +452,8 @@ TEST_F(Renderer_Post_Chain_Test, 四级链目标轮转)
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t target0 = 0;
 		uint64_t target1 = 0;
-		EXPECT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-		EXPECT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target0, renderer.device().extent_width(), renderer.device().extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(target1, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t first = post_pipeline_register(renderer, first_shader);
 		uint64_t outline_pass = post_pipeline_register(renderer, "深度描边.frag.spv");
 		uint64_t gray = post_pipeline_register(renderer, "灰度.frag.spv");

@@ -34,7 +34,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深对焦面保持清晰)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -54,7 +54,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深对焦面保持清晰)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "景深.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -101,7 +101,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深离焦使边缘变软)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -121,7 +121,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深离焦使边缘变软)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "景深.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -167,7 +167,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深最大模糊近零近似直通)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -187,7 +187,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深最大模糊近零近似直通)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "景深.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -223,7 +223,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深在MSAA下区分对焦与离焦)
 		if (!renderer.compute().readback_supported())
 			return false;
 		uint64_t scene_target = 0;
-		if (!renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()))
+		if (!renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()))
 			return false;
 		uint64_t pass = post_pipeline_register(renderer, "景深.frag.spv");
 		if (pass == 0)
@@ -268,7 +268,7 @@ TEST_F(Renderer_Post_Chain_Test, 景深在MSAA下区分对焦与离焦)
 	//支持多重采样才继续（本用例只验证 > 1× 的行为）
 	engine::Renderer msaa_probe;
 	ASSERT_TRUE(msaa_probe.init(msaa_config(4)));
-	if (msaa_probe.msaa_samples() <= 1)
+	if (msaa_probe.device().msaa_samples() <= 1)
 		GTEST_SKIP() << "当前设备不支持 MSAA";
 
 	//1× 基线

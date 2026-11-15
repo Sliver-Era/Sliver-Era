@@ -37,7 +37,7 @@ TEST_F(Renderer_Scene_Test, 覆盖率写入单采样下画面不变)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
-	ASSERT_EQ(renderer.msaa_samples(), 1u) << "本用例要求 1×（未开 MSAA）";
+	ASSERT_EQ(renderer.device().msaa_samples(), 1u) << "本用例要求 1×（未开 MSAA）";
 
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
@@ -99,7 +99,7 @@ TEST_F(Renderer_Scene_Test, 多重采样下覆盖率降低透明覆盖)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设备不支持多重采样则跳过（本用例只验证 > 1× 的行为）
-	if (renderer.msaa_samples() < 2)
+	if (renderer.device().msaa_samples() < 2)
 		GTEST_SKIP() << "本机不支持多重采样";
 
 	engine::Mesh_Handle quad = 0;
@@ -143,7 +143,7 @@ TEST_F(Renderer_Scene_Test, 多重采样下覆盖率降低透明覆盖)
 	RecordProperty("coverage_msaa_mixed", static_cast<int>(mixed_center));
 	RecordProperty("coverage_msaa_covered", static_cast<int>(covered_center));
 	RecordProperty("coverage_msaa_restored", static_cast<int>(restored_center));
-	RecordProperty("coverage_msaa_samples", static_cast<int>(renderer.msaa_samples()));
+	RecordProperty("coverage_msaa_samples", static_cast<int>(renderer.device().msaa_samples()));
 
 	EXPECT_GE(mixed_center, 140u) << "基线面片过暗（用例前提不成立）";
 	EXPECT_LE(covered_center, mixed_center - 25u) << "覆盖率写入未减少透明覆盖";
@@ -168,7 +168,7 @@ TEST_F(Renderer_Scene_Test, 覆盖率写入不透明档产生覆盖)
 	ASSERT_TRUE(renderer.init(config));
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
-	if (renderer.msaa_samples() < 2)
+	if (renderer.device().msaa_samples() < 2)
 		GTEST_SKIP() << "本机不支持多重采样";
 
 	engine::Mesh_Handle quad = 0;

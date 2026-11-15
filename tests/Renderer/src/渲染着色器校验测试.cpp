@@ -123,8 +123,8 @@ TEST_F(Renderer_Shader_Test, 着色器失败后回滚契约)
 	ASSERT_FALSE(renderer.init(shader_config(shader_missing_dir)));
 	EXPECT_FALSE(renderer.valid());
 	//交换链尺寸归零（交换链已随回滚销毁）
-	EXPECT_EQ(renderer.extent_width(), 0u);
-	EXPECT_EQ(renderer.extent_height(), 0u);
+	EXPECT_EQ(renderer.device().extent_width(), 0u);
+	EXPECT_EQ(renderer.device().extent_height(), 0u);
 	//资源计数全部归零（网格 / 纹理 / 管线 / 字体 / 渲染目标 / 材质）
 	const engine::Renderer_Resource_Counts counts = renderer.resource_counts();
 	EXPECT_EQ(counts.meshes, 0u);

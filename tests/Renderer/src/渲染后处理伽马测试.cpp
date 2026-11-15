@@ -36,7 +36,7 @@ TEST_F(Renderer_Post_Chain_Test, 伽马校正改变中间调)
 
 	//单级伽马链
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 	uint64_t pass = post_pipeline_register(renderer, "伽马校正.frag.spv");
 	ASSERT_NE(pass, 0u);
 	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));

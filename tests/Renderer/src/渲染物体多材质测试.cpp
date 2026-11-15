@@ -65,7 +65,7 @@ TEST_F(Renderer_Scene_Test, 索引区间只画该区间)
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//离屏目标（保证每帧附加清屏，避免跨帧残留干扰覆盖统计）
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	renderer.device().render_target_present_set(scene_target);
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -140,7 +140,7 @@ TEST_F(Renderer_Scene_Test, 索引区间越界被拒绝)
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//离屏目标（保证每帧附加清屏，避免跨帧残留干扰覆盖统计）
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	renderer.device().render_target_present_set(scene_target);
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
@@ -191,7 +191,7 @@ TEST_F(Renderer_Scene_Test, 多材质分段使用两个材质)
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//离屏目标（保证每帧附加清屏，避免跨帧残留干扰覆盖统计）
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	renderer.device().render_target_present_set(scene_target);
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};

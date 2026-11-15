@@ -78,7 +78,7 @@ TEST_F(Renderer_Post_Chain_Test, 恒等查找表不改变画面)
 		ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
 		//场景目标与同帧呈现
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		engine::Mesh_Handle handle = 0;
 		scene_register(renderer, handle);
 		renderer.device().render_target_present_set(scene_target);
@@ -117,7 +117,7 @@ TEST_F(Renderer_Post_Chain_Test, 反色查找表反转颜色)
 	renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 1.0f);
 	//场景目标与同帧呈现
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
 	renderer.device().render_target_present_set(scene_target);
@@ -164,7 +164,7 @@ TEST_F(Renderer_Post_Chain_Test, 反色查找表半量混合)
 	ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
 	renderer.device().post_stage_param_set(0, 0.5f, 0.0f, 1.0f);
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
 	renderer.device().render_target_present_set(scene_target);
@@ -257,7 +257,7 @@ TEST_F(Renderer_Post_Chain_Test, 查找表运行时切换)
 	ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
 	renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 1.0f);
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
 	renderer.device().render_target_present_set(scene_target);
@@ -318,7 +318,7 @@ TEST_F(Renderer_Post_Chain_Test, 清除查找表绑定)
 	ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
 	renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 1.0f);
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	engine::Mesh_Handle handle = 0;
 	scene_register(renderer, handle);
 	renderer.device().render_target_present_set(scene_target);

@@ -83,7 +83,7 @@ TEST_F(Renderer_Post_Chain_Test, 胶片颗粒增加高频噪声)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "胶片颗粒.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -190,7 +190,7 @@ TEST_F(Renderer_Post_Chain_Test, 像素化形成马赛克块)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "像素化.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));

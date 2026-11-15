@@ -120,7 +120,7 @@ class Renderer_Swapchain_Rebuild_Test : public ::testing::Test
 TEST_F(Renderer_Swapchain_Rebuild_Test, 未初始化设置尺寸失败)
 {
 	engine::Renderer renderer;
-	EXPECT_FALSE(renderer.window_size_set(160, 120));
+	EXPECT_FALSE(renderer.device().window_size_set(160, 120));
 }
 
 //尺寸为零被拒且不改动当前交换链范围
@@ -129,11 +129,11 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 尺寸为零被拒)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//零尺寸被拒
-	EXPECT_FALSE(renderer.window_size_set(0, 100));
-	EXPECT_FALSE(renderer.window_size_set(100, 0));
+	EXPECT_FALSE(renderer.device().window_size_set(0, 100));
+	EXPECT_FALSE(renderer.device().window_size_set(100, 0));
 	//被拒不改动当前交换链范围（未触发重建）
-	EXPECT_EQ(renderer.extent_width(), INIT_WIDTH);
-	EXPECT_EQ(renderer.extent_height(), INIT_HEIGHT);
+	EXPECT_EQ(renderer.device().extent_width(), INIT_WIDTH);
+	EXPECT_EQ(renderer.device().extent_height(), INIT_HEIGHT);
 }
 
 //设置尺寸后重建在下一帧兑现（范围与回读尺寸随新尺寸）
@@ -144,17 +144,17 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 设置尺寸后下一帧兑现重建)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设置新尺寸（重建尚未发生，范围暂不变）
-	ASSERT_TRUE(renderer.window_size_set(160, 120));
-	EXPECT_EQ(renderer.extent_width(), INIT_WIDTH);
-	EXPECT_EQ(renderer.extent_height(), INIT_HEIGHT);
+	ASSERT_TRUE(renderer.device().window_size_set(160, 120));
+	EXPECT_EQ(renderer.device().extent_width(), INIT_WIDTH);
+	EXPECT_EQ(renderer.device().extent_height(), INIT_HEIGHT);
 	//出帧一帧即兑现重建
 	std::vector<uint8_t> pixels(static_cast<std::size_t>(160) * 120 * 4);
 	uint32_t width = 0;
 	uint32_t height = 0;
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()), &width, &height));
 	//交换链范围与回读尺寸均为新尺寸
-	EXPECT_EQ(renderer.extent_width(), 160u);
-	EXPECT_EQ(renderer.extent_height(), 120u);
+	EXPECT_EQ(renderer.device().extent_width(), 160u);
+	EXPECT_EQ(renderer.device().extent_height(), 120u);
 	EXPECT_EQ(width, 160u);
 	EXPECT_EQ(height, 120u);
 	//帧计数推进
@@ -183,7 +183,7 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 连续三次改尺寸重建出帧)
 	for (const std::pair<uint32_t, uint32_t>& size : sizes)
 	{
 		//改尺寸
-		ASSERT_TRUE(renderer.window_size_set(size.first, size.second));
+		ASSERT_TRUE(renderer.device().window_size_set(size.first, size.second));
 		//出帧（回读目标按新尺寸准备）
 		std::vector<uint8_t> pixels(static_cast<std::size_t>(size.first) * size.second * 4);
 		uint32_t width = 0;
@@ -193,8 +193,8 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 连续三次改尺寸重建出帧)
 		++expected_frames;
 		EXPECT_EQ(renderer.frame_count(), expected_frames);
 		//交换链范围与回读尺寸均为本次新尺寸
-		EXPECT_EQ(renderer.extent_width(), size.first);
-		EXPECT_EQ(renderer.extent_height(), size.second);
+		EXPECT_EQ(renderer.device().extent_width(), size.first);
+		EXPECT_EQ(renderer.device().extent_height(), size.second);
 		EXPECT_EQ(width, size.first);
 		EXPECT_EQ(height, size.second);
 		//四角与中心均为清屏色（重建后画面一致）
@@ -212,7 +212,7 @@ TEST_F(Renderer_Swapchain_Rebuild_Test, 重建后几何仍生效)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//先改尺寸并出帧一次，使新尺寸交换链生效
-	ASSERT_TRUE(renderer.window_size_set(160, 120));
+	ASSERT_TRUE(renderer.device().window_size_set(160, 120));
 	std::vector<uint8_t> warmup(static_cast<std::size_t>(160) * 120 * 4);
 	ASSERT_TRUE(renderer.frame_render(warmup.data(), static_cast<uint32_t>(warmup.size())));
 	//回落内置默认白纹理，加载覆盖视口中央的四边形并登记绘制

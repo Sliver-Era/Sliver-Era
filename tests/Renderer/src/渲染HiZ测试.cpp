@@ -564,7 +564,7 @@ TEST_F(Renderer_HiZ_Test, MSAA路径生成与剔除)
 	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	//设备未启用 4× 时本用例不适用
-	if (renderer.msaa_samples() < 4)
+	if (renderer.device().msaa_samples() < 4)
 		GTEST_SKIP() << "本机不支持 4× MSAA";
 	renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
 	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);

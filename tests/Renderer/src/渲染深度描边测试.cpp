@@ -15,7 +15,7 @@ namespace
 		engine::Renderer renderer;
 		EXPECT_TRUE(renderer.init(hidden_config()));
 		uint64_t scene_target = 0;
-		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		EXPECT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, shader);
 		EXPECT_NE(pass, 0u);
 		//链先于 present_set 设置（与既有遮蔽 / 反射用例同序）

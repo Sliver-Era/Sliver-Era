@@ -46,8 +46,8 @@ TEST_F(Renderer_Init_Test, 默认构造未初始化)
 	//帧计数为零
 	EXPECT_EQ(renderer.frame_count(), 0u);
 	//交换链尺寸为零
-	EXPECT_EQ(renderer.extent_width(), 0u);
-	EXPECT_EQ(renderer.extent_height(), 0u);
+	EXPECT_EQ(renderer.device().extent_width(), 0u);
+	EXPECT_EQ(renderer.device().extent_height(), 0u);
 	//未初始化时推进一帧失败
 	EXPECT_FALSE(renderer.frame_render());
 	//未初始化时窗口不请求退出
@@ -104,8 +104,8 @@ TEST_F(Renderer_Init_Test, 隐藏窗口初始化与幂等关闭)
 	//已初始化
 	EXPECT_TRUE(renderer.valid());
 	//交换链尺寸非零
-	EXPECT_GT(renderer.extent_width(), 0u);
-	EXPECT_GT(renderer.extent_height(), 0u);
+	EXPECT_GT(renderer.device().extent_width(), 0u);
+	EXPECT_GT(renderer.device().extent_height(), 0u);
 	//隐藏窗口不请求退出
 	EXPECT_FALSE(renderer.close_requested());
 	//首次关闭

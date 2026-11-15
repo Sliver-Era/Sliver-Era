@@ -45,7 +45,7 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽强度为零原样输出)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -69,7 +69,7 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽强度为零原样输出)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "屏幕空间遮蔽.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -106,7 +106,7 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽在一圈轮廓外压暗)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -130,7 +130,7 @@ TEST_F(Renderer_Post_Chain_Test, 遮蔽在一圈轮廓外压暗)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "屏幕空间遮蔽.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));

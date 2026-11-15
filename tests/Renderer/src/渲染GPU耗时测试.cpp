@@ -143,8 +143,8 @@ TEST_F(Renderer_Gpu_Test, 两级链GPU耗时随能力分支断言)
 	//场景目标与第二目标（与交换链同尺寸，满足后处理 1:1 取源）
 	uint64_t scene_target = 0;
 	uint64_t second_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.resource().render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(second_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	//登记两条后处理管线并设两级链
 	uint64_t invert = 0;
 	uint64_t threshold = 0;
@@ -231,7 +231,7 @@ TEST_F(Renderer_Gpu_Test, 后处理链GPU分解)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	uint64_t invert = 0;
 	ASSERT_TRUE(renderer.resource().pipeline_load(invert, "后处理.vert.spv", "反色.frag.spv"));
 	ASSERT_TRUE(renderer.device().post_chain_set(&invert, 1));

@@ -30,28 +30,28 @@ TEST_F(Renderer_Window_Test, 全屏切换与查询)
 {
 	engine::Renderer renderer;
 	//未初始化守卫
-	EXPECT_FALSE(renderer.window_fullscreen_set(true));
-	EXPECT_FALSE(renderer.window_fullscreen());
+	EXPECT_FALSE(renderer.device().window_fullscreen_set(true));
+	EXPECT_FALSE(renderer.device().window_fullscreen());
 
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//初始非全屏
-	EXPECT_FALSE(renderer.window_fullscreen());
+	EXPECT_FALSE(renderer.device().window_fullscreen());
 	//尝试进入全屏（隐藏窗口下可能被后端拒绝）
-	bool entered = renderer.window_fullscreen_set(true);
+	bool entered = renderer.device().window_fullscreen_set(true);
 	if (entered)
-		EXPECT_TRUE(renderer.window_fullscreen());
+		EXPECT_TRUE(renderer.device().window_fullscreen());
 	//退出全屏后必须为非全屏
-	EXPECT_TRUE(renderer.window_fullscreen_set(false));
-	EXPECT_FALSE(renderer.window_fullscreen());
+	EXPECT_TRUE(renderer.device().window_fullscreen_set(false));
+	EXPECT_FALSE(renderer.device().window_fullscreen());
 }
 
 //显示缩放：正数且不小于 1（未初始化时回落 1）
 TEST_F(Renderer_Window_Test, 显示缩放查询)
 {
 	engine::Renderer renderer;
-	EXPECT_FLOAT_EQ(renderer.display_scale(), 1.0f);
+	EXPECT_FLOAT_EQ(renderer.device().display_scale(), 1.0f);
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	float scale = renderer.display_scale();
+	float scale = renderer.device().display_scale();
 	EXPECT_GT(scale, 0.0f);
 	EXPECT_GE(scale, 1.0f);
 }

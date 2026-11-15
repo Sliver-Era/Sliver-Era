@@ -18,7 +18,7 @@ TEST_F(Renderer_Post_Chain_Test, 暗角压暗边角)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "后处理.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -38,7 +38,7 @@ TEST_F(Renderer_Post_Chain_Test, 暗角压暗边角)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t vignette = post_pipeline_register(renderer, "暗角.frag.spv");
 		ASSERT_NE(vignette, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&vignette, 1));
@@ -90,7 +90,7 @@ TEST_F(Renderer_Post_Chain_Test, 对比度放大明暗差)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t contrast = post_pipeline_register(renderer, "对比度.frag.spv");
 		ASSERT_NE(contrast, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&contrast, 1));
@@ -143,7 +143,7 @@ TEST_F(Renderer_Post_Chain_Test, 饱和度放大通道差)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t saturation = post_pipeline_register(renderer, "饱和度.frag.spv");
 		ASSERT_NE(saturation, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&saturation, 1));
@@ -188,8 +188,8 @@ TEST_F(Renderer_Post_Chain_Test, 后处理级数可观测)
 	//两级链所需的目标（两级各一）与管线
 	uint64_t scene_target = 0;
 	uint64_t second_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.resource().render_target_create(second_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(second_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	uint64_t invert = post_pipeline_register(renderer, "反色.frag.spv");
 	uint64_t threshold = post_pipeline_register(renderer, "亮度阈值.frag.spv");
 	ASSERT_NE(invert, 0u);
@@ -315,8 +315,8 @@ TEST_F(Renderer_Post_Chain_Test, 文字经后处理链保持)
 	//两级反色恒等链
 	uint64_t target0 = 0;
 	uint64_t target1 = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(target0, renderer.extent_width(), renderer.extent_height()));
-	ASSERT_TRUE(renderer.resource().render_target_create(target1, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target0, renderer.device().extent_width(), renderer.device().extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target1, renderer.device().extent_width(), renderer.device().extent_height()));
 	uint64_t invert_a = post_pipeline_register(renderer, "反色.frag.spv");
 	uint64_t invert_b = post_pipeline_register(renderer, "反色.frag.spv");
 	ASSERT_NE(invert_a, 0u);
@@ -464,7 +464,7 @@ TEST_F(Renderer_Post_Chain_Test, 锐化放大边缘对比)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "锐化.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));
@@ -564,7 +564,7 @@ TEST_F(Renderer_Post_Chain_Test, 色差分离红蓝通道)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t aberration = post_pipeline_register(renderer, "色差.frag.spv");
 		ASSERT_NE(aberration, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&aberration, 1));
@@ -674,7 +674,7 @@ TEST_F(Renderer_Post_Chain_Test, 色调分离产生色带)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t pass = post_pipeline_register(renderer, "色调分离.frag.spv");
 		ASSERT_NE(pass, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));

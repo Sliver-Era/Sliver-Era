@@ -214,8 +214,8 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 未初始化设置采样器状态无副
 {
 	engine::Renderer renderer;
 	//未初始化时能力查询应为保守值
-	EXPECT_FALSE(renderer.sampler_anisotropy_supported());
-	EXPECT_FLOAT_EQ(renderer.sampler_max_anisotropy(), 1.0f);
+	EXPECT_FALSE(renderer.device().sampler_anisotropy_supported());
+	EXPECT_FLOAT_EQ(renderer.device().sampler_max_anisotropy(), 1.0f);
 	//未初始化时设置状态应静默返回（不崩溃）
 	engine::Texture_Sampler_State state;
 	state.anisotropy = true;
@@ -232,13 +232,13 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性能力可查询)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//设备上限恒不小于 1
-	float max_anisotropy = renderer.sampler_max_anisotropy();
+	float max_anisotropy = renderer.device().sampler_max_anisotropy();
 	EXPECT_GE(max_anisotropy, 1.0f);
 	//未启用该特性时必须为 1（本层归一结果）
-	if (!renderer.sampler_anisotropy_supported())
+	if (!renderer.device().sampler_anisotropy_supported())
 		EXPECT_FLOAT_EQ(max_anisotropy, 1.0f);
 	//打印便于人工核对（本机若支持通常为 16）
-	RecordProperty("sampler_anisotropy_supported", renderer.sampler_anisotropy_supported() ? "true" : "false");
+	RecordProperty("sampler_anisotropy_supported", renderer.device().sampler_anisotropy_supported() ? "true" : "false");
 	RecordProperty("sampler_max_anisotropy", max_anisotropy);
 }
 
@@ -260,7 +260,7 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性与细节层级设置后仍
 	//第一帧：开启各向异性（倍数取设备上限）并启用 mip 过滤
 	engine::Texture_Sampler_State anisotropic;
 	anisotropic.anisotropy = true;
-	anisotropic.max_anisotropy = renderer.sampler_max_anisotropy();
+	anisotropic.max_anisotropy = renderer.device().sampler_max_anisotropy();
 	anisotropic.mip_filter = true;
 	renderer.resource().texture_sampler_state_set(anisotropic);
 	renderer.resource().texture_bind_set(texture);
@@ -276,7 +276,7 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性与细节层级设置后仍
 	//第二帧：显式收窄细节层级（minLod = maxLod = 0，等价于只看第 0 级）并重复设置同一状态（应为空操作）
 	engine::Texture_Sampler_State narrowed;
 	narrowed.anisotropy = true;
-	narrowed.max_anisotropy = renderer.sampler_max_anisotropy();
+	narrowed.max_anisotropy = renderer.device().sampler_max_anisotropy();
 	narrowed.mip_filter = true;
 	narrowed.min_lod = 0.0f;
 	narrowed.max_lod = 0.0f;
@@ -414,7 +414,7 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性开关产生像素级差异
 	engine::Texture_Sampler_State anisotropic;
 	anisotropic.mip_filter = true;
 	anisotropic.anisotropy = true;
-	anisotropic.max_anisotropy = renderer.sampler_max_anisotropy();
+	anisotropic.max_anisotropy = renderer.device().sampler_max_anisotropy();
 	renderer.resource().texture_sampler_state_set(anisotropic);
 	renderer.resource().texture_bind_set(texture);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, oblique.data()));
@@ -437,8 +437,8 @@ TEST_F(Renderer_Sampler_Anisotropy_Test, 各向异性开关产生像素级差异
 	*/
 	int difference = max_channel_diff(isotropic, anisotropic_frame);
 	RecordProperty("anisotropy_pixel_diff", difference);
-	RecordProperty("anisotropy_supported", renderer.sampler_anisotropy_supported() ? "true" : "false");
-	RecordProperty("anisotropy_max", renderer.sampler_max_anisotropy());
+	RecordProperty("anisotropy_supported", renderer.device().sampler_anisotropy_supported() ? "true" : "false");
+	RecordProperty("anisotropy_max", renderer.device().sampler_max_anisotropy());
 
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().texture_unload(texture);

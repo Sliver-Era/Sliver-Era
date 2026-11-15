@@ -415,7 +415,7 @@ TEST_F(Renderer_Mipmap_Test, 采样器状态可读与钳制)
 	EXPECT_TRUE(renderer.resource().texture_sampler_state_get().mip_filter);
 
 	//设备上限（第九十七轮：钳制上界随设备能力）
-	float lod_bias_limit = renderer.sampler_max_lod_bias();
+	float lod_bias_limit = renderer.device().sampler_max_lod_bias();
 	ASSERT_GT(lod_bias_limit, 0.0f);
 
 	//上界钳制

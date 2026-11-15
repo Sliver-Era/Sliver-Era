@@ -57,7 +57,7 @@ TEST_F(Renderer_Post_Chain_Test, 模糊半径可配)
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
 	//单级模糊链
 	uint64_t target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(target, renderer.device().extent_width(), renderer.device().extent_height()));
 	uint64_t pass = post_pipeline_register(renderer, "模糊.frag.spv");
 	ASSERT_NE(pass, 0u);
 	ASSERT_TRUE(renderer.device().post_chain_set(&pass, 1));

@@ -85,7 +85,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色恒等与直通一致)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t passes[2] = {};
 		passes[0] = post_pipeline_register(renderer, "后处理.frag.spv");
 		passes[1] = post_pipeline_register(renderer, "反色.frag.spv");
@@ -106,7 +106,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色恒等与直通一致)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t passes[2] = {};
 		passes[0] = post_pipeline_register(renderer, "分级调色.frag.spv");
 		passes[1] = post_pipeline_register(renderer, "反色.frag.spv");
@@ -138,7 +138,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色增益与伽马方向)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	uint64_t grade = post_pipeline_register(renderer, "分级调色.frag.spv");
 	ASSERT_NE(grade, 0u);
 	ASSERT_TRUE(renderer.device().post_chain_set(&grade, 1));
@@ -187,7 +187,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色饱和度归零)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	uint64_t scene_target = 0;
-	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 	uint64_t grade = post_pipeline_register(renderer, "分级调色.frag.spv");
 	ASSERT_NE(grade, 0u);
 	ASSERT_TRUE(renderer.device().post_chain_set(&grade, 1));
@@ -272,7 +272,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色串联反色可逆)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t grade = post_pipeline_register(renderer, "分级调色.frag.spv");
 		ASSERT_NE(grade, 0u);
 		ASSERT_TRUE(renderer.device().post_chain_set(&grade, 1));
@@ -290,7 +290,7 @@ TEST_F(Renderer_Post_Chain_Test, 分级调色串联反色可逆)
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		uint64_t scene_target = 0;
-		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.extent_width(), renderer.extent_height()));
+		ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
 		uint64_t passes[3] = {};
 		passes[0] = post_pipeline_register(renderer, "分级调色.frag.spv");
 		passes[1] = post_pipeline_register(renderer, "反色.frag.spv");

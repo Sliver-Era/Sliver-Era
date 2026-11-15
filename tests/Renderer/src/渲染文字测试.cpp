@@ -550,7 +550,7 @@ TEST_F(Renderer_Text_Test, 覆盖率写入下文字仍可绘制)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//设备不支持多重采样则跳过（覆盖率写入仅在 > 1× 生效）
-	if (renderer.msaa_samples() < 2)
+	if (renderer.device().msaa_samples() < 2)
 		GTEST_SKIP() << "本机不支持多重采样";
 
 	//加载字体并绘制
@@ -563,7 +563,7 @@ TEST_F(Renderer_Text_Test, 覆盖率写入下文字仍可绘制)
 	const uint32_t ink = ink_count(pixels, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
 	RecordProperty("text_coverage_ink", static_cast<int>(ink));
-	RecordProperty("text_coverage_samples", static_cast<int>(renderer.msaa_samples()));
+	RecordProperty("text_coverage_samples", static_cast<int>(renderer.device().msaa_samples()));
 	EXPECT_GT(ink, 0u) << "开启覆盖率写入后文字消失";
 
         renderer.ui().font_unload(font);

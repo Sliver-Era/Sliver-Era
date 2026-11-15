@@ -106,24 +106,24 @@ TEST_F(Renderer_Resource_Test, 资源计数随加载卸载变化)
 TEST_F(Renderer_Resource_Test, 聚光灯数量统计)
 {
 	engine::Renderer renderer;
-	EXPECT_EQ(renderer.spot_light_count(), 0u);
+	EXPECT_EQ(renderer.scene().spot_light_count(), 0u);
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	EXPECT_EQ(renderer.spot_light_count(), 0u);
+	EXPECT_EQ(renderer.scene().spot_light_count(), 0u);
 
 	const float position[3] = { 0.0f, 0.0f, 1.0f };
 	const float direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
 	//一个点光源
-	ASSERT_TRUE(renderer.light_add_point(position, color, 5.0f, 1.0f, 0.0f));
-	EXPECT_EQ(renderer.spot_light_count(), 0u);
+	ASSERT_TRUE(renderer.scene().light_add_point(position, color, 5.0f, 1.0f, 0.0f));
+	EXPECT_EQ(renderer.scene().spot_light_count(), 0u);
 	//两个聚光灯
-	ASSERT_TRUE(renderer.light_add_spot(position, direction, color, 5.0f, 1.0f, 20.0f, 30.0f, 0.0f));
-	ASSERT_TRUE(renderer.light_add_spot(position, direction, color, 5.0f, 1.0f, 10.0f, 20.0f, 0.0f));
-	EXPECT_EQ(renderer.spot_light_count(), 2u);
-	EXPECT_EQ(renderer.point_light_count(), 3u);
+	ASSERT_TRUE(renderer.scene().light_add_spot(position, direction, color, 5.0f, 1.0f, 20.0f, 30.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_spot(position, direction, color, 5.0f, 1.0f, 10.0f, 20.0f, 0.0f));
+	EXPECT_EQ(renderer.scene().spot_light_count(), 2u);
+	EXPECT_EQ(renderer.scene().point_light_count(), 3u);
 	//清空后归零
-	renderer.lights_clear();
-	EXPECT_EQ(renderer.spot_light_count(), 0u);
+	renderer.scene().lights_clear();
+	EXPECT_EQ(renderer.scene().spot_light_count(), 0u);
 }
 
 //后处理链采样数查询：按级序写回并支持容量截断

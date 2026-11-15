@@ -64,13 +64,13 @@ TEST_F(Renderer_Scene_Test, 聚光偏置缩放默认口径)
 
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, one_spot_light(), fog);
+	renderer.scene().scene_apply(camera, one_spot_light(), fog);
 	render_once_with(renderer, occluder, receiver);
 
 	float base_bias = 0.0f;
 	float base_out[8] = {};
-	renderer.spot_shadow_params_get(&base_bias, nullptr, nullptr);
-	renderer.spot_shadow_bias_tiles_get(base_out);
+	renderer.scene().spot_shadow_params_get(&base_bias, nullptr, nullptr);
+	renderer.scene().spot_shadow_bias_tiles_get(base_out);
 	ASSERT_GT(base_bias, 0.0f);
 	EXPECT_FLOAT_EQ(base_out[0], base_bias) << "默认缩放不是 1（逐瓦片偏置与全局不一致）";
 
@@ -100,25 +100,25 @@ TEST_F(Renderer_Scene_Test, 聚光偏置缩放数据侧生效)
 
 	//基准
 	engine::Light_Data light = one_spot_light();
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	render_once_with(renderer, occluder, receiver);
 	float base_bias = 0.0f;
 	float tiles[8] = {};
-	renderer.spot_shadow_params_get(&base_bias, nullptr, nullptr);
+	renderer.scene().spot_shadow_params_get(&base_bias, nullptr, nullptr);
 
 	//缩放 4
 	light.spot_shadow_bias_scale[0] = 4.0f;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	render_once_with(renderer, occluder, receiver);
-	renderer.spot_shadow_bias_tiles_get(tiles);
+	renderer.scene().spot_shadow_bias_tiles_get(tiles);
 	RecordProperty("scaled_bias", tiles[0]);
 	EXPECT_FLOAT_EQ(tiles[0], base_bias * 4.0f);
 
 	//恢复 1
 	light.spot_shadow_bias_scale[0] = 1.0f;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	render_once_with(renderer, occluder, receiver);
-	renderer.spot_shadow_bias_tiles_get(tiles);
+	renderer.scene().spot_shadow_bias_tiles_get(tiles);
 	EXPECT_FLOAT_EQ(tiles[0], base_bias);
 
 	renderer.resource().mesh_unload(occluder);
@@ -144,22 +144,22 @@ TEST_F(Renderer_Scene_Test, 聚光偏置缩放门面钳制)
 	renderer.resource().texture_bind_set(texture);
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, one_spot_light(), fog);
+	renderer.scene().scene_apply(camera, one_spot_light(), fog);
 	render_once_with(renderer, occluder, receiver);
 	float base_bias = 0.0f;
-	renderer.spot_shadow_params_get(&base_bias, nullptr, nullptr);
+	renderer.scene().spot_shadow_params_get(&base_bias, nullptr, nullptr);
 
 	//越界输入钳到 10
-	ASSERT_TRUE(renderer.spot_shadow_bias_scale_set(0, 20.0f));
+	ASSERT_TRUE(renderer.scene().spot_shadow_bias_scale_set(0, 20.0f));
 	render_once_with(renderer, occluder, receiver);
 	float tiles[8] = {};
-	renderer.spot_shadow_bias_tiles_get(tiles);
+	renderer.scene().spot_shadow_bias_tiles_get(tiles);
 	EXPECT_FLOAT_EQ(tiles[0], base_bias * 10.0f);
 
 	//越界槽位拒绝且配置不变
-	EXPECT_FALSE(renderer.spot_shadow_bias_scale_set(9, 2.0f));
+	EXPECT_FALSE(renderer.scene().spot_shadow_bias_scale_set(9, 2.0f));
 	render_once_with(renderer, occluder, receiver);
-	renderer.spot_shadow_bias_tiles_get(tiles);
+	renderer.scene().spot_shadow_bias_tiles_get(tiles);
 	EXPECT_FLOAT_EQ(tiles[0], base_bias * 10.0f);
 
 	renderer.resource().mesh_unload(occluder);

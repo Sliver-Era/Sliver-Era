@@ -76,7 +76,7 @@ namespace
 		光照.direction[2] = -0.5f;
 		光照.intensity = 1.0f;
 		光照.ambient = 0.25f;
-		渲染器.scene_apply(相机, 光照, engine::Fog_Data{});
+		渲染器.scene().scene_apply(相机, 光照, engine::Fog_Data{});
 	}
 }
 

@@ -545,7 +545,7 @@ TEST_F(Renderer_Post_Chain_Test, 色差分离红蓝通道)
 		ASSERT_TRUE(renderer.init(hidden_config()));
 		if (!renderer.compute().readback_supported())
 			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
-		renderer.clear_color_set(black);
+		renderer.scene().clear_color_set(black);
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 4, 4));
 		renderer.resource().texture_bind_set(texture);
@@ -570,7 +570,7 @@ TEST_F(Renderer_Post_Chain_Test, 色差分离红蓝通道)
 		ASSERT_TRUE(renderer.device().post_chain_set(&aberration, 1));
 		//强度专设（阈值 / 软膝由校验规则要求合法，本片元不使用）
 		renderer.device().post_stage_param_set(0, 1.0f, 0.0f, 6.0f);
-		renderer.clear_color_set(black);
+		renderer.scene().clear_color_set(black);
 		uint64_t texture = 0;
 		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 4, 4));
 		renderer.resource().texture_bind_set(texture);

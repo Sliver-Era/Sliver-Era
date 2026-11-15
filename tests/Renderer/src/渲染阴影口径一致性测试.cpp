@@ -119,12 +119,12 @@ TEST_F(Renderer_Scene_Test, 三模型阴影边界一致)
 	{
 		engine::Light_Data light = model_light(model);
 		//无阴影：取中心亮度作为阈值基准
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(false);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(false);
 		const uint32_t lit = center_brightness(draw_scene(renderer, occluder, receiver));
 		//有阴影
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 		const std::vector<uint8_t> shadowed = draw_scene(renderer, occluder, receiver);
 		masks[model] = shadow_mask(shadowed, lit / 2);
 		counts[model] = mask_count(masks[model]);
@@ -168,14 +168,14 @@ TEST_F(Renderer_Scene_Test, 阴影强度三模型同比例)
 	{
 		engine::Light_Data light = model_light(model);
 		//基准：无阴影
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(false);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(false);
 		const uint32_t lit = center_brightness(draw_scene(renderer, occluder, receiver));
 		ASSERT_GT(lit, 0u);
 		//半强度阴影
 		light.shadow_strength = 0.5f;
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 		const uint32_t shadowed = center_brightness(draw_scene(renderer, occluder, receiver));
 		/*
 		交换链输出为 sRGB 编码：先把 8 位亮度近似解码回线性再做比值，
@@ -217,8 +217,8 @@ TEST_F(Renderer_Scene_Test, 关闭阴影三模型无遮蔽)
 	for (int model = 0; model < MODEL_COUNT; ++model)
 	{
 		engine::Light_Data light = model_light(model);
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(false);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(false);
 		const std::vector<uint8_t> pixels = draw_scene(renderer, occluder, receiver);
 		const uint32_t lit = center_brightness(pixels);
 		ASSERT_GT(lit, 0u);

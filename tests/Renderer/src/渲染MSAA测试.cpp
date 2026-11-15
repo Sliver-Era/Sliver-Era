@@ -405,17 +405,17 @@ TEST_F(Renderer_Msaa_Test, 阴影与MSAA共存)
 
 	engine::Mesh_Handle plane = 0;
 	ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 1.0f, 1.0f));
-	renderer.shadow_enable_set(true);
-	ASSERT_TRUE(renderer.shadow_enabled());
+	renderer.scene().shadow_enable_set(true);
+	ASSERT_TRUE(renderer.scene().shadow_enabled());
 	//开启阴影后至少执行一次阴影 pass
 	EXPECT_FALSE(render_diamond(renderer, plane).empty());
-	uint64_t shadow_before = renderer.shadow_pass_count();
+	uint64_t shadow_before = renderer.scene().shadow_pass_count();
 	EXPECT_GE(shadow_before, 1u);
 	//切回单采样后阴影仍可继续工作
 	renderer.msaa_samples_set(1);
 	EXPECT_FALSE(render_diamond(renderer, plane).empty());
-	EXPECT_GE(renderer.shadow_pass_count(), shadow_before);
-	renderer.shadow_enable_set(false);
+	EXPECT_GE(renderer.scene().shadow_pass_count(), shadow_before);
+	renderer.scene().shadow_enable_set(false);
 	renderer.resource().mesh_unload(plane);
 }
 
@@ -532,8 +532,8 @@ TEST_F(Renderer_Msaa_Test, 高组合冒烟)
         light.intensity = 1.0f;
         light.ambient = 0.0f;
         engine::Fog_Data fog{};
-        renderer.scene_apply(camera, light, fog);
-        renderer.shadow_enable_set(true);
+        renderer.scene().scene_apply(camera, light, fog);
+        renderer.scene().shadow_enable_set(true);
 
         //遮挡面与接收面
         engine::Mesh_Handle receiver = 0;
@@ -569,7 +569,7 @@ TEST_F(Renderer_Msaa_Test, 高组合冒烟)
         EXPECT_LE(stats.msaa_samples, 4u);
         EXPECT_GT(stats.instances, 0u);
 
-        renderer.shadow_enable_set(false);
+        renderer.scene().shadow_enable_set(false);
         renderer.resource().mesh_unload(receiver);
         renderer.resource().mesh_unload(occluder);
         renderer.resource().pipeline_unload(invert);

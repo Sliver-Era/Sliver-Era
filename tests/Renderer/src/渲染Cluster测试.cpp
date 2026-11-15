@@ -97,13 +97,13 @@ TEST(Renderer_Cluster_Test, 光源记录上传与开关)
 	const float point_position[3] = { 1.0f, 2.0f, 3.0f };
 	const float point_color[3] = { 0.2f, 0.4f, 0.6f };
 	const float spot_direction[3] = { 0.0f, -1.0f, 0.0f };
-	ASSERT_TRUE(renderer.light_add_point(point_position, point_color, 7.0f, 0.5f, 0.1f, 1, 0.8f, 32.0f));
-	ASSERT_TRUE(renderer.light_add_spot(point_position, spot_direction, point_color, 7.0f, 0.5f, 30.0f, 45.0f, 0.1f));
+	ASSERT_TRUE(renderer.scene().light_add_point(point_position, point_color, 7.0f, 0.5f, 0.1f, 1, 0.8f, 32.0f));
+	ASSERT_TRUE(renderer.scene().light_add_spot(point_position, spot_direction, point_color, 7.0f, 0.5f, 30.0f, 45.0f, 0.1f));
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_EQ(renderer.compute().cluster_light_count(), 4u);
 
 	//清空光源后回到两条基础记录
-	renderer.lights_clear();
+	renderer.scene().lights_clear();
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_EQ(renderer.compute().cluster_light_count(), 2u);
 
@@ -156,13 +156,13 @@ TEST(Renderer_Cluster_Test, 分簇网格与逐簇计数参考)
 	//一盏大半径点光（跨近平面 → 整屏全深度保守覆盖）：全部簇计数 2
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
-	ASSERT_TRUE(renderer.light_add_point(position, color, 100.0f, 0.5f, 0.1f));
+	ASSERT_TRUE(renderer.scene().light_add_point(position, color, 100.0f, 0.5f, 0.1f));
 	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), 3456, &total));
 	for (uint32_t index = 0; index < 3456; ++index)
 		EXPECT_EQ(counts[index], 2u);
 
 	//清空点光后回到 1
-	renderer.lights_clear();
+	renderer.scene().lights_clear();
 	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), 3456, &total));
 	for (uint32_t index = 0; index < 3456; ++index)
 		EXPECT_EQ(counts[index], 1u);
@@ -195,7 +195,7 @@ TEST(Renderer_Cluster_Test, GPU逐簇计数与CPU参考一致)
 	//一盏大半径点光（全屏全深度）：GPU 与 CPU 仍逐簇一致
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
-	ASSERT_TRUE(renderer.light_add_point(position, color, 100.0f, 0.5f, 0.1f));
+	ASSERT_TRUE(renderer.scene().light_add_point(position, color, 100.0f, 0.5f, 0.1f));
 	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(cpu_counts.data(), 3456, &cpu_total));
 	ASSERT_TRUE(renderer.compute().cluster_counts_gpu(gpu_counts.data(), 3456, &gpu_total));
 	ASSERT_EQ(cpu_total, gpu_total);
@@ -285,8 +285,8 @@ TEST(Renderer_Cluster_Test, 簇光源列表与CPU参考一致)
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
 	const float spot_direction[3] = { 0.0f, -1.0f, 0.0f };
-	ASSERT_TRUE(renderer.light_add_point(position, color, 10.0f, 0.5f, 0.1f));
-	ASSERT_TRUE(renderer.light_add_spot(position, spot_direction, color, 10.0f, 0.5f, 25.0f, 40.0f, 0.1f));
+	ASSERT_TRUE(renderer.scene().light_add_point(position, color, 10.0f, 0.5f, 0.1f));
+	ASSERT_TRUE(renderer.scene().light_add_spot(position, spot_direction, color, 10.0f, 0.5f, 25.0f, 40.0f, 0.1f));
 	//逐簇计数
 	std::vector<uint32_t> counts(CLUSTERS);
 	uint32_t total = 0;
@@ -342,8 +342,8 @@ TEST(Renderer_Cluster_Test, 簇数据整备与观测)
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
 	const float spot_direction[3] = { 0.0f, -1.0f, 0.0f };
-	ASSERT_TRUE(renderer.light_add_point(position, color, 10.0f, 0.5f, 0.1f));
-	ASSERT_TRUE(renderer.light_add_spot(position, spot_direction, color, 10.0f, 0.5f, 25.0f, 40.0f, 0.1f));
+	ASSERT_TRUE(renderer.scene().light_add_point(position, color, 10.0f, 0.5f, 0.1f));
+	ASSERT_TRUE(renderer.scene().light_add_spot(position, spot_direction, color, 10.0f, 0.5f, 25.0f, 40.0f, 0.1f));
 	//参考计数与条目数
 	std::vector<uint32_t> reference_counts(CLUSTERS);
 	uint32_t total = 0;
@@ -414,7 +414,7 @@ TEST(Renderer_Cluster_Test, 帧内整备与统计)
 	ASSERT_TRUE(on.compute().cluster_enable_set(true));
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
-	ASSERT_TRUE(on.light_add_point(position, color, 10.0f, 0.5f, 0.1f));
+	ASSERT_TRUE(on.scene().light_add_point(position, color, 10.0f, 0.5f, 0.1f));
 	ASSERT_TRUE(on.frame_render());
 	engine::Frame_Stats stats_on = on.frame_stats_get();
 	EXPECT_GT(stats_on.cluster_entries, 0u);
@@ -454,8 +454,8 @@ TEST(Renderer_Cluster_Test, 开关组合矩阵)
 				GTEST_SKIP() << "本机不支持计算路径，无法覆盖 Cluster 开启组合";
 			ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 		}
-		renderer.camera_position_set(0.0f, 0.0f, 5.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		//全屏墙（z = 3，放大 30 倍）＋ 墙后 10 实例
@@ -518,7 +518,7 @@ TEST(Renderer_Cluster_Test, 构建性能对照)
 		{
 			const float position[3] = { static_cast<float>(index) * 0.5f - 1.0f, 0.0f, 0.0f };
 			const float color[3] = { 1.0f, 0.6f, 0.3f };
-			ASSERT_TRUE(renderer.light_add_point(position, color, 8.0f, 0.5f, 0.1f));
+			ASSERT_TRUE(renderer.scene().light_add_point(position, color, 8.0f, 0.5f, 0.1f));
 		}
 		//CPU 路径：5 次取最小耗时
 		uint32_t cpu_entries = 0;
@@ -574,9 +574,9 @@ TEST(Renderer_Cluster_Test, 组合矩阵_阴影与MSAA)
 						GTEST_SKIP() << "本机不支持计算路径，无法覆盖 Cluster 开启组合";
 					ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 				}
-				renderer.shadow_enable_set(shadow_index != 0);
-				renderer.camera_position_set(0.0f, 0.0f, 5.0f);
-				renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+				renderer.scene().shadow_enable_set(shadow_index != 0);
+				renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+				renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 				engine::Mesh_Handle mesh = 0;
 				ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 				//全屏墙（z = 3，放大 30 倍）＋ 墙后 10 实例
@@ -619,16 +619,16 @@ TEST(Renderer_Cluster_Test, 光源登记上限与截断)
 	{
 		const float position[3] = { static_cast<float>(index) * 0.1f - 1.5f, 0.0f, 0.0f };
 		const float color[3] = { 1.0f, 1.0f, 1.0f };
-		ASSERT_TRUE(off.light_add_point(position, color, 6.0f, 0.4f, 0.1f));
+		ASSERT_TRUE(off.scene().light_add_point(position, color, 6.0f, 0.4f, 0.1f));
 	}
 	const float extra_position[3] = { 2.0f, 0.0f, 0.0f };
 	const float extra_color[3] = { 1.0f, 1.0f, 1.0f };
-	EXPECT_FALSE(off.light_add_point(extra_position, extra_color, 6.0f, 0.4f, 0.1f));
+	EXPECT_FALSE(off.scene().light_add_point(extra_position, extra_color, 6.0f, 0.4f, 0.1f));
 	ASSERT_TRUE(off.frame_render());
 	EXPECT_EQ(off.frame_stats_get().light_truncated, 1u);
-	EXPECT_EQ(off.point_light_count(), 32u);
-	off.lights_clear();
-	EXPECT_EQ(off.point_light_count(), 0u);
+	EXPECT_EQ(off.scene().point_light_count(), 32u);
+	off.scene().lights_clear();
+	EXPECT_EQ(off.scene().point_light_count(), 0u);
 
 	//开启 Cluster：可登记超过 8 盏（本用例登记 32 盏）
 	engine::Renderer on;
@@ -642,16 +642,16 @@ TEST(Renderer_Cluster_Test, 光源登记上限与截断)
 	{
 		const float position[3] = { static_cast<float>(index) * 0.15f - 2.0f, 0.0f, 0.0f };
 		const float color[3] = { 0.8f, 0.8f, 1.0f };
-		ASSERT_TRUE(on.light_add_point(position, color, 6.0f, 0.4f, 0.1f));
+		ASSERT_TRUE(on.scene().light_add_point(position, color, 6.0f, 0.4f, 0.1f));
 	}
-	EXPECT_EQ(on.point_light_count(), 32u);
-	EXPECT_EQ(on.light_record_count(), 34u);
+	EXPECT_EQ(on.scene().point_light_count(), 32u);
+	EXPECT_EQ(on.scene().light_record_count(), 34u);
 	ASSERT_TRUE(on.frame_render());
 	EXPECT_EQ(on.frame_stats_get().light_truncated, 0u);
 
 	//关闭 Cluster 后再次登记被拒，并置截断标志
 	ASSERT_TRUE(on.compute().cluster_enable_set(false));
-	EXPECT_FALSE(on.light_add_point(extra_position, extra_color, 6.0f, 0.4f, 0.1f));
+	EXPECT_FALSE(on.scene().light_add_point(extra_position, extra_color, 6.0f, 0.4f, 0.1f));
 	ASSERT_TRUE(on.frame_render());
 	EXPECT_EQ(on.frame_stats_get().light_truncated, 1u);
 }
@@ -673,21 +673,21 @@ TEST(Renderer_Cluster_Test, 光源容量边界)
 	{
 		const float position[3] = { static_cast<float>(index % 32) * 0.1f, 0.0f, 0.0f };
 		const float color[3] = { 1.0f, 1.0f, 1.0f };
-		ASSERT_TRUE(renderer.light_add_point(position, color, 4.0f, 0.2f, 0.1f));
+		ASSERT_TRUE(renderer.scene().light_add_point(position, color, 4.0f, 0.2f, 0.1f));
 	}
-	EXPECT_EQ(renderer.point_light_count(), CAPACITY);
+	EXPECT_EQ(renderer.scene().point_light_count(), CAPACITY);
 	//记录数 = 主方向光 ＋ 补光 ＋ 逐盏（容量约束下有效数仍为 1024）
-	EXPECT_EQ(renderer.light_record_count(), CAPACITY + 2u);
+	EXPECT_EQ(renderer.scene().light_record_count(), CAPACITY + 2u);
 	EXPECT_EQ(engine::light_effective_count(CAPACITY + 2u, true), CAPACITY);
 	//第 1025 盏被拒
 	const float extra_position[3] = { 3.0f, 0.0f, 0.0f };
 	const float extra_color[3] = { 1.0f, 1.0f, 1.0f };
-	EXPECT_FALSE(renderer.light_add_point(extra_position, extra_color, 4.0f, 0.2f, 0.1f));
-	EXPECT_EQ(renderer.point_light_count(), CAPACITY);
+	EXPECT_FALSE(renderer.scene().light_add_point(extra_position, extra_color, 4.0f, 0.2f, 0.1f));
+	EXPECT_EQ(renderer.scene().point_light_count(), CAPACITY);
 	//清空后归零
-	renderer.lights_clear();
-	EXPECT_EQ(renderer.point_light_count(), 0u);
-	EXPECT_EQ(renderer.light_record_count(), 2u);
+	renderer.scene().lights_clear();
+	EXPECT_EQ(renderer.scene().point_light_count(), 0u);
+	EXPECT_EQ(renderer.scene().light_record_count(), 2u);
 }
 
 /*
@@ -713,14 +713,14 @@ TEST(Renderer_Cluster_Test, 图形set0簇缓冲上传)
 				GTEST_SKIP() << "本机不支持计算路径，无法覆盖簇缓冲上传";
 			ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 		}
-		renderer.camera_position_set(0.0f, 0.0f, 5.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		//一盏点光（半径 10 保守覆盖全簇）
 		const float position[3] = { 0.0f, 0.0f, 0.0f };
 		const float color[3] = { 1.0f, 1.0f, 1.0f };
-		ASSERT_TRUE(renderer.light_add_point(position, color, 10.0f, 0.5f, 0.1f));
+		ASSERT_TRUE(renderer.scene().light_add_point(position, color, 10.0f, 0.5f, 0.1f));
 		//逐帧绘制并回读（同上：每帧都带回读）
 		std::vector<uint8_t> pixels(pixel_count, 0u);
 		for (uint32_t frame = 0; frame < 3; ++frame)
@@ -777,7 +777,7 @@ TEST(Renderer_Cluster_Test, 片元簇采样_八盏等价)
 		//关闭主方向光（满照会饱和画面，掩盖点光差异）
 		const float no_direction[3] = { 0.0f, 0.0f, -1.0f };
 		const float no_color[3] = { 1.0f, 1.0f, 1.0f };
-		renderer.light_set(no_direction, no_color, 0.0f, 0.0f);
+		renderer.scene().light_set(no_direction, no_color, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 		//六盏点光 ＋ 两盏聚光（半径 20，均保守覆盖全部簇）
@@ -785,13 +785,13 @@ TEST(Renderer_Cluster_Test, 片元簇采样_八盏等价)
 		for (uint32_t index = 0; index < 6; ++index)
 		{
 			const float position[3] = { static_cast<float>(index) - 2.5f, 0.0f, 1.5f };
-			ASSERT_TRUE(renderer.light_add_point(position, color, 20.0f, 0.05f, 0.0f));
+			ASSERT_TRUE(renderer.scene().light_add_point(position, color, 20.0f, 0.05f, 0.0f));
 		}
 		const float direction[3] = { 0.0f, 0.0f, -1.0f };
 		for (uint32_t index = 0; index < 2; ++index)
 		{
 			const float position[3] = { index == 0 ? -4.0f : 4.0f, 0.0f, 1.5f };
-			ASSERT_TRUE(renderer.light_add_spot(position, direction, color, 20.0f, 0.05f, 30.0f, 45.0f, 0.0f));
+			ASSERT_TRUE(renderer.scene().light_add_spot(position, direction, color, 20.0f, 0.05f, 30.0f, 45.0f, 0.0f));
 		}
 		//逐帧绘制并回读（本机连续「无回读帧」后再请求回读会得到整幅清屏色，故每帧都带回读）
 		std::vector<uint8_t> pixels(pixel_count, 0u);
@@ -842,7 +842,7 @@ TEST(Renderer_Cluster_Test, 片元簇采样_三十三盏扩展)
 		//关闭主方向光（满照会饱和画面，掩盖第 9 盏差异）
 		const float no_direction[3] = { 0.0f, 0.0f, -1.0f };
 		const float no_color[3] = { 1.0f, 1.0f, 1.0f };
-		renderer.light_set(no_direction, no_color, 0.0f, 0.0f);
+		renderer.scene().light_set(no_direction, no_color, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 		//前 32 盏（半径 20 覆盖全部簇；强度压低避免画面饱和后第 33 盏不可见）
@@ -850,11 +850,11 @@ TEST(Renderer_Cluster_Test, 片元簇采样_三十三盏扩展)
 		for (uint32_t index = 0; index < 32; ++index)
 		{
 			const float position[3] = { static_cast<float>(index) - 15.5f, 0.0f, 1.5f };
-			ASSERT_TRUE(renderer.light_add_point(position, color, 20.0f, 0.02f, 0.0f));
+			ASSERT_TRUE(renderer.scene().light_add_point(position, color, 20.0f, 0.02f, 0.0f));
 		}
 		//第 33 盏：关闭时被拒，开启时接受（正前方高亮，确保产生可见照度差）
 		const float ninth_position[3] = { 0.0f, 0.0f, 3.0f };
-		const bool ninth_added = renderer.light_add_point(ninth_position, color, 20.0f, 0.5f, 0.0f);
+		const bool ninth_added = renderer.scene().light_add_point(ninth_position, color, 20.0f, 0.5f, 0.0f);
 		if (cluster_index == 0)
 			EXPECT_FALSE(ninth_added);
 		else
@@ -908,7 +908,7 @@ TEST(Renderer_Cluster_Test, 片元簇采样_MSAA四倍等价)
 		//关闭主方向光（满照会饱和画面）
 		const float no_direction[3] = { 0.0f, 0.0f, -1.0f };
 		const float no_color[3] = { 1.0f, 1.0f, 1.0f };
-		renderer.light_set(no_direction, no_color, 0.0f, 0.0f);
+		renderer.scene().light_set(no_direction, no_color, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 		//六盏点光 ＋ 两盏聚光（半径 20，均保守覆盖全部簇）
@@ -916,13 +916,13 @@ TEST(Renderer_Cluster_Test, 片元簇采样_MSAA四倍等价)
 		for (uint32_t index = 0; index < 6; ++index)
 		{
 			const float position[3] = { static_cast<float>(index) - 2.5f, 0.0f, 1.5f };
-			ASSERT_TRUE(renderer.light_add_point(position, color, 20.0f, 0.05f, 0.0f));
+			ASSERT_TRUE(renderer.scene().light_add_point(position, color, 20.0f, 0.05f, 0.0f));
 		}
 		const float direction[3] = { 0.0f, 0.0f, -1.0f };
 		for (uint32_t index = 0; index < 2; ++index)
 		{
 			const float position[3] = { index == 0 ? -4.0f : 4.0f, 0.0f, 1.5f };
-			ASSERT_TRUE(renderer.light_add_spot(position, direction, color, 20.0f, 0.05f, 30.0f, 45.0f, 0.0f));
+			ASSERT_TRUE(renderer.scene().light_add_spot(position, direction, color, 20.0f, 0.05f, 30.0f, 45.0f, 0.0f));
 		}
 		//逐帧绘制并回读
 		std::vector<uint8_t> pixels(pixel_count, 0u);
@@ -962,10 +962,10 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏)
 	{
 		const float position[3] = { static_cast<float>(index % 32) * 0.4f - 6.4f,
 			static_cast<float>(index / 32) * 0.3f - 2.4f, 1.0f };
-		ASSERT_TRUE(renderer.light_add_point(position, color, 2.0f, 0.05f, 0.0f));
+		ASSERT_TRUE(renderer.scene().light_add_point(position, color, 2.0f, 0.05f, 0.0f));
 	}
-	EXPECT_EQ(renderer.point_light_count(), LIGHT_COUNT);
-	EXPECT_EQ(renderer.light_record_count(), LIGHT_COUNT + 2u);
+	EXPECT_EQ(renderer.scene().point_light_count(), LIGHT_COUNT);
+	EXPECT_EQ(renderer.scene().light_record_count(), LIGHT_COUNT + 2u);
 
 	//出帧（逐帧回读口径）
 	uint64_t texture = 0;
@@ -1041,10 +1041,10 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏聚光灯)
 	{
 		const float position[3] = { static_cast<float>(index % 32) * 0.4f - 6.4f,
 			static_cast<float>(index / 32) * 0.3f - 2.4f, 1.5f };
-		ASSERT_TRUE(renderer.light_add_spot(position, direction, color, 2.0f, 0.05f, 20.0f, 30.0f, 0.0f));
+		ASSERT_TRUE(renderer.scene().light_add_spot(position, direction, color, 2.0f, 0.05f, 20.0f, 30.0f, 0.0f));
 	}
-	EXPECT_EQ(renderer.point_light_count(), LIGHT_COUNT);
-	EXPECT_EQ(renderer.light_record_count(), LIGHT_COUNT + 2u);
+	EXPECT_EQ(renderer.scene().point_light_count(), LIGHT_COUNT);
+	EXPECT_EQ(renderer.scene().light_record_count(), LIGHT_COUNT + 2u);
 
 	//出帧（逐帧回读）
 	uint64_t texture = 0;
@@ -1141,7 +1141,7 @@ TEST(Renderer_Cluster_Test, 簇网格切换与缓冲重建)
 	//一盏点光（半径 10 保守覆盖全簇）
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
-	ASSERT_TRUE(renderer.light_add_point(position, color, 10.0f, 0.5f, 0.1f));
+	ASSERT_TRUE(renderer.scene().light_add_point(position, color, 10.0f, 0.5f, 0.1f));
 	uint64_t texture = 0;
 	std::vector<uint8_t> texels(2u * 2u * 4u, 255u);
 	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
@@ -1218,28 +1218,28 @@ TEST(Renderer_Cluster_Test, 大光源整帧耗时对照)
 	//关闭主方向光（避免满照饱和，同时让片元成本由点光主导）
 	const float no_direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float no_color[3] = { 1.0f, 1.0f, 1.0f };
-	off.light_set(no_direction, no_color, 0.0f, 0.0f);
-	on_eight.light_set(no_direction, no_color, 0.0f, 0.0f);
-	on_many.light_set(no_direction, no_color, 0.0f, 0.0f);
+	off.scene().light_set(no_direction, no_color, 0.0f, 0.0f);
+	on_eight.scene().light_set(no_direction, no_color, 0.0f, 0.0f);
+	on_many.scene().light_set(no_direction, no_color, 0.0f, 0.0f);
 	//三态光源：32 × 16 网格、半径 1.5（覆盖屏幕局部，列表长度接近真实场景）
 	const float light_color[3] = { 0.6f, 0.7f, 0.8f };
 	for (uint32_t index = 0; index < 32; ++index)
 	{
 		const float position[3] = { static_cast<float>(index % 32) * 0.4f - 6.4f,
 			static_cast<float>(index / 32) * 0.3f - 2.4f, 1.5f };
-		ASSERT_TRUE(off.light_add_point(position, light_color, 1.5f, 0.05f, 0.0f));
-		ASSERT_TRUE(on_eight.light_add_point(position, light_color, 1.5f, 0.05f, 0.0f));
+		ASSERT_TRUE(off.scene().light_add_point(position, light_color, 1.5f, 0.05f, 0.0f));
+		ASSERT_TRUE(on_eight.scene().light_add_point(position, light_color, 1.5f, 0.05f, 0.0f));
 	}
 	//关闭态第 33 盏被拒（上限 32）
 	const float ninth_position[3] = { 0.0f, 0.0f, 1.5f };
-	EXPECT_FALSE(off.light_add_point(ninth_position, light_color, 1.5f, 0.05f, 0.0f));
+	EXPECT_FALSE(off.scene().light_add_point(ninth_position, light_color, 1.5f, 0.05f, 0.0f));
 	for (uint32_t index = 0; index < LIGHT_COUNT; ++index)
 	{
 		const float position[3] = { static_cast<float>(index % 32) * 0.4f - 6.4f,
 			static_cast<float>(index / 32) * 0.3f - 2.4f, 1.5f };
-		ASSERT_TRUE(on_many.light_add_point(position, light_color, 1.5f, 0.05f, 0.0f));
+		ASSERT_TRUE(on_many.scene().light_add_point(position, light_color, 1.5f, 0.05f, 0.0f));
 	}
-	EXPECT_EQ(on_many.point_light_count(), LIGHT_COUNT);
+	EXPECT_EQ(on_many.scene().point_light_count(), LIGHT_COUNT);
 	//三态各渲染 5 帧并累加 GPU 帧与录制耗时
 	double off_gpu = 0.0;
 	double off_record = 0.0;
@@ -1309,7 +1309,7 @@ TEST(Renderer_Cluster_Test, 片元簇采样_线性衰减提前退出)
 		//关闭主方向光，让画面由点光主导
 		const float no_direction[3] = { 0.0f, 0.0f, -1.0f };
 		const float no_color[3] = { 1.0f, 1.0f, 1.0f };
-		renderer.light_set(no_direction, no_color, 0.0f, 0.0f);
+		renderer.scene().light_set(no_direction, no_color, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_lit()));
 		//八盏小半径点光（线性衰减；多数片元只在其中少数光源半径内）
@@ -1318,7 +1318,7 @@ TEST(Renderer_Cluster_Test, 片元簇采样_线性衰减提前退出)
 		{
 			const float position[3] = { static_cast<float>(index % 4) * 3.0f - 4.5f,
 				static_cast<float>(index / 4) * 2.0f - 1.0f, 1.5f };
-			ASSERT_TRUE(renderer.light_add_point(position, color, 2.0f, 0.6f, 0.0f, 1u));
+			ASSERT_TRUE(renderer.scene().light_add_point(position, color, 2.0f, 0.6f, 0.0f, 1u));
 		}
 		//逐帧回读
 		std::vector<uint8_t> pixels(pixel_count, 0u);

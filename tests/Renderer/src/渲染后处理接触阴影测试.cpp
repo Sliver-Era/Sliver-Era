@@ -74,7 +74,7 @@ namespace
 		light.ambient = 0.3f;
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
+		renderer.scene().scene_apply(camera, light, fog);
 
 		//左侧接收面（z = 0）与右侧偏后遮挡板（z = -0.4）
 		engine::Mesh_Handle receiver = 0;
@@ -141,12 +141,12 @@ namespace
 		light.ambient = 0.3f;
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
+		renderer.scene().scene_apply(camera, light, fog);
 
 		//聚光灯：位于接收面右后方（照射方向与方向光口径接近，便于扫过遮挡板；半径 6，锥 30° / 45°）
 		const float spot_position[3] = { 0.8f, 0.0f, -2.5f };
 		const float spot_color[3] = { 1.0f, 1.0f, 1.0f };
-		EXPECT_TRUE(renderer.light_add_spot(spot_position, spot_direction, spot_color,
+		EXPECT_TRUE(renderer.scene().light_add_spot(spot_position, spot_direction, spot_color,
 			6.0f, 1.0f, 30.0f, 45.0f, 0.0f));
 
 		//左侧接收面（z = 0）与右侧偏后遮挡板（z = -0.4）
@@ -196,7 +196,7 @@ namespace
 		light.ambient = 0.3f;
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
+		renderer.scene().scene_apply(camera, light, fog);
 
 		//点光源：与聚光灯用例同灯位（右后方、半径 6）
 		const float point_position[3] = { 0.8f, 0.0f, -2.5f };
@@ -204,16 +204,16 @@ namespace
 		const float filler_position[3] = { 1000.0f, 0.0f, 0.0f };
 		//零强度占位（把有效灯推到高段槽位 8..）
 		for (uint32_t index = 0; index < filler_count; ++index)
-			EXPECT_TRUE(renderer.light_add_point(filler_position, point_color, 1.0f, 0.0f, 0.0f));
+			EXPECT_TRUE(renderer.scene().light_add_point(filler_position, point_color, 1.0f, 0.0f, 0.0f));
 		if (spot_slot)
 		{
 			//登记为聚光灯（传播方向指向接收面），用于「模式与槽位类型不符」用例
 			const float spot_direction[3] = { -1.25f, 0.0f, 2.5f };
-			EXPECT_TRUE(renderer.light_add_spot(point_position, spot_direction, point_color,
+			EXPECT_TRUE(renderer.scene().light_add_spot(point_position, spot_direction, point_color,
 				6.0f, 1.0f, 30.0f, 45.0f, 0.0f));
 		}
 		else
-			EXPECT_TRUE(renderer.light_add_point(point_position, point_color, 6.0f, 1.0f, 0.0f));
+			EXPECT_TRUE(renderer.scene().light_add_point(point_position, point_color, 6.0f, 1.0f, 0.0f));
 
 		//左侧接收面（z = 0）与右侧偏后遮挡板（z = -0.4）
 		engine::Mesh_Handle receiver = 0;

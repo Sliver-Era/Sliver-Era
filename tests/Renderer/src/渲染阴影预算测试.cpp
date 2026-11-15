@@ -35,8 +35,8 @@ namespace
 		const engine::Camera_Data& camera, const engine::Light_Data& light)
 	{
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, translate_model(0.0f, 0.0f, 0.0f).data()));
 		EXPECT_TRUE(renderer.frame_render());
 		return renderer.frame_stats_get();
@@ -130,8 +130,8 @@ TEST_F(Renderer_Scene_Test, 阴影预算扁平入口透传)
 	scene.shadow_enabled = 1;
 	scene.shadow_budget_bytes = 512u * 512u * 4u;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(scene);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(scene);
+	renderer.scene().shadow_enable_set(true);
 	EXPECT_TRUE(renderer.resource().mesh_draw(mesh, translate_model(0.0f, 0.0f, 0.0f).data()));
 	EXPECT_TRUE(renderer.frame_render());
 	EXPECT_EQ(renderer.frame_stats_get().shadow_resolution, 512u);

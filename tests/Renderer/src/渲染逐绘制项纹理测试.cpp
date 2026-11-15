@@ -99,13 +99,13 @@ namespace
 	//固定相机与光照（保证两侧取样只受反照率影响）
 	void apply_scene(engine::Renderer& renderer)
 	{
-		renderer.camera_position_set(0.0f, 0.0f, 6.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-		renderer.camera_fov_set(1.0f);
-		renderer.camera_near_far_set(0.1f, 100.0f);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 6.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_fov_set(1.0f);
+		renderer.scene().camera_near_far_set(0.1f, 100.0f);
 		const float direction[3] = { 0.0f, 0.0f, -1.0f };
 		const float white[3] = { 1.0f, 1.0f, 1.0f };
-		renderer.light_set(direction, white, 0.8f, 0.2f);
+		renderer.scene().light_set(direction, white, 0.8f, 0.2f);
 	}
 
 	//取当前系统可用的中文字体路径（都不存在返回空串）

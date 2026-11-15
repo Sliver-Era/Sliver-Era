@@ -111,13 +111,13 @@ TEST_F(Renderer_Scene_Test, PBR掠射高光能量修正生效)
 		light.specular_intensity = 2.0f;
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
+		renderer.scene().scene_apply(camera, light, fog);
 
 		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, full_screen_matrix().data()));
 		outcome.pixels.resize(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(outcome.pixels.data(),
 			static_cast<std::uint32_t>(outcome.pixels.size())));
-		outcome.energy = renderer.pbr_energy();
+		outcome.energy = renderer.scene().pbr_energy();
 		outcome.ok = true;
 		return outcome;
 	};
@@ -183,7 +183,7 @@ TEST_F(Renderer_Scene_Test, PBR漫反射能量分摊生效)
 		light.specular_intensity = 0.0f;
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
+		renderer.scene().scene_apply(camera, light, fog);
 
 		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, full_screen_matrix().data()));
 		outcome.pixels.resize(pixel_bytes());
@@ -240,14 +240,14 @@ TEST_F(Renderer_Scene_Test, 非法光照参数整次忽略)
 	//零长度方向（无法归一化）→ 整次拒绝
 	const float zero_direction[3] = { 0.0f, 0.0f, 0.0f };
 	const float white[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(zero_direction, white, 1.0f, 0.0f);
+	renderer.scene().light_set(zero_direction, white, 1.0f, 0.0f);
 	//非数方向 → 整次拒绝
 	const float nan_direction[3] = { std::nanf(""), 0.0f, -1.0f };
-	renderer.light_set(nan_direction, white, 1.0f, 0.0f);
+	renderer.scene().light_set(nan_direction, white, 1.0f, 0.0f);
 	//越界颜色（1.5）→ 整次拒绝
 	const float over_color[3] = { 1.5f, 1.0f, 1.0f };
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
-	renderer.light_set(forward, over_color, 1.0f, 0.0f);
+	renderer.scene().light_set(forward, over_color, 1.0f, 0.0f);
 	//三次非法调用后画面应与基线逐字节一致
 	EXPECT_EQ(baseline, render_frame()) << "非法光照参数改变了画面（未整次拒绝）";
 
@@ -289,7 +289,7 @@ TEST_F(Renderer_Scene_Test, 立方体正面随光照方向明暗反转)
 	//光沿 +Z：+Z 面背光 → 照度 0
 	const float toward_camera[3] = { 0.0f, 0.0f, 1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(toward_camera, white_light, 1.0f, 0.0f);
+	renderer.scene().light_set(toward_camera, white_light, 1.0f, 0.0f);
 	uint32_t dark = render_brightness();
 	RecordProperty("cube_lit", lit);
 	RecordProperty("cube_dark", dark);
@@ -320,7 +320,7 @@ TEST_F(Renderer_Scene_Test, 旋转立方体两侧面明暗不同)
 	//光沿 -X 传播（光源在 +X 一侧）
 	const float from_positive_x[3] = { -1.0f, 0.0f, 0.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(from_positive_x, white_light, 1.0f, 0.0f);
+	renderer.scene().light_set(from_positive_x, white_light, 1.0f, 0.0f);
 	//旋转 -35°（+X 面转向相机右侧）
 	std::array<float, 16> model = rotation_y_matrix(-0.6109f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, model.data()));
@@ -388,7 +388,7 @@ TEST_F(Renderer_Scene_Test, 环境光抬升背光面)
 	//环境光 0.5：背光面被抬亮
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 1.0f, 0.5f);
+	renderer.scene().light_set(forward, white_light, 1.0f, 0.5f);
 	uint32_t with_ambient = render_brightness(nullptr);
 	RecordProperty("ambient_off", without_ambient);
 	RecordProperty("ambient_half", with_ambient);
@@ -429,11 +429,11 @@ TEST_F(Renderer_Scene_Test, 点光源近远亮度不同)
 
 	//近距点光源（距离 1，半径 3）
 	const float near_position[3] = { 0.0f, 0.0f, 1.0f };
-	renderer.light_point_set(near_position, white_light, 3.0f, 1.0f, 0.0f);
+	renderer.scene().light_point_set(near_position, white_light, 3.0f, 1.0f, 0.0f);
 	uint32_t near_brightness = render_brightness();
 	//远距点光源（距离 2.9，半径 3 → 衰减约 0.03）
 	const float far_position[3] = { 0.0f, 0.0f, 2.9f };
-	renderer.light_point_set(far_position, white_light, 3.0f, 1.0f, 0.0f);
+	renderer.scene().light_point_set(far_position, white_light, 3.0f, 1.0f, 0.0f);
 	uint32_t far_brightness = render_brightness();
 	RecordProperty("point_near", near_brightness);
 	RecordProperty("point_far", far_brightness);
@@ -475,14 +475,14 @@ TEST_F(Renderer_Scene_Test, 镜面高光提升亮度)
 	//高光关闭（默认）
 	uint32_t plain = render_brightness();
 	//高光 0.6、光泽度 16（H = N → pow(1, 16) = 1）
-	renderer.specular_set(0.6f, 16.0f);
+	renderer.scene().specular_set(0.6f, 16.0f);
 	uint32_t highlighted = render_brightness();
 	RecordProperty("spec_plain", plain);
 	RecordProperty("spec_highlight", highlighted);
 	EXPECT_GE(highlighted, 230u) << "高光未提升亮度（" << plain << " → " << highlighted << "）";
 	EXPECT_GT(static_cast<int>(highlighted), static_cast<int>(plain) + 30) << "高光增量不足";
 	//非法高光参数（负强度 / 光泽度小于 1）整次忽略 → 画面与上一帧逐字节一致
-	renderer.specular_set(-1.0f, 0.0f);
+	renderer.scene().specular_set(-1.0f, 0.0f);
 	EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> after(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(after.data(), static_cast<std::uint32_t>(after.size())));
@@ -521,11 +521,11 @@ TEST_F(Renderer_Scene_Test, 多个点光源累加更亮)
 
 	//单灯（中心）
 	const float single_position[3] = { 0.0f, 0.0f, 1.0f };
-	ASSERT_TRUE(renderer.light_add_point(single_position, white_light, 3.0f, 1.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_point(single_position, white_light, 3.0f, 1.0f, 0.0f));
 	uint32_t single = render_brightness();
 	//追加第二盏灯（左移 0.5）
 	const float second_position[3] = { -0.5f, 0.0f, 1.0f };
-	ASSERT_TRUE(renderer.light_add_point(second_position, white_light, 3.0f, 1.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_point(second_position, white_light, 3.0f, 1.0f, 0.0f));
 	uint32_t doubled = render_brightness();
 	RecordProperty("single_light", single);
 	RecordProperty("double_light", doubled);
@@ -574,13 +574,13 @@ TEST_F(Renderer_Scene_Test, 点光源上限与清空)
 		{ -1.5f, 1.0f, -1.0f }, { -0.5f, 1.0f, -1.0f }, { 0.5f, 1.0f, -1.0f }, { 1.5f, 1.0f, -1.0f },
 	};
 	for (uint32_t index = 0; index < 32; ++index)
-		ASSERT_TRUE(renderer.light_add_point(positions[index], white_light, 6.0f, 0.4f, 0.0f));
+		ASSERT_TRUE(renderer.scene().light_add_point(positions[index], white_light, 6.0f, 0.4f, 0.0f));
 	uint32_t full = render_brightness();
 	//第 33 个被拒（上限 32），画面不变
-	ASSERT_FALSE(renderer.light_add_point(positions[0], white_light, 6.0f, 0.4f, 0.0f));
+	ASSERT_FALSE(renderer.scene().light_add_point(positions[0], white_light, 6.0f, 0.4f, 0.0f));
 	EXPECT_EQ(render_brightness(), full) << "超上限的追加改变了画面";
 	//清空后回到默认方向光（满照，纯白中心）
-	renderer.lights_clear();
+	renderer.scene().lights_clear();
 	EXPECT_GE(render_brightness(), 200u) << "清空点光源后未回到方向光满照";
 
 	renderer.resource().mesh_unload(mesh);
@@ -608,7 +608,7 @@ TEST_F(Renderer_Scene_Test, 第八盏点光源参与着色)
 	//方向光关闭、环境光 0
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 0.0f, 0.0f);
+	renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
 
 	//渲染一帧并返回中心亮度
 	auto render_brightness = [&]()
@@ -622,10 +622,10 @@ TEST_F(Renderer_Scene_Test, 第八盏点光源参与着色)
 	//前 7 盏强度 0（占位）
 	const float center_light[3] = { 0.0f, 0.0f, 1.0f };
 	for (uint32_t index = 0; index < 7; ++index)
-		ASSERT_TRUE(renderer.light_add_point(center_light, white_light, 6.0f, 0.0f, 0.0f));
+		ASSERT_TRUE(renderer.scene().light_add_point(center_light, white_light, 6.0f, 0.0f, 0.0f));
 	uint32_t before = render_brightness();
 	//第 8 盏强度 1 → 中心被照亮
-	ASSERT_TRUE(renderer.light_add_point(center_light, white_light, 6.0f, 1.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_point(center_light, white_light, 6.0f, 1.0f, 0.0f));
 	uint32_t after = render_brightness();
 	RecordProperty("light8_before", before);
 	RecordProperty("light8_after", after);
@@ -665,7 +665,7 @@ TEST_F(Renderer_Scene_Test, 场景描述携带点光源更亮)
 	//仅方向光（强度 0 → 全黑）
 	engine::Scene_Data scene{};
 	scene.light_intensity = 0.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	uint32_t without_points = render_brightness();
 	//追加两盏点光源（左右各一，半径 3）
 	scene.light_count = 2;
@@ -677,7 +677,7 @@ TEST_F(Renderer_Scene_Test, 场景描述携带点光源更亮)
 	scene.point_light_position[1][2] = 1.0f;
 	scene.point_light_radius[0] = 3.0f;
 	scene.point_light_radius[1] = 3.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	uint32_t with_points = render_brightness();
 	RecordProperty("scene_no_points", without_points);
 	RecordProperty("scene_two_points", with_points);
@@ -712,7 +712,7 @@ TEST_F(Renderer_Scene_Test, 光照场景上的文字仍可见)
 
 	//场景：方向光（默认）+ 白色文字叠在画面上
 	engine::Scene_Data scene{};
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	const float white_text[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 	renderer.ui().text_color_set(white_text);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
@@ -773,7 +773,7 @@ TEST_F(Renderer_Scene_Test, 第三十二盏点光源参与着色)
 	//方向光关闭、环境光 0
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 0.0f, 0.0f);
+	renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
 
 	//渲染一帧并返回中心亮度
 	auto render_brightness = [&]()
@@ -787,10 +787,10 @@ TEST_F(Renderer_Scene_Test, 第三十二盏点光源参与着色)
 	//前 31 盏强度 0（占位）
 	const float center_light[3] = { 0.0f, 0.0f, 1.0f };
 	for (uint32_t index = 0; index < 31; ++index)
-		ASSERT_TRUE(renderer.light_add_point(center_light, white_light, 6.0f, 0.0f, 0.0f));
+		ASSERT_TRUE(renderer.scene().light_add_point(center_light, white_light, 6.0f, 0.0f, 0.0f));
 	uint32_t before = render_brightness();
 	//第 32 盏强度 1 → 中心被照亮
-	ASSERT_TRUE(renderer.light_add_point(center_light, white_light, 6.0f, 1.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_point(center_light, white_light, 6.0f, 1.0f, 0.0f));
 	uint32_t after = render_brightness();
 	RecordProperty("light32_before", before);
 	RecordProperty("light32_after", after);
@@ -826,21 +826,21 @@ TEST_F(Renderer_Scene_Test, 高八槽零强度逐字节一致)
 		//方向光关闭、环境光 0，仅点光贡献
 		const float forward[3] = { 0.0f, 0.0f, -1.0f };
 		const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-		renderer.light_set(forward, white_light, 0.0f, 0.0f);
+		renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
 		//低 8 槽：四角偏上位置，强度 0.1（保持不饱和，便于观察高槽增量）
 		const float low_positions[8][3] = {
 			{ -1.5f, 0.0f, 1.0f }, { -0.5f, 0.0f, 1.0f }, { 0.5f, 0.0f, 1.0f }, { 1.5f, 0.0f, 1.0f },
 			{ -1.5f, 0.5f, 1.0f }, { -0.5f, 0.5f, 1.0f }, { 0.5f, 0.5f, 1.0f }, { 1.5f, 0.5f, 1.0f },
 		};
 		for (uint32_t index = 0; index < 8; ++index)
-			if (!renderer.light_add_point(low_positions[index], white_light, 6.0f, 0.1f, 0.0f))
+			if (!renderer.scene().light_add_point(low_positions[index], white_light, 6.0f, 0.1f, 0.0f))
 				return pixels;
 		//高 8 槽前 extra_count 盏：底部位置，强度由参数控制
 		const float high_positions[4][3] = {
 			{ -1.5f, -0.5f, 1.0f }, { -0.5f, -0.5f, 1.0f }, { 0.5f, -0.5f, 1.0f }, { 1.5f, -0.5f, 1.0f },
 		};
 		for (uint32_t index = 0; index < extra_count; ++index)
-			if (!renderer.light_add_point(high_positions[index], white_light, 6.0f, extra_intensity, 0.0f))
+			if (!renderer.scene().light_add_point(high_positions[index], white_light, 6.0f, extra_intensity, 0.0f))
 				return pixels;
 
 		if (!renderer.resource().mesh_draw(mesh, nullptr))
@@ -900,14 +900,14 @@ TEST_F(Renderer_Scene_Test, PBR粗糙度绝对口径解耦光泽度)
 		//PBR 开启：斜射主光、金属度 0.8、全局粗糙度 0.2、镜面强度 1，光泽度由参数控制
 		const float direction[3] = { -0.8f, 0.0f, -0.6f };
 		const float white[3] = { 1.0f, 1.0f, 1.0f };
-		renderer.light_set(direction, white, 1.0f, 0.0f);
-		renderer.pbr_enable_set(true);
-		renderer.pbr_roughness_set(0.2f);
-		renderer.pbr_metallic_set(0.8f);
-		renderer.specular_set(1.0f, shininess);
+		renderer.scene().light_set(direction, white, 1.0f, 0.0f);
+		renderer.scene().pbr_enable_set(true);
+		renderer.scene().pbr_roughness_set(0.2f);
+		renderer.scene().pbr_metallic_set(0.8f);
+		renderer.scene().specular_set(1.0f, shininess);
 		//绝对口径开关（门面）
-		renderer.pbr_roughness_absolute_set(absolute);
-		outcome.absolute = renderer.pbr_roughness_absolute();
+		renderer.scene().pbr_roughness_absolute_set(absolute);
+		outcome.absolute = renderer.scene().pbr_roughness_absolute();
 		//渲染并回读
 		if (!renderer.resource().mesh_draw(mesh, full_screen_matrix().data()))
 			return outcome;

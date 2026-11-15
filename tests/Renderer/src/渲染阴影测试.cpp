@@ -34,7 +34,7 @@ TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//无遮挡基线（只画接收面）
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
@@ -61,8 +61,8 @@ TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 	const uint32_t unshadowed = center_brightness(unshadowed_pixels);
 
 	//开启阴影
-	renderer.shadow_enable_set(true);
-	ASSERT_TRUE(renderer.shadow_enabled());
+	renderer.scene().shadow_enable_set(true);
+	ASSERT_TRUE(renderer.scene().shadow_enabled());
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> shadowed_pixels = render_frame();
@@ -73,8 +73,8 @@ TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 		(static_cast<uint32_t>(shadowed_edge[0]) + shadowed_edge[1] + shadowed_edge[2]) / 3;
 
 	//关闭阴影后应恢复基线
-	renderer.shadow_enable_set(false);
-	ASSERT_FALSE(renderer.shadow_enabled());
+	renderer.scene().shadow_enable_set(false);
+	ASSERT_FALSE(renderer.scene().shadow_enabled());
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t restored = center_brightness(render_frame());
@@ -137,7 +137,7 @@ TEST_F(Renderer_Scene_Test, 阴影强度生效)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//遮挡面（缩放 0.6、平移 z = -0.5，列主序）
 	float occluder_transform[16] = {};
@@ -152,34 +152,34 @@ TEST_F(Renderer_Scene_Test, 阴影强度生效)
 	const uint32_t baseline = center_brightness(render_frame());
 
 	//开启阴影、强度 1：中心完全遮蔽
-	renderer.shadow_enable_set(true);
-	renderer.shadow_strength_set(1.0f);
+	renderer.scene().shadow_enable_set(true);
+	renderer.scene().shadow_strength_set(1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t full_shadow = center_brightness(render_frame());
 
 	//强度 0：阴影完全无效，中心回到基线
-	renderer.shadow_strength_set(0.0f);
+	renderer.scene().shadow_strength_set(0.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t no_shadow = center_brightness(render_frame());
 
 	//强度 0.5：中心介于两者之间
-	renderer.shadow_strength_set(0.5f);
+	renderer.scene().shadow_strength_set(0.5f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t half_shadow = center_brightness(render_frame());
 
 	//非法强度 1.5：整次忽略，画面与 0.5 一致
-	renderer.shadow_strength_set(1.5f);
-	EXPECT_FLOAT_EQ(renderer.shadow_strength(), 0.5f);
+	renderer.scene().shadow_strength_set(1.5f);
+	EXPECT_FLOAT_EQ(renderer.scene().shadow_strength(), 0.5f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t rejected = center_brightness(render_frame());
 
 	//软度 1（3×3 PCF）、强度恢复 1：中心仍处于遮蔽区，亮度保持低位
-	renderer.shadow_strength_set(1.0f);
-	renderer.shadow_softness_set(1.0f);
+	renderer.scene().shadow_strength_set(1.0f);
+	renderer.scene().shadow_softness_set(1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t soft_shadow = center_brightness(render_frame());
@@ -242,16 +242,16 @@ TEST_F(Renderer_Scene_Test, 阴影分辨率可配)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 
 	//基线（无遮挡）
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t baseline = center_brightness(render_frame());
 
 	//切到 512 后阴影仍应生效
-	renderer.shadow_resolution_set(512);
-	ASSERT_EQ(renderer.shadow_resolution(), 512u);
+	renderer.scene().shadow_resolution_set(512);
+	ASSERT_EQ(renderer.scene().shadow_resolution(), 512u);
 	float occluder_transform[16] = {};
 	occluder_transform[0] = 0.6f;
 	occluder_transform[5] = 0.6f;
@@ -263,11 +263,11 @@ TEST_F(Renderer_Scene_Test, 阴影分辨率可配)
 	const uint32_t shadowed = center_brightness(render_frame());
 
 	//非法分辨率整次忽略
-	renderer.shadow_resolution_set(300);
-	EXPECT_EQ(renderer.shadow_resolution(), 512u);
+	renderer.scene().shadow_resolution_set(300);
+	EXPECT_EQ(renderer.scene().shadow_resolution(), 512u);
 
 	//关闭阴影恢复基线
-	renderer.shadow_enable_set(false);
+	renderer.scene().shadow_enable_set(false);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t restored = center_brightness(render_frame());
@@ -321,8 +321,8 @@ TEST_F(Renderer_Scene_Test, 阴影按需重绘)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 
 	//遮挡面（缩放 0.6、居中、z = -0.5）
 	float occluder_transform[16] = {};
@@ -336,13 +336,13 @@ TEST_F(Renderer_Scene_Test, 阴影按需重绘)
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t first_brightness = center_brightness(render_frame());
-	const uint64_t first_count = renderer.shadow_pass_count();
+	const uint64_t first_count = renderer.scene().shadow_pass_count();
 
 	//第二帧：输入完全一致，阴影 pass 应被跳过且画面一致
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t second_brightness = center_brightness(render_frame());
-	const uint64_t second_count = renderer.shadow_pass_count();
+	const uint64_t second_count = renderer.scene().shadow_pass_count();
 
 	//第三帧：遮挡面平移，签名变化 → 必须重绘且中心阴影移开
 	float moved_transform[16] = {};
@@ -352,7 +352,7 @@ TEST_F(Renderer_Scene_Test, 阴影按需重绘)
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, moved_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t moved_brightness = center_brightness(render_frame());
-	const uint64_t moved_count = renderer.shadow_pass_count();
+	const uint64_t moved_count = renderer.scene().shadow_pass_count();
 
 	RecordProperty("reuse_first", first_count);
 	RecordProperty("reuse_second", second_count);
@@ -409,8 +409,8 @@ TEST_F(Renderer_Scene_Test, 阴影软度连续可调)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 
 	//遮挡面（缩放 0.6、居中、z = -0.5）
 	float occluder_transform[16] = {};
@@ -429,14 +429,14 @@ TEST_F(Renderer_Scene_Test, 阴影软度连续可调)
 	uint32_t soft_brightness[3] = {};
 	for (std::size_t index = 0; index < 3; ++index)
 	{
-		renderer.shadow_softness_set(softness_list[index]);
+		renderer.scene().shadow_softness_set(softness_list[index]);
 		ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 		ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 		soft_brightness[index] = center_brightness(render_frame());
 	}
 
 	//关闭阴影恢复基线
-	renderer.shadow_enable_set(false);
+	renderer.scene().shadow_enable_set(false);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	const uint32_t restored = center_brightness(render_frame());
@@ -485,8 +485,8 @@ TEST_F(Renderer_Scene_Test, 阴影图读回)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 
 	//遮挡面（缩放 0.6、居中、z = -0.5）与接收面
 	float occluder_transform[16] = {};
@@ -500,7 +500,7 @@ TEST_F(Renderer_Scene_Test, 阴影图读回)
 	ASSERT_TRUE(renderer.frame_render());
 
 	//读回 1024 阴影图
-	const uint32_t shadow_size = renderer.shadow_resolution();
+	const uint32_t shadow_size = renderer.scene().shadow_resolution();
 	std::vector<uint8_t> shadow_pixels(static_cast<std::size_t>(shadow_size) * shadow_size * 4);
 	uint32_t read_width = 0;
 	uint32_t read_height = 0;
@@ -527,7 +527,7 @@ TEST_F(Renderer_Scene_Test, 阴影图读回)
 	EXPECT_FALSE(renderer.shadow_readback(shadow_pixels.data(), 1024, nullptr, nullptr));
 
 	//切 512 后尺寸随之变化
-	renderer.shadow_resolution_set(512);
+	renderer.scene().shadow_resolution_set(512);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
@@ -574,7 +574,7 @@ TEST_F(Renderer_Scene_Test, 斜法线不产生自阴影)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//接收面绕 Y 轴倾斜 40°（法线经模型矩阵变换后与光线成约 50° 掠射）
 	std::array<float, 16> model = rotation_y_matrix(0.6981f);
@@ -589,10 +589,10 @@ TEST_F(Renderer_Scene_Test, 斜法线不产生自阴影)
 	};
 
 	//关闭阴影（参考帧）
-	renderer.shadow_enable_set(false);
+	renderer.scene().shadow_enable_set(false);
 	const uint32_t without_shadow = render_brightness();
 	//开启阴影（无遮挡面：不得出现自阴影压暗）
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 	const uint32_t with_shadow = render_brightness();
 	RecordProperty("slanted_without_shadow", without_shadow);
 	RecordProperty("slanted_with_shadow", with_shadow);
@@ -601,7 +601,7 @@ TEST_F(Renderer_Scene_Test, 斜法线不产生自阴影)
 	EXPECT_NEAR(with_shadow, without_shadow, 8u) << "法线偏移未消除自阴影（"
 		<< with_shadow << " vs " << without_shadow << "）";
 
-	renderer.shadow_enable_set(false);
+	renderer.scene().shadow_enable_set(false);
 	renderer.resource().mesh_unload(receiver);
 	renderer.resource().texture_unload(texture);
 }
@@ -641,8 +641,8 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影输出与单线程一致)
 		light.intensity = 1.0f;
 		light.ambient = 0.0f;
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 
 		//遮挡面：缩放 0.6、平移到 z = -0.5（列主序模型矩阵）
 		float occluder_transform[16] = {};
@@ -729,8 +729,8 @@ TEST_F(Renderer_Scene_Test, 多线程下阴影pass分段录制画面一致)
 		light.intensity = 1.0f;
 		light.ambient = 0.0f;
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 
 		//40 枚小遮挡面沿 X 均匀排布、z = -0.5（列主序模型矩阵）
 		for (uint32_t index = 0; index < 40; ++index)

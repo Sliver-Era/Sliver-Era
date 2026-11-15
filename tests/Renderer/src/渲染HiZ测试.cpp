@@ -269,8 +269,8 @@ TEST_F(Renderer_HiZ_Test, 遮挡剔除墙后实例)
 	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
 	//相机与朝向（沿 −Z 观察；墙在 z = 3，实例在 z = 0 / 4.5）
-	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//近墙：放大 30 倍并平移到 z = 3
@@ -324,8 +324,8 @@ TEST_F(Renderer_HiZ_Test, 遮挡剔除墙后实例)
 	//关闭 Hi-Z 的对照：墙后实例不应因遮挡被剔除
 	engine::Renderer without;
 	ASSERT_TRUE(without.init(hidden_config()));
-	without.camera_position_set(0.0f, 0.0f, 5.0f);
-	without.camera_target_set(0.0f, 0.0f, 0.0f);
+	without.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+	without.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	uint32_t without_visible = 0;
 	ASSERT_TRUE(without.compute().gpu_instance_compact_ex(behind[0].data(), COUNT, local_min, local_max,
 		camera, forward, 0.0f, false, compacted[0].data(), &without_visible));
@@ -351,8 +351,8 @@ TEST_F(Renderer_HiZ_Test, 部分遮挡场景不误剔)
 	ASSERT_TRUE(renderer.init(config));
 	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
-	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//左右两堵墙：半宽 0.5、半高 1.5（世界），平移 x = ±0.9、z = 3
@@ -417,8 +417,8 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 		ASSERT_TRUE(renderer.init(config));
 		if (!renderer.compute().hiz_supported())
 			GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
-		renderer.camera_position_set(0.0f, 0.0f, camera_z);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_position_set(0.0f, 0.0f, camera_z);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		std::array<float, 16> wall = identity_matrix();
@@ -459,8 +459,8 @@ TEST_F(Renderer_HiZ_Test, 多场景零误剔)
 		ASSERT_TRUE(renderer.init(config));
 		if (!renderer.compute().hiz_supported())
 			GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
-		renderer.camera_position_set(0.0f, 0.0f, camera_z);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_position_set(0.0f, 0.0f, camera_z);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		std::array<float, 16> near_wall = identity_matrix();
@@ -514,8 +514,8 @@ TEST_F(Renderer_HiZ_Test, 开启遮挡逐帧像素稳定)
 	ASSERT_TRUE(renderer.init(config));
 	if (!renderer.compute().hiz_supported())
 		GTEST_SKIP() << "本机不支持 Hi-Z 所需能力";
-	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//全屏墙（z = 3，放大 30 倍）＋ 墙后实例（z = 0，10 个）
@@ -566,8 +566,8 @@ TEST_F(Renderer_HiZ_Test, MSAA路径生成与剔除)
 	//设备未启用 4× 时本用例不适用
 	if (renderer.msaa_samples() < 4)
 		GTEST_SKIP() << "本机不支持 4× MSAA";
-	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//近墙（z = 3，放大 30 倍）
@@ -612,8 +612,8 @@ TEST_F(Renderer_HiZ_Test, 遮挡观测与三态)
 	ASSERT_TRUE(renderer.init(config));
 	if (!renderer.compute().hiz_supported() || !renderer.compute().compute_supported())
 		GTEST_SKIP() << "本机不支持计算 / Hi-Z 所需能力";
-	renderer.camera_position_set(0.0f, 0.0f, 5.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 	//近墙（z = 3）两帧预热
@@ -689,10 +689,10 @@ TEST_F(Renderer_HiZ_Test, 性能对照)
 	ASSERT_TRUE(off.resource().mesh_load(off_mesh, quad_data()));
 	ASSERT_TRUE(on.resource().mesh_load(on_mesh, quad_data()));
 	//相机（两态一致）
-	off.camera_position_set(0.0f, 0.0f, 5.0f);
-	off.camera_target_set(0.0f, 0.0f, 0.0f);
-	on.camera_position_set(0.0f, 0.0f, 5.0f);
-	on.camera_target_set(0.0f, 0.0f, 0.0f);
+	off.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+	off.scene().camera_target_set(0.0f, 0.0f, 0.0f);
+	on.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+	on.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	double off_record = 0.0;
 	double off_gpu = 0.0;
 	double on_record = 0.0;
@@ -746,8 +746,8 @@ TEST_F(Renderer_HiZ_Test, 开关组合矩阵)
 		config.hiz_enable = (combo & 2u) != 0;
 		engine::Renderer renderer;
 		ASSERT_TRUE(renderer.init(config));
-		renderer.camera_position_set(0.0f, 0.0f, 5.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 5.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle mesh = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data()));
 		//全屏墙（z = 3，放大 30 倍）＋ 墙后 10 实例

@@ -14,7 +14,7 @@ namespace
 		const engine::Camera_Data& camera, const engine::Light_Data& light, engine::Material_Handle material)
 	{
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
+		renderer.scene().scene_apply(camera, light, fog);
 		//绑定材质（0 = 不绑定，保持默认管线与白纹理）
 		if (material != 0)
 			renderer.resource().material_bind_set(material);

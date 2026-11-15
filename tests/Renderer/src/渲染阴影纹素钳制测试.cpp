@@ -72,13 +72,13 @@ TEST_F(Renderer_Scene_Test, 纹素上限默认不干预)
 	renderer.resource().texture_bind_set(texture);
 
 	//单级、半宽 48、边长 512（纹素 = 96 / 512 = 0.1875）
-	renderer.shadow_range_set(48.0f, 1.0f, 60.0f);
+	renderer.scene().shadow_range_set(48.0f, 1.0f, 60.0f);
 	engine::Camera_Data camera{};
 	engine::Light_Data light = positive_z_light();
 	light.shadow_resolution = 512;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	const std::vector<uint8_t> reference = draw_scene(renderer, occluder, receiver);
 	const engine::Frame_Stats base = renderer.frame_stats_get();
 	EXPECT_FLOAT_EQ(base.shadow_texel_world, 0.1875f) << "默认纹素世界尺寸不等于 2 × 半宽 / 边长";
@@ -86,15 +86,15 @@ TEST_F(Renderer_Scene_Test, 纹素上限默认不干预)
 
 	//钳到 0.05：纹素被收紧
 	light.shadow_texel_max = 0.05f;
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	draw_scene(renderer, occluder, receiver);
 	EXPECT_FLOAT_EQ(renderer.frame_stats_get().shadow_texel_world, 0.05f) << "钳制后的纹素未等于上限";
 
 	//关回 0：画面与统计回到默认
 	light.shadow_texel_max = 0.0f;
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	const std::vector<uint8_t> again = draw_scene(renderer, occluder, receiver);
 	EXPECT_FLOAT_EQ(renderer.frame_stats_get().shadow_texel_world, 0.1875f) << "关闭钳制后纹素未回到默认";
 	EXPECT_TRUE(reference == again) << "关闭纹素钳制后画面与默认不一致";
@@ -124,21 +124,21 @@ TEST_F(Renderer_Scene_Test, 纹素钳制覆盖面收缩)
 	ASSERT_TRUE(renderer.resource().mesh_load(occluder, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 	renderer.resource().texture_bind_set(texture);
 
-	renderer.shadow_range_set(48.0f, 1.0f, 60.0f);
+	renderer.scene().shadow_range_set(48.0f, 1.0f, 60.0f);
 	engine::Camera_Data camera{};
 	engine::Light_Data light = positive_z_light();
 	light.shadow_resolution = 512;
 	engine::Fog_Data fog{};
 
 	//基准：大半径覆盖遮挡面 → 中心为阴影
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	const uint32_t base = center_brightness(draw_scene(renderer, occluder, receiver));
 
 	//钳到 0.02 → 半径 5.12，遮挡面在视锥外 → 中心受光
 	light.shadow_texel_max = 0.02f;
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	const uint32_t lit = center_brightness(draw_scene(renderer, occluder, receiver));
 	EXPECT_FLOAT_EQ(renderer.frame_stats_get().shadow_texel_world, 0.02f) << "钳制后的纹素未等于上限";
 	RecordProperty("texel_base_brightness", base);
@@ -159,7 +159,7 @@ TEST_F(Renderer_Scene_Test, 级联切换带自动淡化建议)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	renderer.shadow_resolution_set(1024);
+	renderer.scene().shadow_resolution_set(1024);
 	engine::Camera_Data camera{};
 	engine::Light_Data light = positive_z_light();
 	light.shadow_cascade_count = 2;
@@ -167,20 +167,20 @@ TEST_F(Renderer_Scene_Test, 级联切换带自动淡化建议)
 	engine::Fog_Data fog{};
 
 	//自动 + 显式 0 → 建议值
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	renderer.frame_render();
 	EXPECT_FLOAT_EQ(renderer.frame_stats_get().cascade_blend_applied, 0.0078125f) << "自动淡化建议值不等于 4 / 分片边长";
 
 	//自动 + 显式 0.05 → 显式优先
 	light.shadow_cascade_blend = 0.05f;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	renderer.frame_render();
 	EXPECT_FLOAT_EQ(renderer.frame_stats_get().cascade_blend_applied, 0.05f) << "显式淡化比例未优先";
 
 	//自动关闭 + 显式 0 → 0
 	light.shadow_cascade_blend = 0.0f;
 	light.shadow_cascade_blend_auto = 0;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	renderer.frame_render();
 	EXPECT_FLOAT_EQ(renderer.frame_stats_get().cascade_blend_applied, 0.0f) << "自动关闭后仍未回到硬切换";
 }
@@ -199,9 +199,9 @@ TEST_F(Renderer_Scene_Test, 纹素钳制与自动淡化扁平透传)
 	scene.shadow_cascade_count = 2;
 	scene.shadow_texel_max = 0.05f;
 	scene.shadow_cascade_blend_auto = 1;
-	renderer.scene_apply(scene);
-	EXPECT_FLOAT_EQ(renderer.shadow_texel_max(), 0.05f);
-	EXPECT_TRUE(renderer.shadow_cascade_blend_auto());
+	renderer.scene().scene_apply(scene);
+	EXPECT_FLOAT_EQ(renderer.scene().shadow_texel_max(), 0.05f);
+	EXPECT_TRUE(renderer.scene().shadow_cascade_blend_auto());
 	renderer.frame_render();
 	const engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_FLOAT_EQ(stats.shadow_texel_world, 0.05f) << "扁平入口的纹素上限未生效";

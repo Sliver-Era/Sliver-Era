@@ -10,9 +10,9 @@ TEST_F(Renderer_Scene_Test, 未初始化应用场景无副作用)
 {
 	engine::Renderer renderer;
 	engine::Scene_Data scene{};
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	const float color[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(color);
+	renderer.scene().clear_color_set(color);
 	//设置不改变状态、不崩溃
 	EXPECT_FALSE(renderer.valid());
 }
@@ -52,7 +52,7 @@ TEST_F(Renderer_Scene_Test, 应用场景描述相机与清屏色同时生效)
 	scene.clear_color[1] = 1.0f;
 	scene.clear_color[2] = 0.0f;
 	scene.clear_color[3] = 1.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, full_screen_matrix().data()));
 	std::vector<uint8_t> after(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(after.data(), static_cast<uint32_t>(after.size())));
@@ -76,14 +76,14 @@ TEST_F(Renderer_Scene_Test, 切换清屏色生效)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//先设纯绿清屏色并回读
 	const float green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(green);
+	renderer.scene().clear_color_set(green);
 	std::vector<uint8_t> green_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(green_pixels.data(), static_cast<uint32_t>(green_pixels.size())));
 	std::array<uint8_t, 4> green_center = pixel_get(green_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	EXPECT_GE(green_center[1], 200) << "绿色清屏色未生效：" << pixel_text(green_center);
 	//再设纯红清屏色并回读（绿通道应降低、外通道应饱和）
 	const float red[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(red);
+	renderer.scene().clear_color_set(red);
 	std::vector<uint8_t> red_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(red_pixels.data(), static_cast<uint32_t>(red_pixels.size())));
 	std::array<uint8_t, 4> red_center = pixel_get(red_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -107,7 +107,7 @@ TEST_F(Renderer_Scene_Test, 非法场景描述整次拒绝)
 	valid.clear_color[1] = 1.0f;
 	valid.clear_color[2] = 0.0f;
 	valid.clear_color[3] = 1.0f;
-	renderer.scene_apply(valid);
+	renderer.scene().scene_apply(valid);
 	std::vector<uint8_t> green_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(green_pixels.data(), static_cast<uint32_t>(green_pixels.size())));
 	std::array<uint8_t, 4> green_center = pixel_get(green_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -120,7 +120,7 @@ TEST_F(Renderer_Scene_Test, 非法场景描述整次拒绝)
 	invalid.clear_color[1] = 0.0f;
 	invalid.clear_color[2] = 0.0f;
 	invalid.clear_color[3] = 1.0f;
-	renderer.scene_apply(invalid);
+	renderer.scene().scene_apply(invalid);
 	std::vector<uint8_t> rejected_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(rejected_pixels.data(), static_cast<uint32_t>(rejected_pixels.size())));
 	std::array<uint8_t, 4> rejected_center = pixel_get(rejected_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -141,7 +141,7 @@ TEST_F(Renderer_Scene_Test, 清屏色越界分量被钳制)
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//越界分量：外通道 2.0（应钳到 1）、绿 -1.0（应钳到 0）
 	const float out_of_range[4] = { 2.0f, -1.0f, 0.5f, 1.0f };
-	renderer.clear_color_set(out_of_range);
+	renderer.scene().clear_color_set(out_of_range);
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	std::array<uint8_t, 4> center = pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -171,7 +171,7 @@ TEST_F(Renderer_Scene_Test, 默认场景描述与原默认画面一致)
 	ASSERT_TRUE(renderer.frame_render(baseline.data(), static_cast<std::uint32_t>(baseline.size())));
 	//第二帧：应用默认构造的 Scene_Data（其默认值应与本层既有默认一致）
 	engine::Scene_Data defaults{};
-	renderer.scene_apply(defaults);
+	renderer.scene().scene_apply(defaults);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, full_screen_matrix().data()));
 	std::vector<uint8_t> applied(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(applied.data(), static_cast<std::uint32_t>(applied.size())));
@@ -217,7 +217,7 @@ TEST_F(Renderer_Scene_Test, 正交投影下远近尺寸一致)
 		scene.position[2] = camera_z;
 		scene.ortho = ortho;
 		scene.ortho_height = 2.0f;
-		renderer.scene_apply(scene);
+		renderer.scene().scene_apply(scene);
 		renderer.resource().mesh_draw(mesh, nullptr);
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
@@ -314,7 +314,7 @@ TEST_F(Renderer_Scene_Test, 三组入参与扁平场景等价)
 	scene.fill_color[1] = 0.6f;
 	scene.fill_color[2] = 0.7f;
 	scene.fill_intensity = 0.4f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	std::vector<uint8_t> flat_pixels = render_frame();
 
 	//等价的三组描述
@@ -348,7 +348,7 @@ TEST_F(Renderer_Scene_Test, 三组入参与扁平场景等价)
 	fog.density = scene.fog_density;
 	fog.start = scene.fog_start;
 	fog.end = scene.fog_end;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	std::vector<uint8_t> group_pixels = render_frame();
 
 	RecordProperty("flat_center", pixel_text(pixel_get(flat_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)));
@@ -397,7 +397,7 @@ TEST_F(Renderer_Scene_Test, 三组入参相机非法整次拒绝)
 	camera.clear_color[3] = 1.0f;
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	std::vector<uint8_t> baseline = render_frame();
 
 	//非法三组：视场角为 0 ＋ 红色清屏色
@@ -406,7 +406,7 @@ TEST_F(Renderer_Scene_Test, 三组入参相机非法整次拒绝)
 	invalid.clear_color[0] = 1.0f;
 	invalid.clear_color[1] = 0.0f;
 	invalid.clear_color[2] = 0.0f;
-	renderer.scene_apply(invalid, light, fog);
+	renderer.scene().scene_apply(invalid, light, fog);
 	std::vector<uint8_t> after = render_frame();
 
 	RecordProperty("invalid_camera_center", pixel_text(pixel_get(after, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)));
@@ -460,7 +460,7 @@ TEST_F(Renderer_Scene_Test, 场景UBO按需写入)
 	//修改方向光环境光 → 只有光照块变化，单帧上传应大于 0 且不超过整块
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white, 1.0f, 0.25f);
+	renderer.scene().light_set(forward, white, 1.0f, 0.25f);
 	//变化需按帧槽逐圈传播：连续若干帧后必须回到 0 字节
 	uint64_t changed_total = 0;
 	uint64_t last_delta = 0;
@@ -563,7 +563,7 @@ TEST_F(Renderer_Scene_Test, 相机上方向改变画面)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, tilted.data()));
 	std::vector<uint8_t> base(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(base.data(), static_cast<uint32_t>(base.size())));
@@ -571,7 +571,7 @@ TEST_F(Renderer_Scene_Test, 相机上方向改变画面)
 	//上方向滚转 90°
 	camera.up[0] = 1.0f;
 	camera.up[1] = 0.0f;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, tilted.data()));
 	std::vector<uint8_t> rolled(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(rolled.data(), static_cast<uint32_t>(rolled.size())));
@@ -598,7 +598,7 @@ TEST_F(Renderer_Scene_Test, 相机上方向改变画面)
 	//改回默认后与基准一致
 	camera.up[0] = 0.0f;
 	camera.up[1] = 1.0f;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, tilted.data()));
 	std::vector<uint8_t> restored(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(restored.data(), static_cast<uint32_t>(restored.size())));
@@ -638,15 +638,15 @@ TEST_F(Renderer_Scene_Test, 相机宽高比覆盖)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> base(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(base.data(), static_cast<uint32_t>(base.size())));
 
 	//覆盖为 1:1（窗口默认 64:36 ≈ 1.78）
 	camera.aspect = 1.0f;
-	renderer.scene_apply(camera, light, fog);
-	EXPECT_FLOAT_EQ(renderer.camera_aspect_get(), 1.0f);
+	renderer.scene().scene_apply(camera, light, fog);
+	EXPECT_FLOAT_EQ(renderer.scene().camera_aspect_get(), 1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> square(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(square.data(), static_cast<uint32_t>(square.size())));
@@ -672,8 +672,8 @@ TEST_F(Renderer_Scene_Test, 相机宽高比覆盖)
 
 	//恢复跟随窗口后与基准一致
 	camera.aspect = 0.0f;
-	renderer.scene_apply(camera, light, fog);
-	EXPECT_GT(renderer.camera_aspect_get(), 1.7f);
+	renderer.scene().scene_apply(camera, light, fog);
+	EXPECT_GT(renderer.scene().camera_aspect_get(), 1.7f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> restored(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(restored.data(), static_cast<uint32_t>(restored.size())));
@@ -705,31 +705,31 @@ TEST_F(Renderer_Scene_Test, 聚光灯阴影参数门面)
 	float bias = 0.0f;
 	float softness = 0.0f;
 	float strength = 0.0f;
-	renderer.spot_shadow_params_get(&bias, &softness, &strength);
+	renderer.scene().spot_shadow_params_get(&bias, &softness, &strength);
 	EXPECT_FLOAT_EQ(bias, 0.010f);
 	EXPECT_FLOAT_EQ(softness, 0.0f);
 	EXPECT_FLOAT_EQ(strength, 1.0f);
-	EXPECT_EQ(renderer.spot_shadow_index(), 0);
+	EXPECT_EQ(renderer.scene().spot_shadow_index(), 0);
 
 	//合法设置
-	renderer.spot_shadow_params_set(0.02f, 0.5f, 0.3f);
-	renderer.spot_shadow_index_set(5);
-	renderer.spot_shadow_params_get(&bias, &softness, &strength);
+	renderer.scene().spot_shadow_params_set(0.02f, 0.5f, 0.3f);
+	renderer.scene().spot_shadow_index_set(5);
+	renderer.scene().spot_shadow_params_get(&bias, &softness, &strength);
 	EXPECT_FLOAT_EQ(bias, 0.02f);
 	EXPECT_FLOAT_EQ(softness, 0.5f);
 	EXPECT_FLOAT_EQ(strength, 0.3f);
-	EXPECT_EQ(renderer.spot_shadow_index(), 5);
+	EXPECT_EQ(renderer.scene().spot_shadow_index(), 5);
 
 	//非法设置：整次忽略，已设值不变
-	renderer.spot_shadow_params_set(0.06f, 0.5f, 0.3f);
-	renderer.spot_shadow_params_get(&bias, &softness, &strength);
+	renderer.scene().spot_shadow_params_set(0.06f, 0.5f, 0.3f);
+	renderer.scene().spot_shadow_params_get(&bias, &softness, &strength);
 	EXPECT_FLOAT_EQ(bias, 0.02f) << "越界偏置未被忽略";
-	renderer.spot_shadow_params_set(0.02f, 1.2f, 0.3f);
-	renderer.spot_shadow_params_get(&bias, &softness, &strength);
+	renderer.scene().spot_shadow_params_set(0.02f, 1.2f, 0.3f);
+	renderer.scene().spot_shadow_params_get(&bias, &softness, &strength);
 	EXPECT_FLOAT_EQ(softness, 0.5f) << "越界软度未被忽略";
-	renderer.spot_shadow_params_set(0.02f, 0.5f, -0.1f);
-	renderer.spot_shadow_params_get(&bias, &softness, &strength);
+	renderer.scene().spot_shadow_params_set(0.02f, 0.5f, -0.1f);
+	renderer.scene().spot_shadow_params_get(&bias, &softness, &strength);
 	EXPECT_FLOAT_EQ(strength, 0.3f) << "越界强度未被忽略";
-	renderer.spot_shadow_index_set(9);
-	EXPECT_EQ(renderer.spot_shadow_index(), 5) << "越界序号未被忽略";
+	renderer.scene().spot_shadow_index_set(9);
+	EXPECT_EQ(renderer.scene().spot_shadow_index(), 5) << "越界序号未被忽略";
 }

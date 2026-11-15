@@ -83,8 +83,8 @@ TEST_F(Renderer_Visible_Test, 可见窗口呈现三角形与棋盘格)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(visible_config()));
 	//把相机拉到前方并注视原点
-	renderer.camera_position_set(0.0f, 0.0f, 2.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 2.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	//生成并绑定棋盘格纹理
 	uint64_t texture = 0;
 	ASSERT_TRUE(renderer.resource().texture_load_checkerboard(texture, 64, 64, 8));

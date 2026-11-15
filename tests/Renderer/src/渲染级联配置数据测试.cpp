@@ -29,11 +29,11 @@ TEST_F(Renderer_Scene_Test, 级联配置数据侧生效)
 	engine::Light_Data light{};
 
 	//默认与初始一致
-	renderer.scene_apply(camera, light, empty_fog());
+	renderer.scene().scene_apply(camera, light, empty_fog());
 	uint32_t count = 0;
 	float far_scale = 0.0f;
 	float split = 0.0f;
-	renderer.shadow_cascade_get(&count, &far_scale, &split);
+	renderer.scene().shadow_cascade_get(&count, &far_scale, &split);
 	EXPECT_EQ(count, 1u);
 	EXPECT_FLOAT_EQ(far_scale, 3.0f);
 	EXPECT_FLOAT_EQ(split, 12.0f);
@@ -42,24 +42,24 @@ TEST_F(Renderer_Scene_Test, 级联配置数据侧生效)
 	light.shadow_cascade_count = 3;
 	light.shadow_cascade_far_scale = 2.5f;
 	light.shadow_cascade_split = 8.0f;
-	renderer.scene_apply(camera, light, empty_fog());
-	renderer.shadow_cascade_get(&count, &far_scale, &split);
+	renderer.scene().scene_apply(camera, light, empty_fog());
+	renderer.scene().shadow_cascade_get(&count, &far_scale, &split);
 	EXPECT_EQ(count, 3u);
 	EXPECT_FLOAT_EQ(far_scale, 2.5f);
 	EXPECT_FLOAT_EQ(split, 8.0f);
 
 	//非法级联数被忽略
 	light.shadow_cascade_count = 4;
-	renderer.scene_apply(camera, light, empty_fog());
-	renderer.shadow_cascade_get(&count, &far_scale, &split);
+	renderer.scene().scene_apply(camera, light, empty_fog());
+	renderer.scene().shadow_cascade_get(&count, &far_scale, &split);
 	EXPECT_EQ(count, 3u) << "非法级联数未被忽略";
 
 	//恢复默认（1 级）
 	light.shadow_cascade_count = 1;
 	light.shadow_cascade_far_scale = 3.0f;
 	light.shadow_cascade_split = 12.0f;
-	renderer.scene_apply(camera, light, empty_fog());
-	renderer.shadow_cascade_get(&count, &far_scale, &split);
+	renderer.scene().scene_apply(camera, light, empty_fog());
+	renderer.scene().shadow_cascade_get(&count, &far_scale, &split);
 	EXPECT_EQ(count, 1u);
 	EXPECT_FLOAT_EQ(far_scale, 3.0f);
 	EXPECT_FLOAT_EQ(split, 12.0f);
@@ -82,8 +82,8 @@ TEST_F(Renderer_Scene_Test, 级联默认配置不破坏复用)
 
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
-	renderer.scene_apply(camera, light, empty_fog());
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, empty_fog());
+	renderer.scene().shadow_enable_set(true);
 	std::array<float, 16> model = {
 		0.6f, 0.0f, 0.0f, 0.0f,
 		0.0f, 0.6f, 0.0f, 0.0f,
@@ -96,8 +96,8 @@ TEST_F(Renderer_Scene_Test, 级联默认配置不破坏复用)
 	const uint32_t first_passes = renderer.frame_stats_get().shadow_passes;
 
 	//再次应用默认数据（值未变 → 不应重建）后绘制
-	renderer.scene_apply(camera, light, empty_fog());
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, empty_fog());
+	renderer.scene().shadow_enable_set(true);
 	EXPECT_TRUE(renderer.resource().mesh_draw(occluder, model.data()));
 	EXPECT_TRUE(renderer.frame_render());
 	EXPECT_EQ(first_passes, 1u);
@@ -119,10 +119,10 @@ TEST_F(Renderer_Scene_Test, 级联配置扁平入口透传)
 	scene.shadow_cascade_count = 2;
 	scene.shadow_cascade_far_scale = 3.0f;
 	scene.shadow_cascade_split = 12.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	uint32_t count = 0;
 	float far_scale = 0.0f;
 	float split = 0.0f;
-	renderer.shadow_cascade_get(&count, &far_scale, &split);
+	renderer.scene().shadow_cascade_get(&count, &far_scale, &split);
 	EXPECT_EQ(count, 2u) << "扁平入口未透传级联数";
 }

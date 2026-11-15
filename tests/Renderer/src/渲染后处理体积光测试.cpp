@@ -374,10 +374,10 @@ namespace
 		light.shadow_enabled = 0;
 		light.shadow_strength = strength;
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
-		renderer.shadow_range_set(3.0f, 1.0f, 12.0f);
-		renderer.shadow_cascade_set(1, 3.0f, 8.0f);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
+		renderer.scene().shadow_range_set(3.0f, 1.0f, 12.0f);
+		renderer.scene().shadow_cascade_set(1, 3.0f, 8.0f);
 
 		//地面四边形（受光面）
 		engine::Mesh_Handle plane = 0;

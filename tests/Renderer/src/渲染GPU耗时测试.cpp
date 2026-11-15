@@ -281,9 +281,9 @@ TEST_F(Renderer_Gpu_Test, 阴影pass独立计时)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
-	ASSERT_TRUE(renderer.shadow_enabled());
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
+	ASSERT_TRUE(renderer.scene().shadow_enabled());
 
 	//遮挡面缩放 0.6、平移到 z = -0.5
 	float transform[16] = {};
@@ -305,7 +305,7 @@ TEST_F(Renderer_Gpu_Test, 阴影pass独立计时)
 	else
 		EXPECT_EQ(stats.gpu_shadow_ms, 0.0);
 
-	renderer.shadow_enable_set(false);
+	renderer.scene().shadow_enable_set(false);
 	renderer.resource().mesh_unload(receiver);
 	renderer.resource().mesh_unload(occluder);
 }
@@ -370,8 +370,8 @@ TEST_F(Renderer_Gpu_Test, 阴影累计随按需重绘递增)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	float transform[16] = {};
 	transform[0] = 0.6f;
 	transform[5] = 0.6f;
@@ -398,7 +398,7 @@ TEST_F(Renderer_Gpu_Test, 阴影累计随按需重绘递增)
 		EXPECT_EQ(stats.gpu_shadow_total_ms, 0.0);
 	}
 
-	renderer.shadow_enable_set(false);
+	renderer.scene().shadow_enable_set(false);
 	renderer.resource().mesh_unload(receiver);
 	renderer.resource().mesh_unload(occluder);
 }

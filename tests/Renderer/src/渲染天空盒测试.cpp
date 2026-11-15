@@ -53,7 +53,7 @@ TEST_F(Renderer_Scene_Test, 天空盒关闭时画面不变)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//渲染一帧并返回整帧像素
 	auto render_frame = [&]()
@@ -116,7 +116,7 @@ TEST_F(Renderer_Scene_Test, 天空盒绘制背景)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	auto render_frame = [&]()
 	{
@@ -177,7 +177,7 @@ TEST_F(Renderer_Scene_Test, 天空盒环境补光)
 	light.intensity = 0.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	auto render_frame = [&]()
 	{

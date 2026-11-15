@@ -31,10 +31,10 @@ TEST_F(Renderer_Scene_Test, 距离雾压暗远处物体)
 	uint32_t plain = render_brightness();
 	//开启黑雾（密度 1、区间 [1, 4]）
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.fog_set(black, 1.0f, 1.0f, 4.0f);
+	renderer.scene().fog_set(black, 1.0f, 1.0f, 4.0f);
 	uint32_t fogged = render_brightness();
 	//关闭雾
-	renderer.fog_clear();
+	renderer.scene().fog_clear();
 	uint32_t restored = render_brightness();
 	RecordProperty("fog_plain", plain);
 	RecordProperty("fog_fogged", fogged);
@@ -78,10 +78,10 @@ TEST_F(Renderer_Scene_Test, 非法雾参数被忽略)
 	std::vector<uint8_t> baseline = render_frame();
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
 	//负密度 → 忽略
-	renderer.fog_set(black, -0.5f, 1.0f, 4.0f);
+	renderer.scene().fog_set(black, -0.5f, 1.0f, 4.0f);
 	EXPECT_EQ(render_frame(), baseline) << "非法密度改变了画面";
 	//结束不大于起始 → 忽略
-	renderer.fog_set(black, 1.0f, 4.0f, 4.0f);
+	renderer.scene().fog_set(black, 1.0f, 4.0f, 4.0f);
 	EXPECT_EQ(render_frame(), baseline) << "非法区间改变了画面";
 
 	renderer.resource().mesh_unload(mesh);
@@ -117,7 +117,7 @@ TEST_F(Renderer_Scene_Test, 场景描述携带距离雾)
 
 	//基线：默认场景（雾关闭）
 	engine::Scene_Data scene{};
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	uint32_t plain = render_brightness();
 	//开启黑雾（密度 1、区间 [1, 4]）
 	scene.fog_color[0] = 0.0f;
@@ -126,11 +126,11 @@ TEST_F(Renderer_Scene_Test, 场景描述携带距离雾)
 	scene.fog_density = 1.0f;
 	scene.fog_start = 1.0f;
 	scene.fog_end = 4.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	uint32_t fogged = render_brightness();
 	//恢复密度 0
 	scene.fog_density = 0.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	uint32_t restored = render_brightness();
 	RecordProperty("scene_fog_plain", plain);
 	RecordProperty("scene_fog_fogged", fogged);
@@ -171,12 +171,12 @@ TEST_F(Renderer_Scene_Test, 场景描述非法雾参数被忽略)
 	};
 
 	engine::Scene_Data baseline{};
-	renderer.scene_apply(baseline);
+	renderer.scene().scene_apply(baseline);
 	std::vector<uint8_t> plain = render_frame();
 	//非法雾密度（-1）应被整次忽略
 	engine::Scene_Data invalid = baseline;
 	invalid.fog_density = -1.0f;
-	renderer.scene_apply(invalid);
+	renderer.scene().scene_apply(invalid);
 	EXPECT_EQ(render_frame(), plain) << "场景描述中的非法雾参数改变了画面";
 
 	renderer.resource().mesh_unload(mesh);
@@ -208,7 +208,7 @@ TEST_F(Renderer_Scene_Test, 雾场景上的文字仍可见)
 
 	//开启黑雾并叠白色文字
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.fog_set(black, 1.0f, 1.0f, 4.0f);
+	renderer.scene().fog_set(black, 1.0f, 1.0f, 4.0f);
 	const float white_text[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 	renderer.ui().text_color_set(white_text);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
@@ -268,7 +268,7 @@ TEST_F(Renderer_Scene_Test, 雾不影响背景清屏色)
 	scene.fog_density = 1.0f;
 	scene.fog_start = 1.0f;
 	scene.fog_end = 4.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
@@ -309,10 +309,10 @@ TEST_F(Renderer_Scene_Test, 雾起始距离内无雾)
 
 	//基线：雾关闭
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.fog_set(black, 0.0f, 5.0f, 10.0f);
+	renderer.scene().fog_set(black, 0.0f, 5.0f, 10.0f);
 	std::vector<uint8_t> plain = render_frame();
 	//启用雾但区间在片元之外
-	renderer.fog_set(black, 1.0f, 5.0f, 10.0f);
+	renderer.scene().fog_set(black, 1.0f, 5.0f, 10.0f);
 	EXPECT_EQ(render_frame(), plain) << "起始距离内出现了雾";
 
 	renderer.resource().mesh_unload(mesh);
@@ -338,7 +338,7 @@ TEST_F(Renderer_Scene_Test, 雾结束距离处完全遮蔽)
 
 	//红色雾，片元恰在结束距离
 	const float red[3] = { 1.0f, 0.0f, 0.0f };
-	renderer.fog_set(red, 1.0f, 1.0f, 3.0f);
+	renderer.scene().fog_set(red, 1.0f, 1.0f, 3.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<std::uint32_t>(pixels.size())));
@@ -388,8 +388,8 @@ TEST_F(Renderer_Scene_Test, 指数平方雾按距离饱和)
 	uint32_t plain = center_brightness(plain_pixels);
 	//切到指数平方雾（黑雾、密度 0.3、起雾距离 1）
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.fog_exp2_set(black, 0.3f, 1.0f);
-	EXPECT_EQ(renderer.fog_mode_get(), 1u) << "指数平方雾未切换模式";
+	renderer.scene().fog_exp2_set(black, 0.3f, 1.0f);
+	EXPECT_EQ(renderer.scene().fog_mode_get(), 1u) << "指数平方雾未切换模式";
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> fog_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(fog_pixels.data(), static_cast<std::uint32_t>(fog_pixels.size())));
@@ -434,10 +434,10 @@ TEST_F(Renderer_Scene_Test, 指数平方雾比线性更浓)
 
 	//线性雾（同密度）
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.fog_set(black, 0.5f, 1.0f, 4.0f);
+	renderer.scene().fog_set(black, 0.5f, 1.0f, 4.0f);
 	uint32_t linear = render_brightness();
 	//指数平方雾（同密度、同起雾距离）
-	renderer.fog_exp2_set(black, 0.5f, 1.0f);
+	renderer.scene().fog_exp2_set(black, 0.5f, 1.0f);
 	uint32_t exp2_value = render_brightness();
 	RecordProperty("fog_exp2_linear", linear);
 	RecordProperty("fog_exp2_mode", exp2_value);
@@ -477,16 +477,16 @@ TEST_F(Renderer_Scene_Test, 指数平方雾切回线性还原)
 
 	//线性雾基线
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.fog_set(black, 0.6f, 1.0f, 5.0f);
+	renderer.scene().fog_set(black, 0.6f, 1.0f, 5.0f);
 	std::vector<uint8_t> baseline = render_frame();
 	//切到指数平方雾（红色、密度 1）
 	const float red[3] = { 1.0f, 0.0f, 0.0f };
-	renderer.fog_exp2_set(red, 1.0f, 0.5f);
-	EXPECT_EQ(renderer.fog_mode_get(), 1u);
+	renderer.scene().fog_exp2_set(red, 1.0f, 0.5f);
+	EXPECT_EQ(renderer.scene().fog_mode_get(), 1u);
 	(void)render_frame();
 	//切回同一组线性参数
-	renderer.fog_set(black, 0.6f, 1.0f, 5.0f);
-	EXPECT_EQ(renderer.fog_mode_get(), 0u) << "fog_set 未复位线性模式";
+	renderer.scene().fog_set(black, 0.6f, 1.0f, 5.0f);
+	EXPECT_EQ(renderer.scene().fog_mode_get(), 0u) << "fog_set 未复位线性模式";
 	EXPECT_EQ(render_frame(), baseline) << "切回线性后画面未逐字节还原";
 
 	renderer.resource().mesh_unload(mesh);
@@ -502,7 +502,7 @@ TEST_F(Renderer_Scene_Test, 非法指数平方雾参数被忽略)
 {
 	//未初始化：模式恒 0
 	engine::Renderer uninitialized;
-	EXPECT_EQ(uninitialized.fog_mode_get(), 0u);
+	EXPECT_EQ(uninitialized.scene().fog_mode_get(), 0u);
 
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
@@ -526,15 +526,15 @@ TEST_F(Renderer_Scene_Test, 非法指数平方雾参数被忽略)
 
 	//合法指数平方雾基线
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.fog_exp2_set(black, 0.4f, 1.0f);
-	ASSERT_EQ(renderer.fog_mode_get(), 1u);
+	renderer.scene().fog_exp2_set(black, 0.4f, 1.0f);
+	ASSERT_EQ(renderer.scene().fog_mode_get(), 1u);
 	std::vector<uint8_t> baseline = render_frame();
 	//密度越界 → 忽略
-	renderer.fog_exp2_set(black, 1.5f, 1.0f);
-	EXPECT_EQ(renderer.fog_mode_get(), 1u) << "非法密度改变了雾模式";
+	renderer.scene().fog_exp2_set(black, 1.5f, 1.0f);
+	EXPECT_EQ(renderer.scene().fog_mode_get(), 1u) << "非法密度改变了雾模式";
 	EXPECT_EQ(render_frame(), baseline) << "非法密度改变了画面";
 	//负起雾距离 → 忽略
-	renderer.fog_exp2_set(black, 0.4f, -1.0f);
+	renderer.scene().fog_exp2_set(black, 0.4f, -1.0f);
 	EXPECT_EQ(render_frame(), baseline) << "非法起雾距离改变了画面";
 
 	renderer.resource().mesh_unload(mesh);
@@ -576,13 +576,13 @@ TEST_F(Renderer_Scene_Test, 场景描述携带指数平方雾)
 	scene.fog_density = 0.5f;
 	scene.fog_start = 1.0f;
 	scene.fog_end = 4.0f;
-	renderer.scene_apply(scene);
-	EXPECT_EQ(renderer.fog_mode_get(), 0u);
+	renderer.scene().scene_apply(scene);
+	EXPECT_EQ(renderer.scene().fog_mode_get(), 0u);
 	uint32_t linear = render_brightness();
 	//改为指数平方（模式 1）
 	scene.fog_mode = 1;
-	renderer.scene_apply(scene);
-	EXPECT_EQ(renderer.fog_mode_get(), 1u) << "场景描述未把雾切到指数平方模式";
+	renderer.scene().scene_apply(scene);
+	EXPECT_EQ(renderer.scene().fog_mode_get(), 1u) << "场景描述未把雾切到指数平方模式";
 	uint32_t exp2_value = render_brightness();
 	RecordProperty("scene_fog_exp2_linear", linear);
 	RecordProperty("scene_fog_exp2_mode", exp2_value);
@@ -590,7 +590,7 @@ TEST_F(Renderer_Scene_Test, 场景描述携带指数平方雾)
 		<< "、指数平方 " << exp2_value << "）";
 	//复位模式 0 后回到线性
 	scene.fog_mode = 0;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	EXPECT_EQ(render_brightness(), linear) << "场景描述复位线性后亮度未回归";
 
 	renderer.resource().mesh_unload(mesh);
@@ -626,10 +626,10 @@ TEST_F(Renderer_Scene_Test, 高度雾不影响地面)
 
 	//地面基线：指数平方黑雾、无高度衰减
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.fog_exp2_set(black, 0.5f, 1.0f);
+	renderer.scene().fog_exp2_set(black, 0.5f, 1.0f);
 	uint32_t plain = center_brightness(render_frame());
 	//高度衰减对该片元（y = 0）应几乎无影响（仅浮点插值抖动）
-	renderer.fog_height_set(3.0f);
+	renderer.scene().fog_height_set(3.0f);
 	uint32_t with_height = center_brightness(render_frame());
 	RecordProperty("fog_height_ground_plain", plain);
 	RecordProperty("fog_height_ground", with_height);
@@ -673,7 +673,7 @@ TEST_F(Renderer_Scene_Test, 高度雾在抬升物体上更稀薄)
 	scene.fog_density = 0.5f;
 	scene.fog_start = 1.0f;
 	scene.fog_mode = 1;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	//抬升矩阵（列主序：0.5 倍缩放 ＋ 平移 y = 0.8）
 	const std::array<float, 16> 抬升矩阵 = {
 		0.5f, 0.0f, 0.0f, 0.0f,
@@ -694,7 +694,7 @@ TEST_F(Renderer_Scene_Test, 高度雾在抬升物体上更稀薄)
 	//无高度衰减基线
 	std::vector<uint8_t> plain = render_frame();
 	//高度衰减 1.5：抬升片元的雾量按 exp(-1.2) 缩减
-	renderer.fog_height_set(1.5f);
+	renderer.scene().fog_height_set(1.5f);
 	std::vector<uint8_t> thinned = render_frame();
 	uint32_t plain_brightness = center_brightness(plain);
 	uint32_t thinned_brightness = center_brightness(thinned);
@@ -703,7 +703,7 @@ TEST_F(Renderer_Scene_Test, 高度雾在抬升物体上更稀薄)
 	EXPECT_GE(thinned_brightness, plain_brightness + 30u)
 		<< "高度雾未使抬升物体更通透（" << plain_brightness << " → " << thinned_brightness << "）";
 	//系数设回 0 → 逐字节回归
-	renderer.fog_height_set(0.0f);
+	renderer.scene().fog_height_set(0.0f);
 	EXPECT_EQ(render_frame(), plain) << "高度雾系数归零后未逐字节还原";
 
 	renderer.resource().mesh_unload(mesh);
@@ -737,13 +737,13 @@ TEST_F(Renderer_Scene_Test, 非法雾高度衰减系数被忽略)
 	};
 
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.fog_exp2_set(black, 0.5f, 1.0f);
-	renderer.fog_height_set(1.5f);
+	renderer.scene().fog_exp2_set(black, 0.5f, 1.0f);
+	renderer.scene().fog_height_set(1.5f);
 	std::vector<uint8_t> baseline = render_frame();
 	//负值与越界值均忽略
-	renderer.fog_height_set(-1.0f);
+	renderer.scene().fog_height_set(-1.0f);
 	EXPECT_EQ(render_frame(), baseline) << "负高度衰减系数改变了画面";
-	renderer.fog_height_set(11.0f);
+	renderer.scene().fog_height_set(11.0f);
 	EXPECT_EQ(render_frame(), baseline) << "越界高度衰减系数改变了画面";
 
 	renderer.resource().mesh_unload(mesh);

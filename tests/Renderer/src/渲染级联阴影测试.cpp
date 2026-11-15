@@ -52,7 +52,7 @@ namespace
 	void lights_apply(engine::Renderer& renderer, const engine::Camera_Data& camera, const engine::Light_Data& light)
 	{
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
+		renderer.scene().scene_apply(camera, light, fog);
 	}
 
 	//在指定相机与场景下渲染一帧并返回整帧像素
@@ -87,7 +87,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影默认单级不变)
 	//场景：方向光沿 +Z、环境光 0、阴影开启
 	engine::Camera_Data camera{};
 	lights_apply(renderer, camera, positive_z_light());
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 
 	//默认级联配置（1 级）下渲染
 	std::array<float, 16> occluder_transform = occluder_matrix(0.0f, 0.0f, -0.5f);
@@ -96,11 +96,11 @@ TEST_F(Renderer_Scene_Test, 级联阴影默认单级不变)
 	std::vector<uint8_t> default_pixels = render_once(renderer);
 
 	//显式设为 1 级后渲染
-	renderer.shadow_cascade_set(1, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_set(1, 3.0f, 12.0f);
 	uint32_t cascade_count = 0;
 	float far_scale = 0.0f;
 	float split_distance = 0.0f;
-	renderer.shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
+	renderer.scene().shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
 	EXPECT_EQ(cascade_count, 1u);
 	EXPECT_FLOAT_EQ(far_scale, 3.0f);
 	EXPECT_FLOAT_EQ(split_distance, 12.0f);
@@ -148,7 +148,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影远端覆盖)
 	std::array<float, 16> receiver_transform = translate_matrix(0.0f, 0.0f, -5.0f);
 	std::array<float, 16> occluder_transform = occluder_matrix(0.0f, 0.0f, -5.5f);
 	lights_apply(renderer, camera, positive_z_light());
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> origin_pixels = render_once(renderer);
@@ -159,7 +159,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影远端覆盖)
 	receiver_transform = translate_matrix(40.0f, 0.0f, -5.0f);
 	occluder_transform = occluder_matrix(40.0f, 0.0f, -5.5f);
 	lights_apply(renderer, camera, positive_z_light());
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> moved_pixels = render_once(renderer);
@@ -170,13 +170,13 @@ TEST_F(Renderer_Scene_Test, 级联阴影远端覆盖)
 	receiver_transform = translate_matrix(0.0f, 0.0f, -20.0f);
 	occluder_transform = occluder_matrix(0.0f, 0.0f, -20.5f);
 	lights_apply(renderer, camera, positive_z_light());
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> single_pixels = render_once(renderer);
 
 	//④ 双级：远区半径 36 覆盖 z = -20 → 中心被遮蔽
-	renderer.shadow_cascade_set(2, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_set(2, 3.0f, 12.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> dual_pixels = render_once(renderer);
@@ -223,7 +223,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影切回单级恢复)
 	//默认相机、方向光沿 +Z、阴影开启
 	engine::Camera_Data camera{};
 	lights_apply(renderer, camera, positive_z_light());
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 
 	std::array<float, 16> occluder_transform = occluder_matrix(0.0f, 0.0f, -0.5f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
@@ -231,13 +231,13 @@ TEST_F(Renderer_Scene_Test, 级联阴影切回单级恢复)
 	std::vector<uint8_t> single_pixels = render_once(renderer);
 
 	//切双级：近区半片应继续遮蔽中心
-	renderer.shadow_cascade_set(2, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_set(2, 3.0f, 12.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> dual_pixels = render_once(renderer);
 
 	//切回单级：画面应与最初单级帧一致
-	renderer.shadow_cascade_set(1, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_set(1, 3.0f, 12.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, nullptr));
 	std::vector<uint8_t> restored_pixels = render_once(renderer);
@@ -283,7 +283,7 @@ TEST_F(Renderer_Scene_Test, 三级级联覆盖中距并切回单级恢复)
 	camera.target[2] = -20.0f;
 	camera.far_plane = 200.0f;
 	lights_apply(renderer, camera, positive_z_light());
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 
 	//接收面与遮挡面均位于 z = -20（遮挡面再退 0.5）
 	const std::array<float, 16> receiver_transform = translate_matrix(0.0f, 0.0f, -20.0f);
@@ -295,18 +295,18 @@ TEST_F(Renderer_Scene_Test, 三级级联覆盖中距并切回单级恢复)
 	std::vector<uint8_t> single_pixels = render_once(renderer);
 
 	//三级：阈值 12 / 36，距离 23 落入第 2 片（半径 36）→ 遮蔽
-	renderer.shadow_cascade_set(3, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_set(3, 3.0f, 12.0f);
 	uint32_t cascade_count = 0;
 	float far_scale = 0.0f;
 	float split_distance = 0.0f;
-	renderer.shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
+	renderer.scene().shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
 	EXPECT_EQ(cascade_count, 3u) << "三级配置未生效";
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> triple_pixels = render_once(renderer);
 
 	//切回单级：画面应与最初单级帧一致
-	renderer.shadow_cascade_set(1, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_set(1, 3.0f, 12.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> restored_pixels = render_once(renderer);
@@ -351,26 +351,26 @@ TEST_F(Renderer_Scene_Test, 级联接缝淡化)
 	engine::Camera_Data camera{};
 	camera.far_plane = 200.0f;
 	lights_apply(renderer, camera, positive_z_light());
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 	const std::array<float, 16> receiver_transform = translate_matrix(0.0f, 0.0f, -9.5f);
 	const std::array<float, 16> occluder_transform = occluder_matrix(0.0f, 0.0f, -10.0f);
 
 	//三级 + 硬切换
-	renderer.shadow_cascade_set(3, 3.0f, 12.0f);
-	ASSERT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.0f) << "淡化默认值应为 0";
+	renderer.scene().shadow_cascade_set(3, 3.0f, 12.0f);
+	ASSERT_FLOAT_EQ(renderer.scene().shadow_cascade_blend(), 0.0f) << "淡化默认值应为 0";
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> hard_pixels = render_once(renderer);
 
 	//淡化 0.3：带内混合 → 中心变亮
-	renderer.shadow_cascade_blend_set(0.3f);
-	EXPECT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.3f);
+	renderer.scene().shadow_cascade_blend_set(0.3f);
+	EXPECT_FLOAT_EQ(renderer.scene().shadow_cascade_blend(), 0.3f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> blended_pixels = render_once(renderer);
 
 	//归零：逐字节回到硬切换
-	renderer.shadow_cascade_blend_set(0.0f);
+	renderer.scene().shadow_cascade_blend_set(0.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(occluder, occluder_transform.data()));
 	ASSERT_TRUE(renderer.resource().mesh_draw(receiver, receiver_transform.data()));
 	std::vector<uint8_t> restored_pixels = render_once(renderer);
@@ -403,30 +403,30 @@ TEST_F(Renderer_Scene_Test, 级联参数非法忽略)
 	uint32_t cascade_count = 0;
 	float far_scale = 0.0f;
 	float split_distance = 0.0f;
-	renderer.shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
+	renderer.scene().shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
 	EXPECT_EQ(cascade_count, 1u);
 
 	//非法级联数（0 与超过上限的 4）
-	renderer.shadow_cascade_set(0, 3.0f, 12.0f);
-	renderer.shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
+	renderer.scene().shadow_cascade_set(0, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
 	EXPECT_EQ(cascade_count, 1u) << "级联数 0 未被忽略";
-	renderer.shadow_cascade_set(4, 3.0f, 12.0f);
-	renderer.shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
+	renderer.scene().shadow_cascade_set(4, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
 	EXPECT_EQ(cascade_count, 1u) << "非法级联数未被忽略";
 
 	//非法远区倍数
-	renderer.shadow_cascade_set(2, 0.5f, 12.0f);
-	renderer.shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
+	renderer.scene().shadow_cascade_set(2, 0.5f, 12.0f);
+	renderer.scene().shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
 	EXPECT_EQ(cascade_count, 1u) << "非法远区倍数未被忽略";
 
 	//非法切换距离
-	renderer.shadow_cascade_set(2, 3.0f, -1.0f);
-	renderer.shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
+	renderer.scene().shadow_cascade_set(2, 3.0f, -1.0f);
+	renderer.scene().shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
 	EXPECT_EQ(cascade_count, 1u) << "非法切换距离未被忽略";
 
 	//合法调用生效
-	renderer.shadow_cascade_set(2, 2.5f, 8.0f);
-	renderer.shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
+	renderer.scene().shadow_cascade_set(2, 2.5f, 8.0f);
+	renderer.scene().shadow_cascade_get(&cascade_count, &far_scale, &split_distance);
 	EXPECT_EQ(cascade_count, 2u);
 	EXPECT_FLOAT_EQ(far_scale, 2.5f);
 	EXPECT_FLOAT_EQ(split_distance, 8.0f);
@@ -457,7 +457,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影纹素对齐)
 	engine::Light_Data light = positive_z_light();
 	light.shadow_cascade_count = 2;
 	lights_apply(renderer, camera, light);
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 
 	//按 2048 上限分配回读缓冲（默认 1024，兼容更高档位）
 	const uint32_t capacity = 2048u * 2048u * 4u;
@@ -486,7 +486,7 @@ TEST_F(Renderer_Scene_Test, 级联阴影纹素对齐)
 	//相机亚纹素位移后阴影图（主 pass 视角变化不影响阴影图比对）
 	camera.position[0] += 0.004f;
 	lights_apply(renderer, camera, light);
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 	draw_scene();
 	std::vector<uint8_t> after = read_shadow();
 

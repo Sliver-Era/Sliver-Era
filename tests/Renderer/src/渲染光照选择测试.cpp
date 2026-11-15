@@ -48,7 +48,7 @@ namespace
 		float intensity, bool is_spot)
 	{
 		engine::Point_Light_State state{};
-		ASSERT_TRUE(renderer.point_light_state_get(slot, state));
+		ASSERT_TRUE(renderer.scene().point_light_state_get(slot, state));
 		for (int axis = 0; axis < 3; ++axis)
 			EXPECT_FLOAT_EQ(state.position[axis], position[axis]);
 		EXPECT_FLOAT_EQ(state.intensity, intensity);
@@ -82,8 +82,8 @@ TEST(Renderer_Light_Select_Test, 声明顺序口径与诊断)
 		light.spot_intensity[index] = 0.3f;
 	}
 	//默认：声明顺序（0）＋ 预算 0 → 前 8 个候选（全部点光）生效，聚光被淘汰
-	renderer.scene_apply(default_camera(), light, empty_fog());
-	EXPECT_EQ(renderer.point_light_count(), 8u);
+	renderer.scene().scene_apply(default_camera(), light, empty_fog());
+	EXPECT_EQ(renderer.scene().point_light_count(), 8u);
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.lights_active, 8u);
 	EXPECT_EQ(stats.lights_dropped, 4u);
@@ -96,8 +96,8 @@ TEST(Renderer_Light_Select_Test, 声明顺序口径与诊断)
 	light.spot_count = 0;
 	light.point_count = 6;
 	light.light_budget = 0;
-	renderer.scene_apply(default_camera(), light, empty_fog());
-	EXPECT_EQ(renderer.point_light_count(), 6u);
+	renderer.scene().scene_apply(default_camera(), light, empty_fog());
+	EXPECT_EQ(renderer.scene().point_light_count(), 6u);
 	stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.lights_dropped, 0u);
 	EXPECT_EQ(stats.light_truncated, 0u);
@@ -134,9 +134,9 @@ TEST(Renderer_Light_Select_Test, 重要性选择与稳定性)
 		light.spot_position[index][1] = index < 4 ? 2.0f : 2.0f;
 		light.spot_position[index][2] = index < 4 ? 3.0f : -50.0f;
 	}
-	renderer.scene_apply(default_camera(), light, empty_fog());
+	renderer.scene().scene_apply(default_camera(), light, empty_fog());
 	//命中：4 盏近强聚光 ＋ 4 盏点光（其余 8 条淘汰）
-	EXPECT_EQ(renderer.point_light_count(), 8u);
+	EXPECT_EQ(renderer.scene().point_light_count(), 8u);
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.lights_active, 8u);
 	EXPECT_EQ(stats.lights_dropped, 8u);
@@ -150,12 +150,12 @@ TEST(Renderer_Light_Select_Test, 重要性选择与稳定性)
 	//同输入重复应用：选中集合与顺序逐字段一致（不随帧抖动）
 	engine::Point_Light_State first[8]{};
 	for (uint32_t slot = 0; slot < 8; ++slot)
-		ASSERT_TRUE(renderer.point_light_state_get(slot, first[slot]));
-	renderer.scene_apply(default_camera(), light, empty_fog());
+		ASSERT_TRUE(renderer.scene().point_light_state_get(slot, first[slot]));
+	renderer.scene().scene_apply(default_camera(), light, empty_fog());
 	for (uint32_t slot = 0; slot < 8; ++slot)
 	{
 		engine::Point_Light_State again{};
-		ASSERT_TRUE(renderer.point_light_state_get(slot, again));
+		ASSERT_TRUE(renderer.scene().point_light_state_get(slot, again));
 		for (int axis = 0; axis < 3; ++axis)
 			EXPECT_FLOAT_EQ(again.position[axis], first[slot].position[axis]);
 		EXPECT_FLOAT_EQ(again.intensity, first[slot].intensity);
@@ -180,8 +180,8 @@ TEST(Renderer_Light_Select_Test, 预算截断与门面入口)
 		light.point_intensity[index] = 0.3f;
 	}
 	//声明顺序模式：预算 4 → 前 4 盏生效、淘汰 1 盏
-	renderer.scene_apply(default_camera(), light, empty_fog());
-	EXPECT_EQ(renderer.point_light_count(), 4u);
+	renderer.scene().scene_apply(default_camera(), light, empty_fog());
+	EXPECT_EQ(renderer.scene().point_light_count(), 4u);
 	engine::Frame_Stats stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.lights_active, 4u);
 	EXPECT_EQ(stats.lights_dropped, 1u);
@@ -190,16 +190,16 @@ TEST(Renderer_Light_Select_Test, 预算截断与门面入口)
 	//重要性模式 ＋ 预算 3 → 生效 3 盏、淘汰 2 盏
 	light.light_select_mode = 1;
 	light.light_budget = 3;
-	renderer.scene_apply(default_camera(), light, empty_fog());
-	EXPECT_EQ(renderer.point_light_count(), 3u);
+	renderer.scene().scene_apply(default_camera(), light, empty_fog());
+	EXPECT_EQ(renderer.scene().point_light_count(), 3u);
 	stats = renderer.frame_stats_get();
 	EXPECT_EQ(stats.lights_active, 3u);
 	EXPECT_EQ(stats.lights_dropped, 2u);
 	EXPECT_EQ(stats.light_select_mode, 1u);
 
 	//门面入口：模式仅接受 0 / 1（其它按 0）、预算钳到容量
-	renderer.light_select_set(1, 2);
+	renderer.scene().light_select_set(1, 2);
 	EXPECT_EQ(renderer.frame_stats_get().light_select_mode, 1u);
-	renderer.light_select_set(5, 5000);
+	renderer.scene().light_select_set(5, 5000);
 	EXPECT_EQ(renderer.frame_stats_get().light_select_mode, 0u);
 }

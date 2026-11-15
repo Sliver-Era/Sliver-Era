@@ -98,7 +98,7 @@ TEST_F(Renderer_Outline_Test, 默认关闭不登记描边项)
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 	//默认外扩宽度为 0
-	EXPECT_EQ(renderer.outline_width(), 0.0f);
+	EXPECT_EQ(renderer.scene().outline_width(), 0.0f);
 	//加载立方体并登记绘制
 	engine::Mesh_Handle cube = 0;
 	ASSERT_TRUE(renderer.resource().mesh_cube_load(cube, 0.5f));
@@ -125,8 +125,8 @@ TEST_F(Renderer_Outline_Test, 开启后轮廓出现描边色)
 
 	//第一帧：开启 0.5 世界单位外扩 ＋ 纯红描边
 	const float red[3] = { 1.0f, 0.0f, 0.0f };
-	renderer.outline_set(0.5f, red);
-	EXPECT_NEAR(renderer.outline_width(), 0.5f, 1e-6f);
+	renderer.scene().outline_set(0.5f, red);
+	EXPECT_NEAR(renderer.scene().outline_width(), 0.5f, 1e-6f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(cube, nullptr));
 	std::vector<uint8_t> outline_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(outline_pixels.data(), static_cast<uint32_t>(outline_pixels.size())));
@@ -136,7 +136,7 @@ TEST_F(Renderer_Outline_Test, 开启后轮廓出现描边色)
 	EXPECT_GT(red_count(outline_pixels), 20u) << "外扩描边未产生可见轮廓";
 
 	//第二帧：关闭描边，描边项消失且画面无描边色
-	renderer.outline_clear();
+	renderer.scene().outline_clear();
 	ASSERT_TRUE(renderer.resource().mesh_draw(cube, nullptr));
 	std::vector<uint8_t> plain_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain_pixels.data(), static_cast<uint32_t>(plain_pixels.size())));
@@ -151,18 +151,18 @@ TEST_F(Renderer_Outline_Test, 宽度与颜色非法值归一)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//负宽度按 0（关闭）
-	renderer.outline_set(-0.5f, nullptr);
-	EXPECT_EQ(renderer.outline_width(), 0.0f);
+	renderer.scene().outline_set(-0.5f, nullptr);
+	EXPECT_EQ(renderer.scene().outline_width(), 0.0f);
 	//非有限宽度按 0
-	renderer.outline_set(std::numeric_limits<float>::quiet_NaN(), nullptr);
-	EXPECT_EQ(renderer.outline_width(), 0.0f);
+	renderer.scene().outline_set(std::numeric_limits<float>::quiet_NaN(), nullptr);
+	EXPECT_EQ(renderer.scene().outline_width(), 0.0f);
 	//超界宽度钳到 1
 	const float over[3] = { 2.0f, -1.0f, 0.5f };
-	renderer.outline_set(2.0f, over);
-	EXPECT_NEAR(renderer.outline_width(), 1.0f, 1e-6f);
+	renderer.scene().outline_set(2.0f, over);
+	EXPECT_NEAR(renderer.scene().outline_width(), 1.0f, 1e-6f);
 	//颜色逐分量钳到 [0, 1]（非有限值按 0）
 	float color[3] = { -1.0f, -1.0f, -1.0f };
-	renderer.outline_color(color);
+	renderer.scene().outline_color(color);
 	EXPECT_NEAR(color[0], 1.0f, 1e-6f);
 	EXPECT_NEAR(color[1], 0.0f, 1e-6f);
 	EXPECT_NEAR(color[2], 0.5f, 1e-6f);
@@ -182,19 +182,19 @@ TEST_F(Renderer_Outline_Test, 描边宽度按视距补偿)
 	engine::Mesh_Handle sphere = 0;
 	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 0.5f, 24, 16));
 	const float red[3] = { 1.0f, 0.0f, 0.0f };
-	renderer.outline_set(1.0f, red);
+	renderer.scene().outline_set(1.0f, red);
 
 	//近处（相机距原点 3 单位，即补偿参考距离）
-	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(sphere, nullptr));
 	std::vector<uint8_t> near_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(near_pixels.data(), static_cast<uint32_t>(near_pixels.size())));
 	uint32_t near_thickness = red_run_left(near_pixels, WINDOW_HEIGHT / 2);
 
 	//远处（相机距原点 12 单位，补偿后屏幕厚度应与近处接近）
-	renderer.camera_position_set(0.0f, 0.0f, 12.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 12.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(sphere, nullptr));
 	std::vector<uint8_t> far_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(far_pixels.data(), static_cast<uint32_t>(far_pixels.size())));

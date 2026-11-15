@@ -453,14 +453,14 @@ TEST_F(Renderer_GPU_Driven_Test, GPU剔除与CPU一致且CPU更保守)
 	//8 组随机相机
 	for (uint32_t view = 0; view < 8; ++view)
 	{
-		renderer.camera_position_set(offset_x(generator) * 0.5f, offset_yz(generator) * 0.5f,
+		renderer.scene().camera_position_set(offset_x(generator) * 0.5f, offset_yz(generator) * 0.5f,
 			offset_yz(generator) * 0.5f + 6.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-		renderer.camera_fov_set(0.6f + 0.2f * static_cast<float>(view % 4));
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_fov_set(0.6f + 0.2f * static_cast<float>(view % 4));
 		ASSERT_TRUE(renderer.compute().gpu_cull_mask(transforms[0].data(), INSTANCE_COUNT, local_min, local_max, mask.data()));
 		//CPU 参考：当前相机矩阵 → 六平面
 		float view_proj[16] = {};
-		ASSERT_TRUE(renderer.camera_view_proj(view_proj));
+		ASSERT_TRUE(renderer.scene().camera_view_proj(view_proj));
 		engine::Frustum_Planes planes;
 		ASSERT_TRUE(engine::frustum_planes_extract(planes, view_proj));
 		uint32_t visible_count = 0;
@@ -565,14 +565,14 @@ TEST_F(Renderer_GPU_Driven_Test, GPU压缩与CPU剔除一致)
 	std::vector<float> compacted(static_cast<std::size_t>(INSTANCE_COUNT) * 16, 0.0f);
 	for (uint32_t view = 0; view < 8; ++view)
 	{
-		renderer.camera_position_set(offset_x(generator) * 0.3f, offset_yz(generator) * 0.3f, 6.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
-		renderer.camera_fov_set(0.7f + 0.15f * static_cast<float>(view % 4));
+		renderer.scene().camera_position_set(offset_x(generator) * 0.3f, offset_yz(generator) * 0.3f, 6.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_fov_set(0.7f + 0.15f * static_cast<float>(view % 4));
 		uint32_t visible = 0;
 		ASSERT_TRUE(renderer.compute().gpu_instance_compact(transforms[0].data(), INSTANCE_COUNT,
 			local_min, local_max, compacted.data(), &visible));
 		float view_proj[16] = {};
-		ASSERT_TRUE(renderer.camera_view_proj(view_proj));
+		ASSERT_TRUE(renderer.scene().camera_view_proj(view_proj));
 		//CPU 参考序列
 		std::vector<std::array<float, 16>> expected;
 		for (uint32_t index = 0; index < INSTANCE_COUNT; ++index)
@@ -711,14 +711,14 @@ TEST_F(Renderer_GPU_Driven_Test, GPU距离剔除与CPU一致)
 	const float camera[3] = { 0.0f, 0.0f, 6.0f };
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	constexpr float MAX_DISTANCE = 22.0f;
-	renderer.camera_position_set(camera[0], camera[1], camera[2]);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().camera_position_set(camera[0], camera[1], camera[2]);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	std::vector<float> compacted(static_cast<std::size_t>(INSTANCE_COUNT) * 16, 0.0f);
 	uint32_t visible = 0;
 	ASSERT_TRUE(renderer.compute().gpu_instance_compact_ex(transforms[0].data(), INSTANCE_COUNT,
 		local_min, local_max, camera, forward, MAX_DISTANCE, true, compacted.data(), &visible));
 	float view_proj[16] = {};
-	ASSERT_TRUE(renderer.camera_view_proj(view_proj));
+	ASSERT_TRUE(renderer.scene().camera_view_proj(view_proj));
 	uint32_t expected = 0;
 	for (uint32_t index = 0; index < INSTANCE_COUNT; ++index)
 	{

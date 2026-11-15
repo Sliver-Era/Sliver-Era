@@ -304,7 +304,7 @@ namespace engine
             场景.clear_color[1] = 0.050f;
             场景.clear_color[2] = 0.105f;
             场景.clear_color[3] = 1.0f;
-            渲染器.scene_apply(场景);
+            渲染器.scene().scene_apply(场景);
         };
         恢复测试界面场景();
 
@@ -339,7 +339,7 @@ namespace engine
             //阴影 pass 的并行段数（第二百一十三轮）
             上下文.运行状态.shadow_parallel_segments = 统计.shadow_parallel_segments;
             //实例剔除并行阈值（第二百二十二轮；展示面板显示）
-            上下文.运行状态.cull_parallel_min_instances = 渲染器.cull_parallel_min_instances();
+            上下文.运行状态.cull_parallel_min_instances = 渲染器.device().cull_parallel_min_instances();
             //按用途拆分的派发计数（第二百二十四轮）
             上下文.运行状态.cull_parallel_dispatches = 统计.cull_parallel_dispatches;
             上下文.运行状态.scan_parallel_dispatches = 统计.scan_parallel_dispatches;

@@ -597,8 +597,8 @@ TEST_F(Renderer_Stats_Test, 阴影重绘与复用计数)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, triangle_data()));
 

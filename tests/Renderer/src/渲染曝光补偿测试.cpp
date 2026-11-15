@@ -53,13 +53,13 @@ TEST_F(Renderer_Scene_Test, 曝光默认口径逐字节一致)
 	engine::Camera_Data camera{};
 	engine::Light_Data light = positive_z_light();
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	const std::vector<uint8_t> reference = draw_face(renderer, mesh);
 	ASSERT_FALSE(reference.empty());
 
 	//显式 0
 	light.exposure = 0.0f;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	const std::vector<uint8_t> again = draw_face(renderer, mesh);
 	EXPECT_TRUE(reference == again) << "显式 EV 0 后画面与默认不一致";
 
@@ -88,17 +88,17 @@ TEST_F(Renderer_Scene_Test, 曝光单调性)
 
 	//基准
 	engine::Light_Data light = positive_z_light();
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	const uint32_t base = center_brightness(draw_face(renderer, mesh));
 
 	//+1 EV
 	light.exposure = 1.0f;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	const uint32_t brighter = center_brightness(draw_face(renderer, mesh));
 
 	//−1 EV
 	light.exposure = -1.0f;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	const uint32_t darker = center_brightness(draw_face(renderer, mesh));
 
 	RecordProperty("exposure_base", base);
@@ -119,16 +119,16 @@ TEST_F(Renderer_Scene_Test, 曝光钳制与非法值)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	ASSERT_TRUE(renderer.exposure_set(10.0f));
-	EXPECT_FLOAT_EQ(renderer.exposure_get(), 4.0f);
-	ASSERT_TRUE(renderer.exposure_set(-10.0f));
-	EXPECT_FLOAT_EQ(renderer.exposure_get(), -4.0f);
-	ASSERT_FALSE(renderer.exposure_set(std::nanf("")));
-	EXPECT_FLOAT_EQ(renderer.exposure_get(), -4.0f);
+	ASSERT_TRUE(renderer.scene().exposure_set(10.0f));
+	EXPECT_FLOAT_EQ(renderer.scene().exposure_get(), 4.0f);
+	ASSERT_TRUE(renderer.scene().exposure_set(-10.0f));
+	EXPECT_FLOAT_EQ(renderer.scene().exposure_get(), -4.0f);
+	ASSERT_FALSE(renderer.scene().exposure_set(std::nanf("")));
+	EXPECT_FLOAT_EQ(renderer.scene().exposure_get(), -4.0f);
 
 	//扁平入口透传
 	engine::Scene_Data scene{};
 	scene.exposure = 2.0f;
-	renderer.scene_apply(scene);
-	EXPECT_FLOAT_EQ(renderer.exposure_get(), 2.0f);
+	renderer.scene().scene_apply(scene);
+	EXPECT_FLOAT_EQ(renderer.scene().exposure_get(), 2.0f);
 }

@@ -27,24 +27,24 @@ TEST_F(Renderer_Scene_Test, 级联淡化数据侧生效)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	//默认 0
-	EXPECT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.0f);
-	renderer.scene_apply(camera, light, empty_fog());
-	EXPECT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.0f) << "默认场景不应改变淡化比例";
+	EXPECT_FLOAT_EQ(renderer.scene().shadow_cascade_blend(), 0.0f);
+	renderer.scene().scene_apply(camera, light, empty_fog());
+	EXPECT_FLOAT_EQ(renderer.scene().shadow_cascade_blend(), 0.0f) << "默认场景不应改变淡化比例";
 
 	//0.3 生效
 	light.shadow_cascade_blend = 0.3f;
-	renderer.scene_apply(camera, light, empty_fog());
-	EXPECT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.3f);
+	renderer.scene().scene_apply(camera, light, empty_fog());
+	EXPECT_FLOAT_EQ(renderer.scene().shadow_cascade_blend(), 0.3f);
 
 	//非法值（> 0.5）被 setter 忽略
 	light.shadow_cascade_blend = 1.0f;
-	renderer.scene_apply(camera, light, empty_fog());
-	EXPECT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.3f) << "非法淡化比例未被忽略";
+	renderer.scene().scene_apply(camera, light, empty_fog());
+	EXPECT_FLOAT_EQ(renderer.scene().shadow_cascade_blend(), 0.3f) << "非法淡化比例未被忽略";
 
 	//恢复 0
 	light.shadow_cascade_blend = 0.0f;
-	renderer.scene_apply(camera, light, empty_fog());
-	EXPECT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.0f);
+	renderer.scene().scene_apply(camera, light, empty_fog());
+	EXPECT_FLOAT_EQ(renderer.scene().shadow_cascade_blend(), 0.0f);
 }
 
 /*
@@ -57,6 +57,6 @@ TEST_F(Renderer_Scene_Test, 级联淡化扁平入口透传)
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	engine::Scene_Data scene{};
 	scene.shadow_cascade_blend = 0.2f;
-	renderer.scene_apply(scene);
-	EXPECT_FLOAT_EQ(renderer.shadow_cascade_blend(), 0.2f) << "扁平入口未透传淡化比例";
+	renderer.scene().scene_apply(scene);
+	EXPECT_FLOAT_EQ(renderer.scene().shadow_cascade_blend(), 0.2f) << "扁平入口未透传淡化比例";
 }

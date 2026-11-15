@@ -89,28 +89,28 @@ TEST_F(Renderer_Cache_Shadow_Test, 阴影视锥范围可配)
 	float half_extent = 0.0f;
 	float near_plane = 0.0f;
 	float far_plane = 0.0f;
-	renderer.shadow_range_get(&half_extent, &near_plane, &far_plane);
+	renderer.scene().shadow_range_get(&half_extent, &near_plane, &far_plane);
 	EXPECT_FLOAT_EQ(half_extent, 12.0f);
 	EXPECT_FLOAT_EQ(near_plane, 1.0f);
 	EXPECT_FLOAT_EQ(far_plane, 60.0f);
 
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//初始化后仍为默认
-	renderer.shadow_range_get(&half_extent, &near_plane, &far_plane);
+	renderer.scene().shadow_range_get(&half_extent, &near_plane, &far_plane);
 	EXPECT_FLOAT_EQ(half_extent, 12.0f);
 
 	//合法设置生效
-	renderer.shadow_range_set(8.0f, 0.5f, 40.0f);
-	renderer.shadow_range_get(&half_extent, &near_plane, &far_plane);
+	renderer.scene().shadow_range_set(8.0f, 0.5f, 40.0f);
+	renderer.scene().shadow_range_get(&half_extent, &near_plane, &far_plane);
 	EXPECT_FLOAT_EQ(half_extent, 8.0f);
 	EXPECT_FLOAT_EQ(near_plane, 0.5f);
 	EXPECT_FLOAT_EQ(far_plane, 40.0f);
 
 	//非法设置（半宽 0 / 近 0 / 远小于近）整次忽略
-	renderer.shadow_range_set(0.0f, 0.5f, 40.0f);
-	renderer.shadow_range_set(8.0f, 0.0f, 40.0f);
-	renderer.shadow_range_set(8.0f, 10.0f, 5.0f);
-	renderer.shadow_range_get(&half_extent, &near_plane, &far_plane);
+	renderer.scene().shadow_range_set(0.0f, 0.5f, 40.0f);
+	renderer.scene().shadow_range_set(8.0f, 0.0f, 40.0f);
+	renderer.scene().shadow_range_set(8.0f, 10.0f, 5.0f);
+	renderer.scene().shadow_range_get(&half_extent, &near_plane, &far_plane);
 	EXPECT_FLOAT_EQ(half_extent, 8.0f);
 	EXPECT_FLOAT_EQ(near_plane, 0.5f);
 	EXPECT_FLOAT_EQ(far_plane, 40.0f);
@@ -118,10 +118,10 @@ TEST_F(Renderer_Cache_Shadow_Test, 阴影视锥范围可配)
 	//开启阴影后仍可正常出帧（视锥改用新范围）
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, triangle_data()));
-	renderer.shadow_enable_set(true);
+	renderer.scene().shadow_enable_set(true);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	ASSERT_TRUE(renderer.frame_render());
-	EXPECT_GE(renderer.shadow_pass_count(), 1u);
-	renderer.shadow_enable_set(false);
+	EXPECT_GE(renderer.scene().shadow_pass_count(), 1u);
+	renderer.scene().shadow_enable_set(false);
 	renderer.resource().mesh_unload(handle);
 }

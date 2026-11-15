@@ -106,7 +106,7 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏阴影默认全开)
 
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, two_spot_light(), fog);
+	renderer.scene().scene_apply(camera, two_spot_light(), fog);
 	const uint32_t tiles = render_tiles(renderer, occluder);
 	const engine::Frame_Stats stats = renderer.frame_stats_get();
 	RecordProperty("default_tiles", tiles);
@@ -138,7 +138,7 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏阴影数据侧开关)
 	//关闭第 1 盏的阴影
 	engine::Light_Data light = two_spot_light();
 	light.spot_shadow_on[0] = 0;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	uint32_t tiles = render_tiles(renderer, occluder);
 	RecordProperty("disabled_tiles", tiles);
 	EXPECT_EQ(tiles, 1u) << "关闭 1 盏后应只剩 1 张瓦片";
@@ -146,7 +146,7 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏阴影数据侧开关)
 
 	//恢复全开
 	light.spot_shadow_on[0] = 1;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	tiles = render_tiles(renderer, occluder);
 	RecordProperty("restored_tiles", tiles);
 	EXPECT_EQ(tiles, 2u) << "恢复后应回到 2 张瓦片";
@@ -171,18 +171,18 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏阴影门面开关)
 	renderer.resource().texture_bind_set(texture);
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, two_spot_light(), fog);
+	renderer.scene().scene_apply(camera, two_spot_light(), fog);
 
 	//经门面关闭第 1 盏
-	ASSERT_TRUE(renderer.spot_shadow_light_set(0, false));
+	ASSERT_TRUE(renderer.scene().spot_shadow_light_set(0, false));
 	EXPECT_EQ(render_tiles(renderer, occluder), 1u);
 
 	//重新开启
-	ASSERT_TRUE(renderer.spot_shadow_light_set(0, true));
+	ASSERT_TRUE(renderer.scene().spot_shadow_light_set(0, true));
 	EXPECT_EQ(render_tiles(renderer, occluder), 2u);
 
 	//越界槽位拒绝且配置不变
-	EXPECT_FALSE(renderer.spot_shadow_light_set(9, false));
+	EXPECT_FALSE(renderer.scene().spot_shadow_light_set(9, false));
 	EXPECT_EQ(render_tiles(renderer, occluder), 2u);
 
 	renderer.resource().mesh_unload(occluder);
@@ -251,8 +251,8 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏质量缩放)
 		}
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 
 		//接收面（z = 0）与遮挡板（z = 1、缩小到 0.4 并偏右上）
 		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, scale_model(1.0f, 1.0f, 0.0f, 0.0f, 0.0f).data()));
@@ -281,9 +281,9 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏质量缩放)
 	RecordProperty("quality_weak_luma", weak_luma);
 	EXPECT_GT(weak_luma, base_luma) << "强度缩放未使阴影变浅";
 	//门面入口：越界槽位与非法值拒绝
-	EXPECT_FALSE(probe.spot_shadow_quality_set(9, 2.0f, 1.0f));
-	EXPECT_FALSE(probe.spot_shadow_quality_set(0, std::nanf(""), 1.0f));
-	EXPECT_TRUE(probe.spot_shadow_quality_set(0, 2.0f, 0.5f));
+	EXPECT_FALSE(probe.scene().spot_shadow_quality_set(9, 2.0f, 1.0f));
+	EXPECT_FALSE(probe.scene().spot_shadow_quality_set(0, std::nanf(""), 1.0f));
+	EXPECT_TRUE(probe.scene().spot_shadow_quality_set(0, 2.0f, 0.5f));
 }
 
 /*
@@ -345,8 +345,8 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏阴影优先级)
 		}
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 
 		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, scale_model(1.0f, 1.0f, 0.0f, 0.0f, 0.0f).data()));
 		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, scale_model(0.3f, 0.3f, 0.0f, 0.0f, 1.0f).data()));
@@ -363,7 +363,7 @@ TEST_F(Renderer_Scene_Test, 聚光逐盏阴影优先级)
 	RecordProperty("priority_changed_pixels", difference);
 	EXPECT_GT(difference, 0u) << "优先级未改变参与投影的聚光灯集合";
 	//门面入口：越界与非法值
-	EXPECT_FALSE(probe.spot_shadow_priority_set(32, 1.0f));
-	EXPECT_FALSE(probe.spot_shadow_priority_set(0, std::nanf("")));
-	EXPECT_TRUE(probe.spot_shadow_priority_set(9, 5.0f));
+	EXPECT_FALSE(probe.scene().spot_shadow_priority_set(32, 1.0f));
+	EXPECT_FALSE(probe.scene().spot_shadow_priority_set(0, std::nanf("")));
+	EXPECT_TRUE(probe.scene().spot_shadow_priority_set(9, 5.0f));
 }

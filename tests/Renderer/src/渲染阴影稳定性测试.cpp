@@ -48,8 +48,8 @@ namespace
 		engine::Light_Data light = positive_z_light();
 		light.shadow_cascade_count = cascade_count;
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 	}
 
 	//绘制固定场景并推进一帧（遮挡面 z = -10、接收面 z = -9.5）
@@ -197,8 +197,8 @@ TEST_F(Renderer_Scene_Test, 同一相机重复应用幂等)
 	light.direction[2] = 1.0f;
 	light.shadow_cascade_count = 2;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	draw_scene(renderer, occluder, receiver);
 	uint32_t width = 0;
 	uint32_t height = 0;
@@ -206,8 +206,8 @@ TEST_F(Renderer_Scene_Test, 同一相机重复应用幂等)
 	ASSERT_FALSE(first.empty()) << "阴影图回读为空";
 
 	//同一相机与同一份数据再应用一次后重绘
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	draw_scene(renderer, occluder, receiver);
 	std::vector<uint8_t> second = shadow_map_read(renderer, width, height);
 	EXPECT_TRUE(first == second) << "同一相机重复应用后阴影图不一致（存在残留副作用）";

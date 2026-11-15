@@ -44,8 +44,8 @@ namespace
 	void scene_apply(engine::Renderer& renderer, const engine::Camera_Data& camera, const engine::Light_Data& light)
 	{
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 	}
 
 	//绘制固定场景并推进一帧，返回画面像素（接收面在原点、遮挡面 z = -3，半影宽度可达数纹素）
@@ -164,9 +164,9 @@ TEST_F(Renderer_Scene_Test, PCSS门面钳制与关闭)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//越界参数（搜索 100 / 半径 0.5）→ 钳制后仍可开启
-	renderer.shadow_pcss_set(true, 100.0f, 0.5f);
+	renderer.scene().shadow_pcss_set(true, 100.0f, 0.5f);
 	EXPECT_EQ(renderer.frame_stats_get().shadow_pcss, 1u);
 	//关闭
-	renderer.shadow_pcss_set(false, 24.0f, 8.0f);
+	renderer.scene().shadow_pcss_set(false, 24.0f, 8.0f);
 	EXPECT_EQ(renderer.frame_stats_get().shadow_pcss, 0u);
 }

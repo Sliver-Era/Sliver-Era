@@ -307,8 +307,8 @@ TEST_F(Renderer_Instanced_Test, 实例化绘制共享同一材质)
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data(QUAD_HALF)));
 	//关闭高光只看漫反射，PBR 开启
-	renderer.specular_set(0.0f, 16.0f);
-	renderer.pbr_enable_set(true);
+	renderer.scene().specular_set(0.0f, 16.0f);
+	renderer.scene().pbr_enable_set(true);
 
 	//两个重叠实例（恒等变换）
 	std::array<float, 16> transforms[2] = {

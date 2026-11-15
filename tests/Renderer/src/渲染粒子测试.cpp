@@ -328,9 +328,9 @@ TEST(Renderer_Particle_Test, 粒子billboard定位)
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
@@ -391,9 +391,9 @@ TEST(Renderer_Particle_Test, 粒子年龄颜色曲线)
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
@@ -460,9 +460,9 @@ TEST(Renderer_Particle_Test, 粒子颜色覆盖绘制)
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
@@ -546,9 +546,9 @@ TEST(Renderer_Particle_Test, 粒子软边可配)
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
@@ -617,9 +617,9 @@ TEST(Renderer_Particle_Test, 粒子颜色分桶绘制)
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(16));
 	engine::Particle_Emitter emitter{};
@@ -681,9 +681,9 @@ TEST(Renderer_Particle_Test, 粒子混合档与深度写入)
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(8));
 	engine::Particle_Emitter emitter{};
@@ -753,9 +753,9 @@ TEST(Renderer_Particle_Test, 粒子深度分桶稳定性)
 	ASSERT_TRUE(renderer.init(config));
 	engine::Particle_Host 粒子(renderer);
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 4.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 	ASSERT_TRUE(粒子.capacity_set(32));
 	engine::Particle_Emitter emitter{};
@@ -1320,8 +1320,8 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		EXPECT_FALSE(renderer.particle().particle_gpu_available());
 		EXPECT_FALSE(renderer.particle().particle_gpu_step(0.1f));
 		EXPECT_FALSE(renderer.particle().particle_supported());
-		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 4.0f, 4.0f));
 		uint64_t target = 0;
@@ -1341,8 +1341,8 @@ TEST(Renderer_Particle_Test, 粒子降级矩阵)
 		ASSERT_TRUE(renderer.particle().particle_params_set(params));
 		ASSERT_EQ(粒子.emit(1), 1u);
 		EXPECT_TRUE(renderer.particle().particle_supported());
-		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		engine::Mesh_Handle plane = 0;
 		ASSERT_TRUE(renderer.resource().mesh_plane_load(plane, 4.0f, 4.0f));
 		uint64_t target = 0;
@@ -1640,9 +1640,9 @@ TEST(Renderer_Particle_Test, 粒子GPU绘制)
 		ASSERT_TRUE(engine::particle_gpu::step_resident(renderer, 0.05f));
 	//相机先就位（绘制时按相机位置构造 billboard 基向量），再登记 GPU 绘制项
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 4.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_gpu_draw(0.6f));
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
@@ -1711,9 +1711,9 @@ TEST(Renderer_Particle_Test, 粒子间接绘制)
 		ASSERT_TRUE(engine::particle_gpu::step_resident(renderer, 0.05f));
 	//相机就位后生成间接命令
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 4.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_indirect_draw(0.6f));
 	//命令内容：索引数 = 四边形 6、实例数 = 紧凑计数、其余为 0
 	uint32_t command[5] = {};
@@ -1998,9 +1998,9 @@ TEST(Renderer_Particle_Test, 常驻绘制)
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, 256), 256u);
 	EXPECT_EQ(粒子.active_count(), 256u);
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 4.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create(target, 64, 64));
 	renderer.device().render_target_set(target);
@@ -2116,9 +2116,9 @@ TEST(Renderer_Particle_Test, 粒子绘制路径观测)
 	(void)粒子.step(0.05f);
 	//CPU 参考路径
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 4.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	ASSERT_TRUE(renderer.particle().particle_draw(0.2f));
 	EXPECT_EQ(renderer.frame_stats_get().particle_draw_path, 1u);
 	//GPU 直接路径（常驻）
@@ -2170,9 +2170,9 @@ TEST(Renderer_Particle_Test, 粒子三路径绘制对照)
 	ASSERT_EQ(engine::particle_gpu::emit(renderer, engine::PARTICLE_EMIT_COUNT_MAX), engine::PARTICLE_EMIT_COUNT_MAX);
 	//相机与清屏
 	const float clear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer.clear_color_set(clear);
-	renderer.camera_position_set(0.0f, 0.0f, 4.0f);
-	renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+	renderer.scene().clear_color_set(clear);
+	renderer.scene().camera_position_set(0.0f, 0.0f, 4.0f);
+	renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create(target, 320, 180));
 	renderer.device().render_target_set(target);
@@ -2288,9 +2288,9 @@ TEST(Renderer_Particle_Test, 粒子软粒子深度淡化)
 			hiz_ok = false;
 			return;
 		}
-		renderer.clear_color_set(clear);
-		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().clear_color_set(clear);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(8));
 		engine::Particle_Emitter emitter{};
@@ -2385,9 +2385,9 @@ TEST(Renderer_Particle_Test, 离屏软粒子深度淡化)
 			hiz_ok = false;
 			return;
 		}
-		renderer.clear_color_set(clear);
-		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().clear_color_set(clear);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(8));
 		engine::Particle_Emitter emitter{};
@@ -2491,9 +2491,9 @@ TEST(Renderer_Particle_Test, 软粒子档位开销)
 			hiz_ok = false;
 			return;
 		}
-		renderer.clear_color_set(clear);
-		renderer.camera_position_set(0.0f, 0.0f, 4.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().clear_color_set(clear);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 4.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(16384));
 		engine::Particle_Emitter emitter{};
@@ -2604,9 +2604,9 @@ TEST(Renderer_Particle_Test, 软粒子档位扫掠)
 			hiz_ok = false;
 			return;
 		}
-		renderer.clear_color_set(clear);
-		renderer.camera_position_set(0.0f, 0.0f, 3.0f);
-		renderer.camera_target_set(0.0f, 0.0f, 0.0f);
+		renderer.scene().clear_color_set(clear);
+		renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+		renderer.scene().camera_target_set(0.0f, 0.0f, 0.0f);
 		ASSERT_TRUE(renderer.particle().particle_enable_set(true));
 		ASSERT_TRUE(粒子.capacity_set(8));
 		engine::Particle_Emitter emitter{};

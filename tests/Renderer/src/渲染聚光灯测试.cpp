@@ -26,7 +26,7 @@ TEST_F(Renderer_Scene_Test, 聚光灯只照亮锥内)
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	//关闭方向光（本用例只观察聚光灯）
-	renderer.light_set(forward, white_light, 0.0f, 0.0f);
+	renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
 
 	//指定像素的 RGB 均值（亮度粗量；通道序无关）
 	auto brightness_at = [](const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
@@ -46,12 +46,12 @@ TEST_F(Renderer_Scene_Test, 聚光灯只照亮锥内)
 
 	const float position[3] = { 0.0f, 0.0f, 1.0f };
 	//窄锥（10° / 20°）
-	ASSERT_TRUE(renderer.light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
 	std::array<uint32_t, 2> narrow = render_pair();
 	//清空后改宽锥（同一盏灯、同一四边形；先恢复方向光关闭，再登记）
-	renderer.lights_clear();
-	renderer.light_set(forward, white_light, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.light_add_spot(position, forward, white_light, 10.0f, 1.0f, 60.0f, 80.0f, 0.0f));
+	renderer.scene().lights_clear();
+	renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
+	ASSERT_TRUE(renderer.scene().light_add_spot(position, forward, white_light, 10.0f, 1.0f, 60.0f, 80.0f, 0.0f));
 	std::array<uint32_t, 2> wide = render_pair();
 	RecordProperty("narrow_center", narrow[0]);
 	RecordProperty("narrow_corner", narrow[1]);
@@ -82,21 +82,21 @@ TEST_F(Renderer_Scene_Test, 聚光灯参数校验与上限)
 	const float zero_direction[3] = { 0.0f, 0.0f, 0.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
 	//内角等于外角 → 拒绝
-	EXPECT_FALSE(renderer.light_add_spot(position, forward, white_light, 10.0f, 1.0f, 30.0f, 30.0f, 0.0f));
+	EXPECT_FALSE(renderer.scene().light_add_spot(position, forward, white_light, 10.0f, 1.0f, 30.0f, 30.0f, 0.0f));
 	//内角大于外角 → 拒绝
-	EXPECT_FALSE(renderer.light_add_spot(position, forward, white_light, 10.0f, 1.0f, 40.0f, 30.0f, 0.0f));
+	EXPECT_FALSE(renderer.scene().light_add_spot(position, forward, white_light, 10.0f, 1.0f, 40.0f, 30.0f, 0.0f));
 	//外角越界（> 90°）→ 拒绝
-	EXPECT_FALSE(renderer.light_add_spot(position, forward, white_light, 10.0f, 1.0f, 20.0f, 120.0f, 0.0f));
+	EXPECT_FALSE(renderer.scene().light_add_spot(position, forward, white_light, 10.0f, 1.0f, 20.0f, 120.0f, 0.0f));
 	//方向退化（零向量）→ 拒绝
-	EXPECT_FALSE(renderer.light_add_spot(position, zero_direction, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
+	EXPECT_FALSE(renderer.scene().light_add_spot(position, zero_direction, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
 	//合法登记 32 盏（共用点光源上限）
 	for (uint32_t index = 0; index < 32; ++index)
-		EXPECT_TRUE(renderer.light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
+		EXPECT_TRUE(renderer.scene().light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
 	//第 33 盏被拒
-	EXPECT_FALSE(renderer.light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
+	EXPECT_FALSE(renderer.scene().light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
 	//清空后可重新登记
-	renderer.lights_clear();
-	EXPECT_TRUE(renderer.light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
+	renderer.scene().lights_clear();
+	EXPECT_TRUE(renderer.scene().light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
 }
 
 /*
@@ -145,12 +145,12 @@ TEST_F(Renderer_Scene_Test, 场景描述携带聚光灯只照亮锥内)
 	scene.spot_light_intensity[0] = 1.0f;
 	scene.spot_light_inner_deg[0] = 10.0f;
 	scene.spot_light_outer_deg[0] = 20.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	std::array<uint32_t, 2> narrow = render_pair();
 	//同一场景改宽锥
 	scene.spot_light_inner_deg[0] = 60.0f;
 	scene.spot_light_outer_deg[0] = 80.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	std::array<uint32_t, 2> wide = render_pair();
 	RecordProperty("scene_narrow_center", narrow[0]);
 	RecordProperty("scene_narrow_corner", narrow[1]);
@@ -196,7 +196,7 @@ TEST_F(Renderer_Scene_Test, 场景描述聚光灯非法参数被跳过)
 
 	//基线：默认场景（方向光满照）
 	engine::Scene_Data baseline{};
-	renderer.scene_apply(baseline);
+	renderer.scene().scene_apply(baseline);
 	std::vector<uint8_t> plain = render_frame();
 	//非法聚光灯（内角 40° ≥ 外角 30°）应被跳过
 	engine::Scene_Data invalid = baseline;
@@ -204,7 +204,7 @@ TEST_F(Renderer_Scene_Test, 场景描述聚光灯非法参数被跳过)
 	invalid.spot_light_position[0][2] = 1.0f;
 	invalid.spot_light_inner_deg[0] = 40.0f;
 	invalid.spot_light_outer_deg[0] = 30.0f;
-	renderer.scene_apply(invalid);
+	renderer.scene().scene_apply(invalid);
 	std::vector<uint8_t> after = render_frame();
 	RecordProperty("invalid_spot_center", center_brightness(after));
 	EXPECT_EQ(after, plain) << "非法聚光灯改变了画面";
@@ -234,9 +234,9 @@ TEST_F(Renderer_Scene_Test, 平方反比衰减模式可切换)
 	//关闭方向光，只观察点光源
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 0.0f, 0.0f);
+	renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
 	const float position[3] = { 0.0f, 0.0f, 2.9f };
-	ASSERT_TRUE(renderer.light_add_point(position, white_light, 3.0f, 1.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_point(position, white_light, 3.0f, 1.0f, 0.0f));
 
 	//渲染一帧并返回中心亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_brightness = [&]()
@@ -248,14 +248,14 @@ TEST_F(Renderer_Scene_Test, 平方反比衰减模式可切换)
 	};
 
 	//默认线性模式
-	EXPECT_EQ(renderer.light_attenuation_get(), 0u);
+	EXPECT_EQ(renderer.scene().light_attenuation_get(), 0u);
 	uint32_t linear = render_brightness();
 	//切到平方反比
-	EXPECT_TRUE(renderer.light_attenuation_set(1));
-	EXPECT_EQ(renderer.light_attenuation_get(), 1u);
+	EXPECT_TRUE(renderer.scene().light_attenuation_set(1));
+	EXPECT_EQ(renderer.scene().light_attenuation_get(), 1u);
 	uint32_t inverse = render_brightness();
 	//切回线性
-	EXPECT_TRUE(renderer.light_attenuation_set(0));
+	EXPECT_TRUE(renderer.scene().light_attenuation_set(0));
 	uint32_t restored = render_brightness();
 	RecordProperty("atten_linear", linear);
 	RecordProperty("atten_inverse", inverse);
@@ -287,9 +287,9 @@ TEST_F(Renderer_Scene_Test, 非法衰减模式被拒)
 	renderer.resource().texture_bind_set(texture);
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 0.0f, 0.0f);
+	renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
 	const float position[3] = { 0.0f, 0.0f, 1.0f };
-	ASSERT_TRUE(renderer.light_add_point(position, white_light, 3.0f, 1.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_point(position, white_light, 3.0f, 1.0f, 0.0f));
 
 	//渲染一帧并返回像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
@@ -302,8 +302,8 @@ TEST_F(Renderer_Scene_Test, 非法衰减模式被拒)
 
 	std::vector<uint8_t> baseline = render_frame();
 	//非法模式（2）返回假且模式保持 0
-	EXPECT_FALSE(renderer.light_attenuation_set(2));
-	EXPECT_EQ(renderer.light_attenuation_get(), 0u);
+	EXPECT_FALSE(renderer.scene().light_attenuation_set(2));
+	EXPECT_EQ(renderer.scene().light_attenuation_get(), 0u);
 	EXPECT_EQ(render_frame(), baseline) << "非法衰减模式改变了画面";
 
 	renderer.resource().mesh_unload(mesh);
@@ -345,11 +345,11 @@ TEST_F(Renderer_Scene_Test, 场景描述携带衰减模式)
 	scene.point_light_radius[0] = 3.0f;
 	scene.point_light_intensity[0] = 1.0f;
 	scene.attenuation_mode = 0;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	uint32_t linear = render_brightness();
 	//同一场景切平方反比
 	scene.attenuation_mode = 1;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	uint32_t inverse = render_brightness();
 	RecordProperty("scene_atten_linear", linear);
 	RecordProperty("scene_atten_inverse", inverse);
@@ -386,13 +386,13 @@ TEST_F(Renderer_Scene_Test, 场景描述非法衰减模式被忽略)
 	};
 
 	engine::Scene_Data baseline{};
-	renderer.scene_apply(baseline);
+	renderer.scene().scene_apply(baseline);
 	std::vector<uint8_t> plain = render_frame();
 	//非法模式（3）应被忽略，模式保持 0
 	engine::Scene_Data invalid = baseline;
 	invalid.attenuation_mode = 3;
-	renderer.scene_apply(invalid);
-	EXPECT_EQ(renderer.light_attenuation_get(), 0u);
+	renderer.scene().scene_apply(invalid);
+	EXPECT_EQ(renderer.scene().light_attenuation_get(), 0u);
 	EXPECT_EQ(render_frame(), plain) << "场景描述中的非法衰减模式改变了画面";
 
 	renderer.resource().mesh_unload(mesh);
@@ -421,10 +421,10 @@ TEST_F(Renderer_Scene_Test, 平方反比下聚光灯仍只照锥内)
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	//关闭方向光并切平方反比衰减
-	renderer.light_set(forward, white_light, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.light_attenuation_set(1));
+	renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
+	ASSERT_TRUE(renderer.scene().light_attenuation_set(1));
 	const float position[3] = { 0.0f, 0.0f, 1.0f };
-	ASSERT_TRUE(renderer.light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_spot(position, forward, white_light, 10.0f, 1.0f, 10.0f, 20.0f, 0.0f));
 
 	//渲染一帧并返回「中心 / 右上角样本」亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_pair = [&]()
@@ -468,9 +468,9 @@ TEST_F(Renderer_Scene_Test, 聚光灯锥内两种衰减可区分)
 	renderer.resource().texture_bind_set(texture);
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
-	renderer.light_set(forward, white_light, 0.0f, 0.0f);
+	renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
 	const float position[3] = { 0.0f, 0.0f, 2.9f };
-	ASSERT_TRUE(renderer.light_add_spot(position, forward, white_light, 3.0f, 1.0f, 60.0f, 80.0f, 0.0f));
+	ASSERT_TRUE(renderer.scene().light_add_spot(position, forward, white_light, 3.0f, 1.0f, 60.0f, 80.0f, 0.0f));
 
 	//渲染一帧并返回中心亮度（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_brightness = [&]()
@@ -484,7 +484,7 @@ TEST_F(Renderer_Scene_Test, 聚光灯锥内两种衰减可区分)
 	//线性（默认）
 	uint32_t linear = render_brightness();
 	//平方反比
-	ASSERT_TRUE(renderer.light_attenuation_set(1));
+	ASSERT_TRUE(renderer.scene().light_attenuation_set(1));
 	uint32_t inverse = render_brightness();
 	RecordProperty("spot_atten_linear", linear);
 	RecordProperty("spot_atten_inverse", inverse);
@@ -527,28 +527,28 @@ TEST_F(Renderer_Scene_Test, 逐光源衰减模式覆盖全局)
 	const float light_direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float light_position[3] = { 0.0f, 0.0f, 2.5f };
 	//(1) 全局线性 ＋ 逐盏平方反比
-	renderer.lights_clear();
-	renderer.light_set(light_direction, white_light, 0.0f, 0.0f);
-	renderer.light_attenuation_set(0);
-	ASSERT_TRUE(renderer.light_add_point(light_position, white_light, 2.0f, 1.0f, 0.0f, 2));
+	renderer.scene().lights_clear();
+	renderer.scene().light_set(light_direction, white_light, 0.0f, 0.0f);
+	renderer.scene().light_attenuation_set(0);
+	ASSERT_TRUE(renderer.scene().light_add_point(light_position, white_light, 2.0f, 1.0f, 0.0f, 2));
 	uint32_t inverse = render_brightness();
 	//(2) 全局平方反比 ＋ 逐盏线性
-	renderer.lights_clear();
-	renderer.light_set(light_direction, white_light, 0.0f, 0.0f);
-	renderer.light_attenuation_set(1);
-	ASSERT_TRUE(renderer.light_add_point(light_position, white_light, 2.0f, 1.0f, 0.0f, 1));
+	renderer.scene().lights_clear();
+	renderer.scene().light_set(light_direction, white_light, 0.0f, 0.0f);
+	renderer.scene().light_attenuation_set(1);
+	ASSERT_TRUE(renderer.scene().light_add_point(light_position, white_light, 2.0f, 1.0f, 0.0f, 1));
 	uint32_t linear = render_brightness();
 	//(3) 逐盏 0 = 跟随全局（全局平方反比）
-	renderer.lights_clear();
-	renderer.light_set(light_direction, white_light, 0.0f, 0.0f);
-	renderer.light_attenuation_set(1);
-	ASSERT_TRUE(renderer.light_add_point(light_position, white_light, 2.0f, 1.0f, 0.0f, 0));
+	renderer.scene().lights_clear();
+	renderer.scene().light_set(light_direction, white_light, 0.0f, 0.0f);
+	renderer.scene().light_attenuation_set(1);
+	ASSERT_TRUE(renderer.scene().light_add_point(light_position, white_light, 2.0f, 1.0f, 0.0f, 0));
 	uint32_t follow = render_brightness();
 	//(4) 越界值 9 按 2 处理（与 (1) 同口径）
-	renderer.lights_clear();
-	renderer.light_set(light_direction, white_light, 0.0f, 0.0f);
-	renderer.light_attenuation_set(0);
-	ASSERT_TRUE(renderer.light_add_point(light_position, white_light, 2.0f, 1.0f, 0.0f, 9));
+	renderer.scene().lights_clear();
+	renderer.scene().light_set(light_direction, white_light, 0.0f, 0.0f);
+	renderer.scene().light_attenuation_set(0);
+	ASSERT_TRUE(renderer.scene().light_add_point(light_position, white_light, 2.0f, 1.0f, 0.0f, 9));
 	uint32_t clamped = render_brightness();
 	RecordProperty("per_light_inverse", inverse);
 	RecordProperty("per_light_linear", linear);

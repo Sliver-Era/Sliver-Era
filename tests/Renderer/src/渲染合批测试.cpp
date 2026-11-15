@@ -184,8 +184,8 @@ TEST_F(Renderer_Scene_Test, 阴影列表同样合批)
 		light.intensity = 1.0f;
 		light.ambient = 0.0f;
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 		//遮挡面缩放 0.6、平移到 z = -0.5（同一变换连续两次）
 		float transform[16] = {};
 		transform[0] = 0.6f;
@@ -220,8 +220,8 @@ TEST_F(Renderer_Scene_Test, 阴影列表同样合批)
 		light.intensity = 1.0f;
 		light.ambient = 0.0f;
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 		float transform[16] = {};
 		transform[0] = 0.6f;
 		transform[5] = 0.6f;

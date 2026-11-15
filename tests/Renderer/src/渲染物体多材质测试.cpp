@@ -70,7 +70,7 @@ TEST_F(Renderer_Scene_Test, 索引区间只画该区间)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//空场景基线（清屏色；清屏色可能较亮，故覆盖率一律相对基线判定）
 	std::vector<uint8_t> empty(pixel_bytes());
@@ -145,7 +145,7 @@ TEST_F(Renderer_Scene_Test, 索引区间越界被拒绝)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//空场景基线
 	std::vector<uint8_t> empty(pixel_bytes());
@@ -196,7 +196,7 @@ TEST_F(Renderer_Scene_Test, 多材质分段使用两个材质)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	engine::Material_Handle red = load_tinted_material(renderer, 1.0f, 0.1f, 0.1f);
 	engine::Material_Handle blue = load_tinted_material(renderer, 0.1f, 0.1f, 1.0f);
@@ -271,7 +271,7 @@ TEST_F(Renderer_Scene_Test, 多材质分段绘制项数与实例字节)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	engine::Material_Handle red = load_tinted_material(renderer, 1.0f, 0.1f, 0.1f);
 	engine::Material_Handle blue = load_tinted_material(renderer, 0.1f, 0.1f, 1.0f);
@@ -312,7 +312,7 @@ TEST_F(Renderer_Scene_Test, 网格分段按描述绘制)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	engine::Material_Handle red = load_tinted_material(renderer, 1.0f, 0.1f, 0.1f);
 	engine::Material_Handle blue = load_tinted_material(renderer, 0.1f, 0.1f, 1.0f);
 	engine::Material_Handle materials[2] = { red, blue };
@@ -382,7 +382,7 @@ TEST_F(Renderer_Scene_Test, 实例化上传字节按步长计算)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//200 个沿 X 轴递增平移的实例
 	std::vector<float> transforms(200u * 16u, 0.0f);

@@ -80,7 +80,7 @@ TEST_F(Renderer_Scene_Test, 材质无贴图逐字节不变)
 		light.intensity = 1.0f;
 		light.ambient = 0.0f;
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
+		renderer.scene().scene_apply(camera, light, fog);
 		ASSERT_TRUE(renderer.frame_render(direct.data(), static_cast<uint32_t>(direct.size())));
 		renderer.resource().mesh_unload(mesh);
 		renderer.resource().texture_unload(texture);
@@ -107,7 +107,7 @@ TEST_F(Renderer_Scene_Test, 材质无贴图逐字节不变)
 		light.intensity = 1.0f;
 		light.ambient = 0.0f;
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
+		renderer.scene().scene_apply(camera, light, fog);
 		ASSERT_TRUE(renderer.frame_render(material.data(), static_cast<uint32_t>(material.size())));
 		renderer.resource().mesh_unload(mesh);
 		renderer.resource().material_unload(handle);
@@ -152,7 +152,7 @@ TEST_F(Renderer_Scene_Test, 法线贴图改变受光)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
@@ -225,11 +225,11 @@ TEST_F(Renderer_Scene_Test, 粗糙度贴图改变高光)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.pbr_enable_set(true);
-	renderer.specular_set(2.0f, 16.0f);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().specular_set(2.0f, 16.0f);
 	//逐光高光缩放（默认 0 会把方向光高光整段乘零，故显式开启）
-	renderer.directional_specular_set(1.0f);
+	renderer.scene().directional_specular_set(1.0f);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
@@ -299,7 +299,7 @@ TEST_F(Renderer_Scene_Test, 自发光贴图默认白逐字节不变)
 	light.intensity = 0.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
@@ -373,7 +373,7 @@ TEST_F(Renderer_Scene_Test, 自发光贴图改变发光颜色)
 	light.intensity = 0.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
@@ -459,7 +459,7 @@ TEST_F(Renderer_Scene_Test, 环境光遮蔽贴图降低环境光)
 	light.intensity = 0.0f;
 	light.ambient = 0.5f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
@@ -552,9 +552,9 @@ TEST_F(Renderer_Scene_Test, 金属度贴图改变漫反射权重)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.pbr_enable_set(true);
-	renderer.specular_set(0.0f, 16.0f);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().specular_set(0.0f, 16.0f);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, 1.0f)));
 
@@ -635,7 +635,7 @@ TEST_F(Renderer_Scene_Test, 五张材质贴图同时生效)
 	light.intensity = 0.0f;
 	light.ambient = 0.5f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 
@@ -704,7 +704,7 @@ TEST_F(Renderer_Scene_Test, 贴图UV变换改变采样位置)
 	light.intensity = 0.0f;
 	light.ambient = 1.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	engine::Mesh_Handle mesh = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(mesh, quad_data_with_normal(0.0f, 0.0f, -1.0f)));
 

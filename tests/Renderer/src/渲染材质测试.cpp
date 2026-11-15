@@ -443,7 +443,7 @@ TEST_F(Renderer_Material_Test, 双面渲染使背面可见)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//默认材质（背面剔除）
 	engine::Material_Data single{};
@@ -516,7 +516,7 @@ TEST_F(Renderer_Material_Test, 关闭深度写入使后绘制者覆盖)
 	engine::Camera_Data camera{};
 	engine::Light_Data light{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//基线：仅绘制近红面，确认其本身可见（排除朝向 / 深度范围问题）
 	engine::Material_Data baseline{};
@@ -799,7 +799,7 @@ TEST_F(Renderer_Material_Test, 实例化绘制保留法线贴图参数)
 	light.intensity = 1.0f;
 	light.ambient = 0.2f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//带法线贴图的材质
 	engine::Material_Data data{};
@@ -862,10 +862,10 @@ TEST_F(Renderer_Material_Test, 清漆层增强高光)
 	//方向光沿 −Z 传播（相机在 +Z 3 单位处），球心正对高光；开启 PBR 与固定高光强度
 	const float direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(direction, color, 1.0f, 0.2f);
-	renderer.specular_set(1.0f, 32.0f);
-	renderer.pbr_enable_set(true);
-	renderer.pbr_roughness_set(0.5f);
+	renderer.scene().light_set(direction, color, 1.0f, 0.2f);
+	renderer.scene().specular_set(1.0f, 32.0f);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_set(0.5f);
 	/*
 	中性灰反照率（0.4 左右）：避免漫反射先把中心顶到饱和，
 	否则清漆层叠加的镜面高光没有抬升空间（饱和后两者都读到 255）。
@@ -948,12 +948,12 @@ TEST_F(Renderer_Material_Test, 点光源清漆层增强高光)
 	//关闭方向光，只留一盏点光源
 	const float direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(direction, color, 0.0f, 0.05f);
+	renderer.scene().light_set(direction, color, 0.0f, 0.05f);
 	const float point_position[3] = { 0.0f, 0.0f, 1.0f };
-	ASSERT_TRUE(renderer.light_add_point(point_position, color, 3.0f, 1.0f, 0.05f));
-	renderer.specular_set(1.0f, 32.0f);
-	renderer.pbr_enable_set(true);
-	renderer.pbr_roughness_set(0.5f);
+	ASSERT_TRUE(renderer.scene().light_add_point(point_position, color, 3.0f, 1.0f, 0.05f));
+	renderer.scene().specular_set(1.0f, 32.0f);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_set(0.5f);
 	//中性灰纹理（避免漫反射先饱和）
 	uint64_t gray = 0;
 	{
@@ -1032,10 +1032,10 @@ TEST_F(Renderer_Material_Test, 清漆参数非法值归一)
 	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 0.6f, 32, 16));
 	const float direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(direction, color, 1.0f, 0.2f);
-	renderer.specular_set(1.0f, 32.0f);
-	renderer.pbr_enable_set(true);
-	renderer.pbr_roughness_set(0.5f);
+	renderer.scene().light_set(direction, color, 1.0f, 0.2f);
+	renderer.scene().specular_set(1.0f, 32.0f);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_set(0.5f);
 	uint64_t gray = 0;
 	{
 		std::vector<uint8_t> gray_texels(4u * 4u * 4u, 100);
@@ -1108,10 +1108,10 @@ TEST_F(Renderer_Material_Test, 逐物体清漆门面开关)
 	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 0.6f, 32, 16));
 	const float direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(direction, color, 1.0f, 0.2f);
-	renderer.specular_set(1.0f, 32.0f);
-	renderer.pbr_enable_set(true);
-	renderer.pbr_roughness_set(0.5f);
+	renderer.scene().light_set(direction, color, 1.0f, 0.2f);
+	renderer.scene().specular_set(1.0f, 32.0f);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_set(0.5f);
 	uint64_t gray = 0;
 	{
 		std::vector<uint8_t> gray_texels(4u * 4u * 4u, 100);
@@ -1191,10 +1191,10 @@ TEST_F(Renderer_Material_Test, 实例化绘制携带清漆层)
 	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 0.5f, 24, 12));
 	const float direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(direction, color, 1.0f, 0.2f);
-	renderer.specular_set(1.0f, 32.0f);
-	renderer.pbr_enable_set(true);
-	renderer.pbr_roughness_set(0.5f);
+	renderer.scene().light_set(direction, color, 1.0f, 0.2f);
+	renderer.scene().specular_set(1.0f, 32.0f);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_set(0.5f);
 	uint64_t gray = 0;
 	std::vector<uint8_t> gray_texels(4u * 4u * 4u, 100);
 	for (std::size_t index = 3; index < gray_texels.size(); index += 4)

@@ -19,7 +19,7 @@ TEST_F(Renderer_Scene_Test, 环境光颜色着色)
 	//方向光朝 -Z + 环境光 0.5：背光面只吃环境光
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 1.0f, 0.5f);
+	renderer.scene().light_set(forward, white_light, 1.0f, 0.5f);
 
 	//渲染一帧并返回中心像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_center = [&]()
@@ -33,7 +33,7 @@ TEST_F(Renderer_Scene_Test, 环境光颜色着色)
 	std::array<uint8_t, 4> plain = render_center();
 	//纯红环境光
 	const float red[3] = { 1.0f, 0.0f, 0.0f };
-	renderer.ambient_color_set(red);
+	renderer.scene().ambient_color_set(red);
 	std::array<uint8_t, 4> tinted = render_center();
 	RecordProperty("ambient_plain", pixel_text(plain));
 	RecordProperty("ambient_red", pixel_text(tinted));
@@ -68,7 +68,7 @@ TEST_F(Renderer_Scene_Test, 非法环境光颜色被忽略)
 	renderer.resource().texture_bind_set(texture);
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 1.0f, 0.5f);
+	renderer.scene().light_set(forward, white_light, 1.0f, 0.5f);
 
 	//渲染一帧并返回像素（lambda 内用 EXPECT：ASSERT 不允许出现在有返回值的函数中）
 	auto render_frame = [&]()
@@ -81,7 +81,7 @@ TEST_F(Renderer_Scene_Test, 非法环境光颜色被忽略)
 
 	std::vector<uint8_t> baseline = render_frame();
 	const float invalid[3] = { 1.5f, 0.0f, 0.0f };
-	renderer.ambient_color_set(invalid);
+	renderer.scene().ambient_color_set(invalid);
 	EXPECT_EQ(render_frame(), baseline) << "非法环境光颜色改变了画面";
 
 	renderer.resource().mesh_unload(mesh);
@@ -122,13 +122,13 @@ TEST_F(Renderer_Scene_Test, 场景描述携带环境光颜色)
 	scene.light_direction[2] = -1.0f;
 	scene.light_intensity = 1.0f;
 	scene.light_ambient = 0.5f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	std::array<uint8_t, 4> plain = render_center();
 	//同一场景改红色环境光
 	scene.ambient_color[0] = 1.0f;
 	scene.ambient_color[1] = 0.0f;
 	scene.ambient_color[2] = 0.0f;
-	renderer.scene_apply(scene);
+	renderer.scene().scene_apply(scene);
 	std::array<uint8_t, 4> tinted = render_center();
 	RecordProperty("scene_ambient_plain", pixel_text(plain));
 	RecordProperty("scene_ambient_red", pixel_text(tinted));
@@ -173,12 +173,12 @@ TEST_F(Renderer_Scene_Test, 场景描述非法环境光颜色被忽略)
 
 	engine::Scene_Data baseline{};
 	baseline.light_ambient = 0.5f;
-	renderer.scene_apply(baseline);
+	renderer.scene().scene_apply(baseline);
 	std::vector<uint8_t> plain = render_frame();
 	//非法环境光颜色（2.0）应被整次忽略
 	engine::Scene_Data invalid = baseline;
 	invalid.ambient_color[0] = 2.0f;
-	renderer.scene_apply(invalid);
+	renderer.scene().scene_apply(invalid);
 	EXPECT_EQ(render_frame(), plain) << "场景描述中的非法环境光颜色改变了画面";
 
 	renderer.resource().mesh_unload(mesh);
@@ -221,14 +221,14 @@ TEST_F(Renderer_Scene_Test, 半球环境光上下异色)
 	const float light_direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float white[3] = { 1.0f, 1.0f, 1.0f };
 	const float black[3] = { 0.0f, 0.0f, 0.0f };
-	renderer.light_set(light_direction, white, 0.0f, 0.5f);
-	renderer.ambient_color_set(white);
+	renderer.scene().light_set(light_direction, white, 0.0f, 0.5f);
+	renderer.scene().ambient_color_set(white);
 	//启用满强度半球
-	renderer.ambient_ground_set(black, 1.0f);
+	renderer.scene().ambient_ground_set(black, 1.0f);
 	uint32_t up = render_brightness(up_mesh);
 	uint32_t down = render_brightness(down_mesh);
 	//关闭半球（退化为单一环境光颜色）
-	renderer.ambient_ground_set(black, 0.0f);
+	renderer.scene().ambient_ground_set(black, 0.0f);
 	uint32_t up_plain = render_brightness(up_mesh);
 	uint32_t down_plain = render_brightness(down_mesh);
 
@@ -279,20 +279,20 @@ TEST_F(Renderer_Scene_Test, 逐盏高光缩放生效)
 	const float light_direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float light_position[3] = { 0.0f, 0.0f, 2.5f };
 	//关闭方向光与环境光，开启全局高光
-	renderer.light_set(light_direction, white, 0.0f, 0.0f);
-	renderer.specular_set(1.0f, 16.0f);
+	renderer.scene().light_set(light_direction, white, 0.0f, 0.0f);
+	renderer.scene().specular_set(1.0f, 16.0f);
 	//缩放 0：该灯不产生高光
-	renderer.lights_clear();
-	renderer.light_set(light_direction, white, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.light_add_point(light_position, white, 5.0f, 0.4f, 0.0f, 1, 0.0f));
+	renderer.scene().lights_clear();
+	renderer.scene().light_set(light_direction, white, 0.0f, 0.0f);
+	ASSERT_TRUE(renderer.scene().light_add_point(light_position, white, 5.0f, 0.4f, 0.0f, 1, 0.0f));
 	uint32_t no_specular = render_brightness();
 	//缩放 1：叠加高光
-	renderer.lights_clear();
-	renderer.light_set(light_direction, white, 0.0f, 0.0f);
-	ASSERT_TRUE(renderer.light_add_point(light_position, white, 5.0f, 0.4f, 0.0f, 1, 1.0f));
+	renderer.scene().lights_clear();
+	renderer.scene().light_set(light_direction, white, 0.0f, 0.0f);
+	ASSERT_TRUE(renderer.scene().light_add_point(light_position, white, 5.0f, 0.4f, 0.0f, 1, 1.0f));
 	uint32_t with_specular = render_brightness();
 	//非法缩放整次拒绝（数量保持 1）
-	EXPECT_FALSE(renderer.light_add_point(light_position, white, 5.0f, 0.4f, 0.0f, 1, -1.0f));
+	EXPECT_FALSE(renderer.scene().light_add_point(light_position, white, 5.0f, 0.4f, 0.0f, 1, -1.0f));
 	uint32_t after_invalid = render_brightness();
 
 	RecordProperty("per_light_no_specular", no_specular);
@@ -340,19 +340,19 @@ TEST_F(Renderer_Scene_Test, 方向光与补光高光缩放生效)
 	const float white[3] = { 1.0f, 1.0f, 1.0f };
 	const float light_direction[3] = { 0.0f, 0.0f, -1.0f };
 	//方向光 0.4、环境光 0、全局高光开启
-	renderer.light_set(light_direction, white, 0.4f, 0.0f);
-	renderer.specular_set(1.0f, 16.0f);
+	renderer.scene().light_set(light_direction, white, 0.4f, 0.0f);
+	renderer.scene().specular_set(1.0f, 16.0f);
 	//方向光高光缩放 0 / 1
-	renderer.directional_specular_set(0.0f);
+	renderer.scene().directional_specular_set(0.0f);
 	uint32_t dir_no_spec = render_brightness();
-	renderer.directional_specular_set(1.0f);
+	renderer.scene().directional_specular_set(1.0f);
 	uint32_t dir_spec = render_brightness();
 	//非法缩放整次忽略（保持 1）
-	renderer.directional_specular_set(-1.0f);
+	renderer.scene().directional_specular_set(-1.0f);
 	uint32_t dir_after_invalid = render_brightness();
 
 	//补光 0.4（主光关闭）：高光缩放 0 / 1
-	renderer.light_set(light_direction, white, 0.0f, 0.0f);
+	renderer.scene().light_set(light_direction, white, 0.0f, 0.0f);
 	renderer.light_fill_set(light_direction, white, 0.4f, 0.0f);
 	uint32_t fill_no_spec = render_brightness();
 	renderer.light_fill_set(light_direction, white, 0.4f, 1.0f);
@@ -419,16 +419,16 @@ TEST_F(Renderer_Scene_Test, 逐盏光泽度生效)
 	//低光泽度
 	light.point_shininess[0] = 2.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	uint32_t low_shininess = render_brightness();
 	//高光泽度
 	light.point_shininess[0] = 64.0f;
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 	uint32_t high_shininess = render_brightness();
 	//非法光泽度（0.5）整次拒绝，既有光源保持不变
 	const float white[3] = { 1.0f, 1.0f, 1.0f };
 	const float light_position[3] = { 0.0f, 0.0f, 2.5f };
-	EXPECT_FALSE(renderer.light_add_point(light_position, white, 5.0f, 0.4f, 0.0f, 1, 1.0f, 0.5f));
+	EXPECT_FALSE(renderer.scene().light_add_point(light_position, white, 5.0f, 0.4f, 0.0f, 1, 1.0f, 0.5f));
 	uint32_t after_invalid = render_brightness();
 
 	RecordProperty("low_shininess", low_shininess);
@@ -474,7 +474,7 @@ TEST_F(Renderer_Scene_Test, 补光可独立生效)
 	//关闭主方向光与环境光
 	const float light_direction[3] = { 0.0f, 0.0f, -1.0f };
 	const float white[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(light_direction, white, 0.0f, 0.0f);
+	renderer.scene().light_set(light_direction, white, 0.0f, 0.0f);
 	//补光关闭
 	renderer.light_fill_set(light_direction, white, 0.0f);
 	uint32_t off = render_brightness();
@@ -519,8 +519,8 @@ TEST_F(Renderer_Scene_Test, PBR镜面开关与粗糙度)
 	//方向光沿 -Z（to_light 与视线 +Z 对齐）、环境光 0；全局高光 1、光泽度 16
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 1.0f, 0.0f);
-	renderer.specular_set(1.0f, 16.0f);
+	renderer.scene().light_set(forward, white_light, 1.0f, 0.0f);
+	renderer.scene().specular_set(1.0f, 16.0f);
 
 	//渲染一帧并返回像素
 	auto render_frame = [&]()
@@ -535,18 +535,18 @@ TEST_F(Renderer_Scene_Test, PBR镜面开关与粗糙度)
 	std::vector<uint8_t> legacy_pixels = render_frame();
 	uint32_t legacy = center_brightness(legacy_pixels);
 	//开启：GGX
-	renderer.pbr_enable_set(true);
-	ASSERT_TRUE(renderer.pbr_enabled());
+	renderer.scene().pbr_enable_set(true);
+	ASSERT_TRUE(renderer.scene().pbr_enabled());
 	uint32_t smooth = center_brightness(render_frame());
 	//粗糙度缩放 4：高光更散
-	renderer.pbr_roughness_set(4.0f);
+	renderer.scene().pbr_roughness_set(4.0f);
 	uint32_t rough = center_brightness(render_frame());
 	//非法缩放 9 整次忽略（保持 4）
-	renderer.pbr_roughness_set(9.0f);
-	EXPECT_FLOAT_EQ(renderer.pbr_roughness(), 4.0f);
+	renderer.scene().pbr_roughness_set(9.0f);
+	EXPECT_FLOAT_EQ(renderer.scene().pbr_roughness(), 4.0f);
 	//关闭：恢复逐字节一致
-	renderer.pbr_enable_set(false);
-	ASSERT_FALSE(renderer.pbr_enabled());
+	renderer.scene().pbr_enable_set(false);
+	ASSERT_FALSE(renderer.scene().pbr_enabled());
 	std::vector<uint8_t> restored_pixels = render_frame();
 
 	RecordProperty("pbr_legacy", legacy);
@@ -584,8 +584,8 @@ TEST_F(Renderer_Scene_Test, PBR金属度压暗漫反射)
 	//方向光沿 -Z、环境光 0；关闭高光
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 1.0f, 0.0f);
-	renderer.specular_set(0.0f, 64.0f);
+	renderer.scene().light_set(forward, white_light, 1.0f, 0.0f);
+	renderer.scene().specular_set(0.0f, 64.0f);
 
 	//渲染一帧并返回中心亮度
 	auto render_brightness = [&]()
@@ -599,20 +599,20 @@ TEST_F(Renderer_Scene_Test, PBR金属度压暗漫反射)
 	//PBR 关闭（基线）
 	uint32_t legacy = render_brightness();
 	//PBR 开启、金属度 0：应保持基线
-	renderer.pbr_enable_set(true);
+	renderer.scene().pbr_enable_set(true);
 	uint32_t metallic_zero = render_brightness();
 	//金属度 0.5 / 1：漫反射按 (1 − metallic) 压暗
-	renderer.pbr_metallic_set(0.5f);
+	renderer.scene().pbr_metallic_set(0.5f);
 	uint32_t metallic_half = render_brightness();
-	renderer.pbr_metallic_set(1.0f);
+	renderer.scene().pbr_metallic_set(1.0f);
 	uint32_t metallic_full = render_brightness();
 	//非法金属度整次忽略
-	renderer.pbr_metallic_set(-0.1f);
-	EXPECT_FLOAT_EQ(renderer.pbr_metallic(), 1.0f);
-	renderer.pbr_metallic_set(1.5f);
-	EXPECT_FLOAT_EQ(renderer.pbr_metallic(), 1.0f);
+	renderer.scene().pbr_metallic_set(-0.1f);
+	EXPECT_FLOAT_EQ(renderer.scene().pbr_metallic(), 1.0f);
+	renderer.scene().pbr_metallic_set(1.5f);
+	EXPECT_FLOAT_EQ(renderer.scene().pbr_metallic(), 1.0f);
 	//PBR 关闭：金属度不生效
-	renderer.pbr_enable_set(false);
+	renderer.scene().pbr_enable_set(false);
 	uint32_t restored = render_brightness();
 
 	RecordProperty("metallic_legacy", legacy);
@@ -653,9 +653,9 @@ TEST_F(Renderer_Scene_Test, 逐物体材质覆盖全局PBR)
 	//方向光沿 -Z、环境光 0；全局高光 1、光泽度 16；PBR 开启
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 1.0f, 0.0f);
-	renderer.specular_set(1.0f, 16.0f);
-	renderer.pbr_enable_set(true);
+	renderer.scene().light_set(forward, white_light, 1.0f, 0.0f);
+	renderer.scene().specular_set(1.0f, 16.0f);
+	renderer.scene().pbr_enable_set(true);
 
 	//渲染一帧并返回像素
 	auto render_frame = [&]()
@@ -684,7 +684,7 @@ TEST_F(Renderer_Scene_Test, 逐物体材质覆盖全局PBR)
 	std::vector<uint8_t> restored_pixels = render_frame();
 
 	//关闭高光后只看漫反射：逐物体金属度 1 应消除漫反射
-	renderer.specular_set(0.0f, 16.0f);
+	renderer.scene().specular_set(0.0f, 16.0f);
 	uint32_t diffuse_base = center_brightness(render_frame());
 	ASSERT_TRUE(renderer.resource().material_pbr_set(1.0f, 1.0f));
 	uint32_t metallic = center_brightness(render_frame());
@@ -727,8 +727,8 @@ TEST_F(Renderer_Scene_Test, 逐物体色调着色)
 	//方向光沿 -Z、环境光 0；关闭高光只看漫反射
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 1.0f, 0.0f);
-	renderer.specular_set(0.0f, 16.0f);
+	renderer.scene().light_set(forward, white_light, 1.0f, 0.0f);
+	renderer.scene().specular_set(0.0f, 16.0f);
 
 	//渲染一帧并返回像素（可选显式颜色）
 	auto render_frame = [&](const float* color)
@@ -798,8 +798,8 @@ TEST_F(Renderer_Scene_Test, 逐物体自发光提亮)
 	//全黑场景：方向光强度 0、环境光 0、高光 0
 	const float forward[3] = { 0.0f, 0.0f, -1.0f };
 	const float white_light[3] = { 1.0f, 1.0f, 1.0f };
-	renderer.light_set(forward, white_light, 0.0f, 0.0f);
-	renderer.specular_set(0.0f, 16.0f);
+	renderer.scene().light_set(forward, white_light, 0.0f, 0.0f);
+	renderer.scene().specular_set(0.0f, 16.0f);
 
 	//渲染一帧并返回像素
 	auto render_frame = [&]()

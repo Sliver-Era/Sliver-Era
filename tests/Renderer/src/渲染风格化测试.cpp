@@ -31,16 +31,16 @@ TEST_F(Renderer_Scene_Test, 色阶量化改变分面明暗)
 	light.intensity = 1.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//关闭量化
-	renderer.toon_set(0, 0.0f);
+	renderer.scene().toon_set(0, 0.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain.data(), static_cast<uint32_t>(plain.size())));
 
 	//一档量化（二值化：受光面拉到满照、背光面保持 0）
-	renderer.toon_set(1, 0.0f);
+	renderer.scene().toon_set(1, 0.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> toon(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(toon.data(), static_cast<uint32_t>(toon.size())));
@@ -85,16 +85,16 @@ TEST_F(Renderer_Scene_Test, 边缘光抬升表面亮度)
 	light.intensity = 0.0f;
 	light.ambient = 0.0f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//关闭边缘光
-	renderer.toon_set(0, 0.0f);
+	renderer.scene().toon_set(0, 0.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain.data(), static_cast<uint32_t>(plain.size())));
 
 	//开启边缘光（强度 1）
-	renderer.toon_set(0, 1.0f);
+	renderer.scene().toon_set(0, 1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> rim_pixels(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(rim_pixels.data(), static_cast<uint32_t>(rim_pixels.size())));
@@ -123,23 +123,23 @@ TEST_F(Renderer_Scene_Test, 风格化参数钳制与数据路径)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//默认 (0, 0)
-	EXPECT_EQ(renderer.toon_steps(), 0u);
-	EXPECT_FLOAT_EQ(renderer.toon_rim(), 0.0f);
+	EXPECT_EQ(renderer.scene().toon_steps(), 0u);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_rim(), 0.0f);
 
 	//越界钳制
-	renderer.toon_set(100, 2.0f);
-	EXPECT_EQ(renderer.toon_steps(), 8u);
-	EXPECT_FLOAT_EQ(renderer.toon_rim(), 1.0f);
-	renderer.toon_set(0, -1.0f);
-	EXPECT_FLOAT_EQ(renderer.toon_rim(), 0.0f);
+	renderer.scene().toon_set(100, 2.0f);
+	EXPECT_EQ(renderer.scene().toon_steps(), 8u);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_rim(), 1.0f);
+	renderer.scene().toon_set(0, -1.0f);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_rim(), 0.0f);
 
 	//数据化路径（扁平 Scene_Data）
 	engine::Scene_Data scene{};
 	scene.toon_steps = 4;
 	scene.toon_rim = 0.5f;
-	renderer.scene_apply(scene);
-	EXPECT_EQ(renderer.toon_steps(), 4u);
-	EXPECT_FLOAT_EQ(renderer.toon_rim(), 0.5f);
+	renderer.scene().scene_apply(scene);
+	EXPECT_EQ(renderer.scene().toon_steps(), 4u);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_rim(), 0.5f);
 
 	//三组数据路径（Light_Data）
 	engine::Light_Data light{};
@@ -147,9 +147,9 @@ TEST_F(Renderer_Scene_Test, 风格化参数钳制与数据路径)
 	light.toon_rim = 0.25f;
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	EXPECT_EQ(renderer.toon_steps(), 2u);
-	EXPECT_FLOAT_EQ(renderer.toon_rim(), 0.25f);
+	renderer.scene().scene_apply(camera, light, fog);
+	EXPECT_EQ(renderer.scene().toon_steps(), 2u);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_rim(), 0.25f);
 }
 
 /*
@@ -177,13 +177,13 @@ TEST_F(Renderer_Scene_Test, 暗部色调化只压暗未受光面)
 	engine::Light_Data lit_light{};
 	lit_light.intensity = 1.0f;
 	lit_light.ambient = 0.2f;
-	renderer.scene_apply(camera, lit_light, fog);
-	renderer.toon_shadow_tint_set(1.0f, 1.0f, 1.0f);
+	renderer.scene().scene_apply(camera, lit_light, fog);
+	renderer.scene().toon_shadow_tint_set(1.0f, 1.0f, 1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> lit_plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(lit_plain.data(), static_cast<uint32_t>(lit_plain.size())));
 
-	renderer.toon_shadow_tint_set(0.25f, 0.25f, 0.25f);
+	renderer.scene().toon_shadow_tint_set(0.25f, 0.25f, 0.25f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> lit_tinted(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(lit_tinted.data(), static_cast<uint32_t>(lit_tinted.size())));
@@ -208,13 +208,13 @@ TEST_F(Renderer_Scene_Test, 暗部色调化只压暗未受光面)
 	dark_light.direction[2] = 0.7071f;
 	dark_light.intensity = 1.0f;
 	dark_light.ambient = 0.2f;
-	renderer.scene_apply(camera, dark_light, fog);
-	renderer.toon_shadow_tint_set(1.0f, 1.0f, 1.0f);
+	renderer.scene().scene_apply(camera, dark_light, fog);
+	renderer.scene().toon_shadow_tint_set(1.0f, 1.0f, 1.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> dark_plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(dark_plain.data(), static_cast<uint32_t>(dark_plain.size())));
 
-	renderer.toon_shadow_tint_set(0.25f, 0.25f, 0.25f);
+	renderer.scene().toon_shadow_tint_set(0.25f, 0.25f, 0.25f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> dark_tinted(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(dark_tinted.data(), static_cast<uint32_t>(dark_tinted.size())));
@@ -246,13 +246,13 @@ TEST_F(Renderer_Scene_Test, 暗部色调参数钳制与数据路径)
 
 	//默认白（关闭）
 	float tint[3] = {};
-	renderer.toon_shadow_tint(tint);
+	renderer.scene().toon_shadow_tint(tint);
 	for (std::size_t index = 0; index < 3; ++index)
 		EXPECT_FLOAT_EQ(tint[index], 1.0f);
 
 	//越界与非有限值归一
-	renderer.toon_shadow_tint_set(2.0f, -1.0f, std::numeric_limits<float>::quiet_NaN());
-	renderer.toon_shadow_tint(tint);
+	renderer.scene().toon_shadow_tint_set(2.0f, -1.0f, std::numeric_limits<float>::quiet_NaN());
+	renderer.scene().toon_shadow_tint(tint);
 	EXPECT_FLOAT_EQ(tint[0], 1.0f);
 	EXPECT_FLOAT_EQ(tint[1], 0.0f);
 	EXPECT_FLOAT_EQ(tint[2], 1.0f);
@@ -262,8 +262,8 @@ TEST_F(Renderer_Scene_Test, 暗部色调参数钳制与数据路径)
 	scene.toon_shadow_tint[0] = 0.1f;
 	scene.toon_shadow_tint[1] = 0.2f;
 	scene.toon_shadow_tint[2] = 0.3f;
-	renderer.scene_apply(scene);
-	renderer.toon_shadow_tint(tint);
+	renderer.scene().scene_apply(scene);
+	renderer.scene().toon_shadow_tint(tint);
 	EXPECT_FLOAT_EQ(tint[0], 0.1f);
 	EXPECT_FLOAT_EQ(tint[1], 0.2f);
 	EXPECT_FLOAT_EQ(tint[2], 0.3f);
@@ -275,8 +275,8 @@ TEST_F(Renderer_Scene_Test, 暗部色调参数钳制与数据路径)
 	light.toon_shadow_tint[2] = 0.4f;
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.toon_shadow_tint(tint);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().toon_shadow_tint(tint);
 	EXPECT_FLOAT_EQ(tint[0], 0.6f);
 	EXPECT_FLOAT_EQ(tint[1], 0.5f);
 	EXPECT_FLOAT_EQ(tint[2], 0.4f);
@@ -306,17 +306,17 @@ TEST_F(Renderer_Scene_Test, 卡通高光阈值化抹除弱高光)
 	light.intensity = 1.0f;
 	light.ambient = 0.1f;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.specular_set(3.0f, 8.0f);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().specular_set(3.0f, 8.0f);
 
 	//关闭阈值化
-	renderer.toon_specular_set(0.0f);
+	renderer.scene().toon_specular_set(0.0f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> plain(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(plain.data(), static_cast<uint32_t>(plain.size())));
 
 	//开启阈值化
-	renderer.toon_specular_set(0.35f);
+	renderer.scene().toon_specular_set(0.35f);
 	ASSERT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
 	std::vector<uint8_t> toon(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(toon.data(), static_cast<uint32_t>(toon.size())));
@@ -354,27 +354,27 @@ TEST_F(Renderer_Scene_Test, 卡通高光参数归一与数据路径)
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	//默认关闭
-	EXPECT_FLOAT_EQ(renderer.toon_specular(), 0.0f);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_specular(), 0.0f);
 
 	//越界与非有限值归一
-	renderer.toon_specular_set(2.0f);
-	EXPECT_FLOAT_EQ(renderer.toon_specular(), 1.0f);
-	renderer.toon_specular_set(-1.0f);
-	EXPECT_FLOAT_EQ(renderer.toon_specular(), 0.0f);
-	renderer.toon_specular_set(std::numeric_limits<float>::quiet_NaN());
-	EXPECT_FLOAT_EQ(renderer.toon_specular(), 0.0f);
+	renderer.scene().toon_specular_set(2.0f);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_specular(), 1.0f);
+	renderer.scene().toon_specular_set(-1.0f);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_specular(), 0.0f);
+	renderer.scene().toon_specular_set(std::numeric_limits<float>::quiet_NaN());
+	EXPECT_FLOAT_EQ(renderer.scene().toon_specular(), 0.0f);
 
 	//扁平 Scene_Data 路径
 	engine::Scene_Data scene{};
 	scene.toon_specular = 0.4f;
-	renderer.scene_apply(scene);
-	EXPECT_FLOAT_EQ(renderer.toon_specular(), 0.4f);
+	renderer.scene().scene_apply(scene);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_specular(), 0.4f);
 
 	//三组数据路径（Light_Data）
 	engine::Light_Data light{};
 	light.toon_specular = 0.7f;
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	EXPECT_FLOAT_EQ(renderer.toon_specular(), 0.7f);
+	renderer.scene().scene_apply(camera, light, fog);
+	EXPECT_FLOAT_EQ(renderer.scene().toon_specular(), 0.7f);
 }

@@ -44,8 +44,8 @@ namespace
 	void scene_apply(engine::Renderer& renderer, const engine::Camera_Data& camera)
 	{
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, positive_z_light(), fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, positive_z_light(), fog);
+		renderer.scene().shadow_enable_set(true);
 	}
 
 	//绘制固定场景并推进一帧（遮挡面 z = -10、接收面 z = -9.5）
@@ -87,7 +87,7 @@ TEST_F(Renderer_Scene_Test, 阴影pass数随级联数变化)
 	EXPECT_EQ(stats.shadow_resolution, 1024u) << "默认阴影图边长应为 1024";
 
 	//切双级（矩阵变化触发重绘）
-	renderer.shadow_cascade_set(2, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_set(2, 3.0f, 12.0f);
 	draw_scene(renderer, occluder, receiver);
 	stats = renderer.frame_stats_get();
 	RecordProperty("dual_passes", stats.shadow_passes);
@@ -117,7 +117,7 @@ TEST_F(Renderer_Scene_Test, 静止帧阴影pass归零)
 
 	engine::Camera_Data camera{};
 	scene_apply(renderer, camera);
-	renderer.shadow_cascade_set(2, 3.0f, 12.0f);
+	renderer.scene().shadow_cascade_set(2, 3.0f, 12.0f);
 
 	//首帧重绘
 	draw_scene(renderer, occluder, receiver);
@@ -170,7 +170,7 @@ TEST_F(Renderer_Scene_Test, 聚光瓦片pass计数)
 	light.spot_shadow_index = 0;
 	engine::Camera_Data camera{};
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
+	renderer.scene().scene_apply(camera, light, fog);
 
 	//方向光阴影保持关闭
 	EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
@@ -210,8 +210,8 @@ TEST_F(Renderer_Scene_Test, 阴影提交数等于pass数)
 	light.shadow_enabled = 1;
 	light.shadow_cascade_count = 1;
 	engine::Fog_Data fog{};
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
 	EXPECT_TRUE(renderer.frame_render());
 	const engine::Frame_Stats single = renderer.frame_stats_get();
@@ -222,8 +222,8 @@ TEST_F(Renderer_Scene_Test, 阴影提交数等于pass数)
 
 	//双级级联
 	light.shadow_cascade_count = 2;
-	renderer.scene_apply(camera, light, fog);
-	renderer.shadow_enable_set(true);
+	renderer.scene().scene_apply(camera, light, fog);
+	renderer.scene().shadow_enable_set(true);
 	EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
 	EXPECT_TRUE(renderer.frame_render());
 	const engine::Frame_Stats dual = renderer.frame_stats_get();
@@ -295,8 +295,8 @@ TEST_F(Renderer_Scene_Test, 阴影批量提交单次且画面不变)
 		light.spot_shadow_all = 1;
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 
 		//接收面在原点、遮挡面在其前方
 		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
@@ -392,8 +392,8 @@ TEST_F(Renderer_Scene_Test, 聚光阴影图集两态画面一致)
 		light.spot_shadow_atlas = atlas ? 1 : 0;
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 
 		//接收面在原点、遮挡面在其前方
 		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
@@ -402,7 +402,7 @@ TEST_F(Renderer_Scene_Test, 聚光阴影图集两态画面一致)
 		EXPECT_TRUE(renderer.frame_render(outcome.pixels.data(),
 			static_cast<std::uint32_t>(outcome.pixels.size())));
 		outcome.stats = renderer.frame_stats_get();
-		outcome.atlas_active = renderer.spot_shadow_atlas();
+		outcome.atlas_active = renderer.scene().spot_shadow_atlas();
 		outcome.ok = true;
 		return outcome;
 	};
@@ -476,8 +476,8 @@ TEST_F(Renderer_Scene_Test, 聚光图集阴影耗时对比)
 		light.spot_shadow_atlas = atlas ? 1 : 0;
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 
 		EXPECT_TRUE(renderer.resource().mesh_draw(outcome.occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
 		EXPECT_TRUE(renderer.resource().mesh_draw(outcome.receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
@@ -490,8 +490,8 @@ TEST_F(Renderer_Scene_Test, 聚光图集阴影耗时对比)
 		取稳定态阴影耗时。
 		*/
 		light.spot_position[0][0] += 0.01f;
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 		EXPECT_TRUE(renderer.resource().mesh_draw(outcome.occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
 		EXPECT_TRUE(renderer.resource().mesh_draw(outcome.receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
 		EXPECT_TRUE(renderer.frame_render(pixels.data(),
@@ -585,8 +585,8 @@ TEST_F(Renderer_Scene_Test, 图集八瓦片映射与MSAA一致)
 		light.spot_shadow_atlas = atlas ? 1 : 0;
 		engine::Camera_Data camera{};
 		engine::Fog_Data fog{};
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 
 		EXPECT_TRUE(renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()));
 		EXPECT_TRUE(renderer.resource().mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()));
@@ -594,7 +594,7 @@ TEST_F(Renderer_Scene_Test, 图集八瓦片映射与MSAA一致)
 		EXPECT_TRUE(renderer.frame_render(outcome.pixels.data(),
 			static_cast<std::uint32_t>(outcome.pixels.size())));
 		outcome.stats = renderer.frame_stats_get();
-		outcome.atlas_active = renderer.spot_shadow_atlas();
+		outcome.atlas_active = renderer.scene().spot_shadow_atlas();
 		renderer.resource().mesh_unload(occluder);
 		renderer.resource().mesh_unload(receiver);
 		renderer.resource().texture_unload(texture);
@@ -634,8 +634,8 @@ TEST_F(Renderer_Scene_Test, 图集启用回收独立瓦片)
 		const engine::Mesh_Handle occluder, const engine::Mesh_Handle receiver)
 	{
 		Outcome outcome;
-		renderer.scene_apply(camera, light, fog);
-		renderer.shadow_enable_set(true);
+		renderer.scene().scene_apply(camera, light, fog);
+		renderer.scene().shadow_enable_set(true);
 		if (!renderer.resource().mesh_draw(occluder, occluder_model(0.0f, 0.0f, -1.0f).data()))
 			return outcome;
 		if (!renderer.resource().mesh_draw(receiver, translate_model(0.0f, 0.0f, 0.0f).data()))
@@ -690,7 +690,7 @@ TEST_F(Renderer_Scene_Test, 图集启用回收独立瓦片)
 	EXPECT_EQ(tiled.stats.shadow_atlas_bytes, 0u) << "独立模式图集字节应为 0";
 
 	//切图集：立即回收独立瓦片
-	ASSERT_TRUE(renderer.spot_shadow_atlas_set(true));
+	ASSERT_TRUE(renderer.scene().spot_shadow_atlas_set(true));
 	light.spot_shadow_atlas = 1;
 	const Outcome atlas = run_frame(renderer, light, camera, fog, occluder, receiver);
 	ASSERT_TRUE(atlas.ok) << "图集帧渲染失败";
@@ -701,7 +701,7 @@ TEST_F(Renderer_Scene_Test, 图集启用回收独立瓦片)
 		<< "图集字节数与 4S×2S×4 不符";
 
 	//切回独立瓦片：按需重建
-	ASSERT_FALSE(renderer.spot_shadow_atlas_set(false));
+	ASSERT_FALSE(renderer.scene().spot_shadow_atlas_set(false));
 	light.spot_shadow_atlas = 0;
 	const Outcome back = run_frame(renderer, light, camera, fog, occluder, receiver);
 	ASSERT_TRUE(back.ok) << "切回独立瓦片后渲染失败";

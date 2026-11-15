@@ -26,7 +26,7 @@ public:
 	//获取初始位置
 	glm::vec3 getPosition();
 
-	//增量变换 ， 初始旋转角度（基于自身）
+	//设置初始角度
 	void setAngleX(float angle);
 	void setAngleY(float angle);
 	void setAngleZ(float angle);

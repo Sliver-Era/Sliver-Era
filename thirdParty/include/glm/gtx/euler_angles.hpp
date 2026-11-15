@@ -16,6 +16,7 @@
 #pragma once
 
 // Dependency:
+#define GLM_ENABLE_EXPERIMENTAL
 #include "../glm.hpp"
 
 #ifndef GLM_ENABLE_EXPERIMENTAL

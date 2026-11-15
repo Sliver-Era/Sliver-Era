@@ -121,4 +121,5 @@ void main() {
   vec3 finalColor = ambientColor + finalLighting;
 
   FragColor = vec4(finalColor.rgb, 1.0);
+  // FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }

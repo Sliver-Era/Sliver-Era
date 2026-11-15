@@ -22,17 +22,17 @@ glm::vec3 Object::getPosition()
 
 void Object::setAngleX(float angle)
 {
-	mAngleX += angle;
+	mAngleX = angle;
 }
 
 void Object::setAngleY(float angle)
 {
-	mAngleY += angle;
+	mAngleY = angle;
 }
 
 void Object::setAngleZ(float angle)
 {
-	mAngleZ += angle;
+	mAngleZ = angle;
 }
 
 void Object::setScale(glm::vec3 scale)

@@ -16,20 +16,28 @@ void GameCameraControl::onMouse(int button, int action, double xpos, double ypos
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
-		mIsLocked = !mIsLocked;
-		GLFWwindow* window = glfwGetCurrentContext();
+		int windowWidth = Application::getInstance()->getWidth();
+		int windowHeight = Application::getInstance()->getHeight();
 
-		if (mIsLocked) {
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-			mFirstMouse = true;
-			std::cout << "鼠标已锁定 (FPS模式)" << std::endl;
+		bool isRightBottomQuarter = (xpos > windowWidth * 0.75) && (ypos > windowHeight * 0.75);
+
+		if (mIsLocked || isRightBottomQuarter)
+		{
+			mIsLocked = !mIsLocked;
+			GLFWwindow* window = glfwGetCurrentContext();
+
+			if (mIsLocked) {
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+				mFirstMouse = true;
+				std::cout << "鼠标已锁定 (FPS模式)" << std::endl;
+			}
+			else {
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+				std::cout << "鼠标已解锁 (普通模式)" << std::endl;
+			}
+			mCurrentX = xpos;
+			mCurrentY = ypos;
 		}
-		else {
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-			std::cout << "鼠标已解锁 (普通模式)" << std::endl;
-		}
-		mCurrentX = xpos;
-		mCurrentY = ypos;
 	}
 	CameraControl::onMouse(button, action, xpos, ypos);
 }

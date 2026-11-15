@@ -4,6 +4,65 @@ Geometry::Geometry()
 {
 
 }
+//结构外部模型
+Geometry::Geometry(
+    const std::vector<float>& positions,
+    const std::vector<float>& normals,
+    const std::vector<float>& uvs,
+    const std::vector<unsigned int>& indices
+)
+{
+    //创建vbo,并绑定
+    
+    GL_CALL(glGenBuffers(1, &mPosVbo));
+    //绑定当前vbo，并写入位置数据
+    GL_CALL(glBindBuffer(GL_ARRAY_BUFFER,mPosVbo));
+    GL_CALL(glBufferData(GL_ARRAY_BUFFER,positions.size(),positions.data(), GL_STATIC_DRAW));
+
+    //创建uvvbo，并绑定
+    glGenBuffers(1, &mUvVbo);
+    //写入Uv数据
+    glBindBuffer(GL_ARRAY_BUFFER, mUvVbo);
+    glBufferData(GL_ARRAY_BUFFER, uvs.size(),uvs.data(), GL_STATIC_DRAW);
+
+
+    //创建normalvbo，并绑定
+    glGenBuffers(1, &mNormalVbo);
+    //写入Uv数据
+    glBindBuffer(GL_ARRAY_BUFFER, mNormalVbo);
+    glBufferData(GL_ARRAY_BUFFER, normals.size(), normals.data(), GL_STATIC_DRAW);
+
+    //创建vao，并绑定
+    glGenVertexArrays(1, &mVao);
+    glBindVertexArray(mVao);
+
+    //创建ebo，并绑定
+    glGenBuffers(1, &mEbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mEbo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size(),indices.data(), GL_STATIC_DRAW);
+
+    //将位置属性的描述信息加入到vao当中
+    glBindBuffer(GL_ARRAY_BUFFER,mPosVbo);
+    //绑定到0号属性
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), static_cast<void*>(0));
+
+    //将uv属性的描述信息加入到vao当中
+    glBindBuffer(GL_ARRAY_BUFFER, mUvVbo);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), static_cast<void*>(0));
+
+    //将uv属性的描述信息加入到vao当中
+    glBindBuffer(GL_ARRAY_BUFFER,mNormalVbo);
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), static_cast<void*>(0));
+
+    //将ebo绑定到vao当中
+    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mEbo));
+
+    //解除vao绑定
+    glBindVertexArray(0);
+}
 Geometry::~Geometry()
 {
 	if (mVao != 0)

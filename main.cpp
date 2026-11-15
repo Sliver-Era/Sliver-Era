@@ -29,8 +29,9 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 #include "glframework/scene.h"
+#include "application/assimpLoader.h"
 
-Scene* rootScene = nullptr; // 场景根节点
+Scene* scene = nullptr; // 场景根节点
 std::vector <Light::LightData> sceneLights;
 Light* currentLight = nullptr;
 Render* render = nullptr;
@@ -111,11 +112,16 @@ void scrollCallback(double xoffset, double yoffset)
 
 void prepare()
 {
+	render = new Render();
+	auto test = AssimpLoader::load("assets/fbx/chuizi.fbx");
+	test->setScale(glm::vec3(0.01f));
+	test->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+	scene = new Scene(); // 初始化场景
+	scene->addChild(test);
 
-	rootScene = new Scene(); // 初始化场景
+
 	Geometry* geometry = nullptr;
 	Geometry* geometryBox = nullptr;
-	render = new Render();
 
 	// 1. 创建几何体和材质
 	geometry = Geometry::createSphere(3.0f);
@@ -134,8 +140,8 @@ void prepare()
 	g_meshBox = new Mesh(geometryBox, meterial02);
 
 	// 同级别挂在场景下
-	rootScene->addChild(g_meshEarth);
-	rootScene->addChild(g_meshBox);
+	scene->addChild(g_meshEarth);
+	scene->addChild(g_meshBox);
 
 	//白色点光源球
 	Geometry* geometrySun = Geometry::createSphere(0.5f);
@@ -143,7 +149,7 @@ void prepare()
 	g_whiteMat->mColor = whiteColor;
 	Mesh* mesh03 = new Mesh(geometrySun, g_whiteMat);
 	mesh03->setPosition(glm::vec3(0.0f, 5.0f, 0.0f));
-	rootScene->addChild(mesh03); //挂载场景中
+	scene->addChild(mesh03); //挂载场景中
 	
 	// 青色探照灯球
 	Geometry* geometrySpot = Geometry::createSphere(0.2f);
@@ -151,7 +157,7 @@ void prepare()
 	g_cyanMat->mColor = cyanColor;
 	Mesh* mesh04 = new Mesh(geometrySpot, g_cyanMat);
 	mesh04->setPosition(glm::vec3(5.0f, 5.0f, 5.0f));
-	rootScene->addChild(mesh04);
+	scene->addChild(mesh04);
 
 	// 1. 添加一个平行光（比如太阳光）
 	Light::LightData dirLight;
@@ -332,7 +338,7 @@ int main()
 		setColor();
 		dotransform();
 		cameraControl->update();
-		render->render(rootScene, camera, sceneLights, ambientLight);
+		render->render(scene, camera, sceneLights, ambientLight);
 		renderIMGUI();
 	}
 

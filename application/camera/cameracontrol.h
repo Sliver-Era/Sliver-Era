@@ -2,6 +2,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "../application.h"
 #include "camera.h"
 #include <map>
 #include <GLFW/glfw3.h>

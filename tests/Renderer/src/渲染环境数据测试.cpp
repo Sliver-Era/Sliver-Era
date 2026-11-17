@@ -11,11 +11,39 @@
 namespace
 {
 	using byjy_render_test::hidden_config;
+	using byjy_render_test::pixel_bytes;
+	using byjy_render_test::center_brightness;
+	using byjy_render_test::changed_pixels;
+	using byjy_render_test::solid_gray;
+	using byjy_render_test::cube_data;
 
 	//环境数据测试夹具
 	class Renderer_Environment_Test : public ::testing::Test
 	{
 	};
+
+	//环境着色场景：中性灰立方体 ＋ 正对相机的方向光
+	void environment_scene_register(engine::Renderer& renderer, engine::Mesh_Handle& mesh, uint64_t& texture)
+	{
+		std::vector<uint8_t> texels = solid_gray();
+		ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
+		ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(1.0f)));
+		const float direction[3] = { 0.0f, 0.0f, -1.0f };
+		const float color[3] = { 1.0f, 1.0f, 1.0f };
+		//光强压低、关闭高光，避免中心饱和而掩盖环境增量
+		renderer.scene().light_set(direction, color, 0.3f, 0.0f);
+		renderer.scene().specular_set(0.0f, 16.0f);
+	}
+
+	//画一帧并回读
+	std::vector<uint8_t> environment_frame(engine::Renderer& renderer, engine::Mesh_Handle mesh)
+	{
+		EXPECT_TRUE(renderer.resource().mesh_draw(mesh, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		return pixels;
+	}
 }
 
 //未初始化读取：颜色与强度均为 0
@@ -86,4 +114,44 @@ TEST_F(Renderer_Environment_Test, 场景描述字段生效)
 	EXPECT_FLOAT_EQ(out[1], 0.50f);
 	EXPECT_FLOAT_EQ(out[2], 0.75f);
 	EXPECT_FLOAT_EQ(intensity, 0.8f);
+}
+
+//环境关闭（默认 0）：连续两帧逐字节一致
+TEST_F(Renderer_Environment_Test, 环境关闭默认帧稳定)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle mesh = 0;
+	uint64_t texture = 0;
+	environment_scene_register(renderer, mesh, texture);
+	std::vector<uint8_t> first = environment_frame(renderer, mesh);
+	std::vector<uint8_t> second = environment_frame(renderer, mesh);
+	EXPECT_EQ(first, second) << "环境关闭态两帧不一致";
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
+}
+
+//环境开启：画面可区分且中心亮度不下降
+TEST_F(Renderer_Environment_Test, 环境开启提亮画面)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle mesh = 0;
+	uint64_t texture = 0;
+	environment_scene_register(renderer, mesh, texture);
+	//环境关闭基线
+	renderer.scene().environment_set(nullptr, 0.0f);
+	std::vector<uint8_t> baseline = environment_frame(renderer, mesh);
+	//环境开启（中性灰环境）
+	const float environment[3] = { 0.5f, 0.5f, 0.5f };
+	renderer.scene().environment_set(environment, 1.0f);
+	std::vector<uint8_t> lit = environment_frame(renderer, mesh);
+	EXPECT_GT(changed_pixels(baseline, lit, 6), 0u) << "环境光照未改变画面";
+	EXPECT_GE(center_brightness(lit), center_brightness(baseline)) << "环境光照使中心变暗";
+	RecordProperty("environment_baseline_center", static_cast<int>(center_brightness(baseline)));
+	RecordProperty("environment_lit_center", static_cast<int>(center_brightness(lit)));
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }

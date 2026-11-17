@@ -104,7 +104,8 @@
 - 716 多重散射补偿（Renderer `66ea7c8` / Test `fcf354e`）：GGX 镜面乘 `1 + f0_luma · roughness · 0.5`，`lighting_extra.z` 开关，默认关闭。
 - 717 镜面抗锯齿（Renderer `5dcf55a` / Test `68e99ac`）：法线屏幕空间方差并入粗糙度，`lighting_extra.w` 开关，默认关闭；白色金属球两态差异可测。
 - 说明：阶段 C 的 716/717 两项提前落地，原阶段 B 的「mip 链 / 镜面预过滤 / 漫反射辐照度」顺延为 718 起候选。
-- 下一步 718：Fresnel-roughness 与 F90 口径统一（掠射反射连续、默认关闭逐字节一致）。
+- 718 Fresnel-roughness 与 F90 口径统一（Renderer `24cdf08` / Test `29ddee0`）：抽出 `pbr_fresnel(f0, cos, roughness)`，开启时 `F90 = max(1 − roughness, F0)`，直接光与环境镜面共用；UBO 尾追加 `pbr_extra`（3952 字节），`pbr_extra.x` 开关，默认关闭；介电掠射收敛、白色金属两态一致。
+- 下一步 719：阶段 B 余项（漫反射辐照度 / 镜面预过滤 mip）。
 
 ## 四、风险
 

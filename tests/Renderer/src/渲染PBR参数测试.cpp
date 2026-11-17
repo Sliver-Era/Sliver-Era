@@ -197,3 +197,77 @@ TEST_F(Renderer_Scene_Test, PBR镜面抗锯齿)
 	renderer.resource().mesh_unload(cube);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+Fresnel-roughness 与 F90 口径统一（方向九第 718 轮）
+黑色介电球 ＋ 白色环境：漫反射为零，轮廓只显示环境镜面项；
+开启后 F90 = max(1 − roughness, F0) 使掠射反射收敛，轮廓变暗。
+*/
+TEST_F(Renderer_Scene_Test, PBR介电掠射菲涅尔收敛)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	//纯黑反照率（漫反射为零，只保留环境镜面）
+	uint64_t black = 0;
+	std::vector<uint8_t> black_texels(2 * 2 * 4, 0);
+	ASSERT_TRUE(renderer.resource().texture_load(black, black_texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(black);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 32, 16));
+	//介电 ＋ 中高粗糙度 ＋ 白色环境
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_absolute_set(true);
+	renderer.scene().pbr_metallic_set(0.0f);
+	renderer.scene().pbr_roughness_set(0.5f);
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 0.0f, 0.0f);
+	const float environment[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().environment_set(environment, 1.0f);
+	//关闭态基线
+	renderer.scene().pbr_fresnel_roughness_set(false);
+	std::vector<uint8_t> off = pbr_param_frame(renderer, sphere);
+	//开启后轮廓掠射区应变暗
+	renderer.scene().pbr_fresnel_roughness_set(true);
+	EXPECT_TRUE(renderer.scene().pbr_fresnel_roughness());
+	std::vector<uint8_t> on = pbr_param_frame(renderer, sphere);
+	uint32_t dimmed = byjy_render_test::darkened_count(on, off, 3.0f);
+	EXPECT_GT(dimmed, 0u) << "介电掠射菲涅尔未收敛";
+	RecordProperty("fresnel_dielectric_dimmed", static_cast<int>(dimmed));
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().texture_unload(black);
+}
+
+//Fresnel-roughness 与 F90 口径统一（方向九第 718 轮）：白色金属 F0 ≈ 1 → F90 仍为 1，两态逐字节一致
+TEST_F(Renderer_Scene_Test, PBR金属菲涅尔口径不变)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle cube = 0;
+	uint64_t texture = 0;
+	pbr_param_scene_register(renderer, cube, texture);
+	//纯白反照率使金属 F0 接近 1
+	uint64_t white = 0;
+	std::vector<uint8_t> white_texels = solid_white();
+	ASSERT_TRUE(renderer.resource().texture_load(white, white_texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(white);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 32, 16));
+	renderer.scene().pbr_metallic_set(1.0f);
+	renderer.scene().pbr_roughness_set(0.5f);
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.0f);
+	renderer.scene().specular_set(1.0f, 64.0f);
+	renderer.scene().pbr_fresnel_roughness_set(false);
+	std::vector<uint8_t> off = pbr_param_frame(renderer, sphere);
+	renderer.scene().pbr_fresnel_roughness_set(true);
+	std::vector<uint8_t> on = pbr_param_frame(renderer, sphere);
+	EXPECT_EQ(off, on) << "白色金属的 F90 口径被改变";
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().texture_unload(white);
+	renderer.resource().mesh_unload(cube);
+	renderer.resource().texture_unload(texture);
+}

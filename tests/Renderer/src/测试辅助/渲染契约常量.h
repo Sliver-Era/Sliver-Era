@@ -10,8 +10,8 @@
 
 namespace byjy_render_test
 {
-	//场景 UBO 整块字节数（第 713 轮：984 浮点 = 3936 字节；尾部追加环境光照 4 浮点）
-	inline constexpr uint64_t SCENE_UBO_BYTES = 3936;
+	//场景 UBO 整块字节数（第 713 轮 984 浮点 = 3936 字节；第 718 轮追加 pbr_extra 4 浮点 = 988 浮点 / 3952 字节）
+	inline constexpr uint64_t SCENE_UBO_BYTES = 3952;
 
 	//每实例上传步长（模型矩阵 16 ＋ 材质 4 ＋ 卡通 4 ＋ 暗部色调 4 浮点 = 112 字节）
 	inline constexpr uint64_t INSTANCE_STRIDE_BYTES = 112;

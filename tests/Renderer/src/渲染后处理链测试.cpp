@@ -720,6 +720,67 @@ TEST_F(Renderer_Post_Chain_Test, HDR简化算子保留高光)
 }
 
 /*
+HDR 浮点读回（方向九第 752 轮）
+口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
+8 位目标读回按 /255 归一，恒 ≤1。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR浮点读回)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config(320, 180);
+	config.vsync = false;
+	ASSERT_TRUE(renderer.init(config));
+	renderer.resource().texture_bind_set(0);
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	const uint32_t width = renderer.device().extent_width();
+	const uint32_t height = renderer.device().extent_height();
+	//16F 目标 ＋ 16F 管线，离屏渲染
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	uint64_t hdr_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(hdr_target, width, height, hdr_format, depth_format, 1));
+	uint64_t hdr_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(hdr_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	renderer.resource().pipeline_bind_set(hdr_pipeline);
+	renderer.device().render_target_set(hdr_target);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render());
+	std::vector<float> hdr_values(static_cast<std::size_t>(width) * height * 4);
+	uint32_t read_width = 0;
+	uint32_t read_height = 0;
+	ASSERT_TRUE(renderer.resource().render_target_readback_float(hdr_target, hdr_values.data(),
+		static_cast<uint32_t>(hdr_values.size()), &read_width, &read_height));
+	ASSERT_EQ(read_width, width);
+	ASSERT_EQ(read_height, height);
+	const std::size_t center = (static_cast<std::size_t>(height / 2) * width + width / 2) * 4;
+	EXPECT_GT(hdr_values[center], 1.5f) << "16F 浮点读回未保留 >1 的线性值（实测 " << hdr_values[center] << "）";
+	EXPECT_NEAR(hdr_values[center], 4.0f, 0.5f) << "16F 浮点读回数值偏离曝光 +2 的预期";
+	//8 位目标：归一后 ≤1
+	renderer.resource().pipeline_bind_set(0);
+	uint64_t ldr_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create(ldr_target, width, height));
+	renderer.device().render_target_set(ldr_target);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render());
+	std::vector<float> ldr_values(static_cast<std::size_t>(width) * height * 4);
+	ASSERT_TRUE(renderer.resource().render_target_readback_float(ldr_target, ldr_values.data(),
+		static_cast<uint32_t>(ldr_values.size()), &read_width, &read_height));
+	const std::size_t ldr_center = (static_cast<std::size_t>(read_height / 2) * read_width + read_width / 2) * 4;
+	EXPECT_LE(ldr_values[ldr_center], 1.0f) << "8 位浮点读回未归一";
+	EXPECT_GE(ldr_values[ldr_center], 0.9f) << "8 位浮点读回数值异常（实测 " << ldr_values[ldr_center] << "）";
+	RecordProperty("hdr_float_center", hdr_values[center]);
+	RecordProperty("ldr_float_center", ldr_values[ldr_center]);
+	renderer.device().render_target_set(0);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(hdr_pipeline);
+	renderer.resource().render_target_destroy(ldr_target);
+	renderer.resource().render_target_destroy(hdr_target);
+}
+
+/*
 HDR 多级链传递（方向九第 746 轮）
 口径：场景 16F → 第 0 级拷贝到中间目标 → 第 1 级 ACES → 交换链。
 中间目标为 16F 时高光穿过两级仍保留（中心 ≥ 242）；

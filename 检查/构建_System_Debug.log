@@ -1,0 +1,18 @@
+﻿==== System / Debug ====
+-- 版本：EngineFoundation / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug）
+-- 版本：EngineFoundation / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release）
+-- 接入下层：EngineFoundation → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/include/Engine/EngineFoundation/版本锚点.h
+-- 接入下层：EngineFoundation → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineFoundation → EngineFoundation
+          库文件：D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/lib/EngineFoundation.lib
+-- 版本：EngineSystem / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug）
+-- 版本：EngineSystem / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Release）
+-- 接入下层：EngineSystem → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug/include/Engine/EngineSystem/版本锚点.h
+-- 接入下层：EngineSystem → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineSystem → EngineSystem
+          库文件：D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug/lib/EngineSystem.lib
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/代码仓库/白银纪元/Application/Test/tests/System/out/build/x64-Debug
+[0/2] Re-checking globbed directories...
+ninja: no work to do.

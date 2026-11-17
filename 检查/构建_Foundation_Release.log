@@ -1,0 +1,37 @@
+﻿==== Foundation / Release ====
+-- 版本：EngineFoundation / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug）
+-- 版本：EngineFoundation / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release）
+-- 接入下层：EngineFoundation → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release/include/Engine/EngineFoundation/版本锚点.h
+-- 接入下层：EngineFoundation → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineFoundation → EngineFoundation
+          库文件：D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release/lib/EngineFoundation.lib
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/代码仓库/白银纪元/Application/Test/tests/Foundation/out/build/x64-Release
+[0/2] Re-checking globbed directories...
+[1/27] Building CXX object CMakeFiles\TestFoundation.dir\src\注册锚.cpp.obj
+[2/27] Building CXX object CMakeFiles\TestFoundationMain.dir\entry\薄入口.cpp.obj
+[3/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\哈希混合测试.cpp.obj
+[4/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\随机数生成器测试.cpp.obj
+[5/27] Building CXX object CMakeFiles\TestFoundation.dir\D_\代码仓库\白银纪元\Application\Test\src\主调\引擎日志屏蔽.cpp.obj
+[6/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\二分查找测试.cpp.obj
+[7/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\计时器测试.cpp.obj
+[8/27] Building CXX object CMakeFiles\TestFoundation.dir\src\核心\坐标类型测试.cpp.obj
+[9/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\引擎环境测试.cpp.obj
+[10/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\网格加载器测试.cpp.obj
+[11/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\路径校验测试.cpp.obj
+[12/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\数值分配器测试.cpp.obj
+[13/27] Building CXX object CMakeFiles\TestFoundation.dir\src\核心\四叉树测试.cpp.obj
+[14/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\路径字符串转换测试.cpp.obj
+[15/27] Building CXX object CMakeFiles\TestFoundation.dir\src\核心\对象测试.cpp.obj
+[16/27] Building CXX object CMakeFiles\TestFoundation.dir\src\核心\四叉树管理器测试.cpp.obj
+[17/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\日志系统测试.cpp.obj
+[18/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\字段校验测试.cpp.obj
+[19/27] Building CXX object CMakeFiles\TestFoundation.dir\src\核心\对象池测试.cpp.obj
+[20/27] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\数据校验器测试.cpp.obj
+[21/27] Building CXX object CMakeFiles\TestFoundation.dir\src\核心\配置加载器测试.cpp.obj
+[22/27] Building CXX object CMakeFiles\TestFoundation.dir\src\核心\事件终端测试.cpp.obj
+[23/27] Building CXX object CMakeFiles\TestFoundation.dir\src\核心\事件测试.cpp.obj
+[24/27] Building CXX object CMakeFiles\TestFoundation.dir\src\核心\事件中转器测试.cpp.obj
+[25/27] Linking CXX static library lib\TestFoundation.lib
+[26/27] Linking CXX executable D:\代码仓库\白银纪元\Application\Test\TestFoundation.exe

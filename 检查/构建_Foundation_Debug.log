@@ -1,0 +1,14 @@
+﻿==== Foundation / Debug ====
+-- 版本：EngineFoundation / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug）
+-- 版本：EngineFoundation / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release）
+-- 接入下层：EngineFoundation → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/include/Engine/EngineFoundation/版本锚点.h
+-- 接入下层：EngineFoundation → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineFoundation → EngineFoundation
+          库文件：D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/lib/EngineFoundation.lib
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/代码仓库/白银纪元/Application/Test/tests/Foundation/out/build/x64-Debug
+[0/2] Re-checking globbed directories...
+[1/4] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\数值分配器测试.cpp.obj
+[2/4] Linking CXX static library lib\TestFoundation.lib
+[3/4] Linking CXX executable D:\代码仓库\白银纪元\Application\Test\TestFoundation.exe

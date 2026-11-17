@@ -1,0 +1,61 @@
+﻿==== Test / Release ====
+-- 链接响应文件 BOM 包装器已启用：D:/代码仓库/白银纪元/Engine/EngineFoundation/cmake/link_rsp_bom.ps1
+-- 版本：EngineSystem / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug）
+-- 版本：EngineSystem / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Release）
+-- 版本：EngineFoundation / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug）
+-- 版本：EngineFoundation / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release）
+-- 接入下层：Engine → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Release/include/Engine/EngineSystem/版本锚点.h
+-- 接入下层：Engine → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：Engine → EngineSystem
+          库文件：D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Release/lib/EngineSystem.lib
+-- 接入下层：Engine → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release/include/Engine/EngineFoundation/版本锚点.h
+-- 接入下层：Engine → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：Engine → EngineFoundation
+          库文件：D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release/lib/EngineFoundation.lib
+-- 版本：EngineRenderer / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Debug）
+-- 版本：EngineRenderer / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Release）
+-- Vulkan SDK：采用环境变量 VULKAN_SDK = C:\VulkanSDK\1.4.363.0
+-- 接入下层：EngineRenderer → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Release/include/Engine/EngineRenderer/版本锚点.h
+-- 接入下层：EngineRenderer → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineRenderer → EngineRenderer
+          库文件：D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Release/lib/EngineRenderer.lib
+-- Test(Debug)：EngineFoundation 头完整性校验通过（快照含 56 个公共头）
+-- Test(Debug)：EngineSystem 头完整性校验通过（快照含 31 个公共头）
+-- Test(Debug)：EngineRenderer 头完整性校验通过（快照含 59 个公共头）
+-- Test(Release)：EngineFoundation 头完整性校验通过（快照含 56 个公共头）
+-- Test(Release)：EngineSystem 头完整性校验通过（快照含 31 个公共头）
+-- Test(Release)：EngineRenderer 头完整性校验通过（快照含 59 个公共头）
+-- 渲染层着色器已拷贝：D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Release/shaders → D:/代码仓库/白银纪元/Application/Test/shaders
+-- 接入下层：Foundation → TestFoundation
+          库文件：D:/代码仓库/白银纪元/Application/Test/tests/Foundation/out/build/x64-Release/lib/TestFoundation.lib
+-- 接入下层：System → TestSystem
+          库文件：D:/代码仓库/白银纪元/Application/Test/tests/System/out/build/x64-Release/lib/TestSystem.lib
+-- 接入下层：Renderer → TestRenderer
+          库文件：D:/代码仓库/白银纪元/Application/Test/tests/Renderer/out/build/x64-Release/lib/TestRenderer.lib
+-- 测试层 src/ 下暂无源文件，跳过 TestCore 静态库
+-- 工程路径含非 ASCII 字符，EngineTests 改为整体注册（逐用例）
+   请直接运行 EngineTests.exe --gtest_filter=xxx 筛选用例
+-- Configuring done (1.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/代码仓库/白银纪元/Application/Test/out/build/x64-Release
+[0/2] Re-checking globbed directories...
+[1/21] Building CXX object CMakeFiles\TestGui.dir\external\Dear_ImGui\backends\imgui_impl_vulkan.cpp.obj
+[2/21] Building CXX object CMakeFiles\TestGui.dir\external\Dear_ImGui\backends\imgui_impl_sdl3.cpp.obj
+[3/21] Building CXX object CMakeFiles\TestGui.dir\external\Dear_ImGui\imgui\imgui_tables.cpp.obj
+[4/21] Building CXX object CMakeFiles\TestGui.dir\external\Dear_ImGui\imgui\imgui_draw.cpp.obj
+[5/21] Building CXX object CMakeFiles\TestLauncher.dir\src\主调\控制台选择菜单.cpp.obj
+[6/21] Building CXX object CMakeFiles\TestGui.dir\external\Dear_ImGui\imgui\imgui_widgets.cpp.obj
+[7/21] Building CXX object CMakeFiles\EngineTestObjects.dir\src\单元测试\Test\测试层级状态测试.cpp.obj
+[8/21] Building CXX object CMakeFiles\EngineTestObjects.dir\src\单元测试\Test\退出暂停判定测试.cpp.obj
+[9/21] Building CXX object CMakeFiles\TestLauncher.dir\src\主调\测试选择模型.cpp.obj
+[10/21] Building CXX object CMakeFiles\EngineTests.dir\src\主调\测试运行器.cpp.obj
+[11/21] Building CXX object CMakeFiles\EngineTests.dir\src\主调\主程序.cpp.obj
+[12/21] Building CXX object CMakeFiles\EngineTests.dir\src\主调\gtest输出镜像.cpp.obj
+[13/21] Building CXX object CMakeFiles\EngineTestObjects.dir\src\单元测试\Test\测试选择模型测试.cpp.obj
+[14/21] Building CXX object CMakeFiles\TestGui.dir\external\Dear_ImGui\imgui\imgui.cpp.obj
+[15/21] Linking CXX static library lib\TestGui.lib
+[16/21] Building CXX object CMakeFiles\EngineTests.dir\src\主调\测试界面.cpp.obj
+[17/21] Building CXX object CMakeFiles\TestLauncher.dir\src\主调\测试层级状态.cpp.obj
+[18/21] Linking CXX static library lib\TestLauncher.lib
+[19/21] Building CXX object CMakeFiles\EngineTests.dir\src\主调\图形操作界面.cpp.obj
+[20/21] Linking CXX executable D:\代码仓库\白银纪元\Application\Test\EngineTests.exe

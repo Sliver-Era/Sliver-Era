@@ -1,0 +1,120 @@
+﻿==== Renderer / Release ====
+-- 版本：EngineFoundation / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug）
+-- 版本：EngineFoundation / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release）
+-- 接入下层：EngineFoundation → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release/include/Engine/EngineFoundation/版本锚点.h
+-- 接入下层：EngineFoundation → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineFoundation → EngineFoundation
+          库文件：D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release/lib/EngineFoundation.lib
+-- 版本：EngineSystem / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug）
+-- 版本：EngineSystem / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Release）
+-- 接入下层：EngineSystem → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Release/include/Engine/EngineSystem/版本锚点.h
+-- 接入下层：EngineSystem → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineSystem → EngineSystem
+          库文件：D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Release/lib/EngineSystem.lib
+-- 版本：EngineRenderer / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Debug）
+-- 版本：EngineRenderer / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Release）
+-- Vulkan SDK：采用环境变量 VULKAN_SDK = C:\VulkanSDK\1.4.363.0
+-- 接入下层：EngineRenderer → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Release/include/Engine/EngineRenderer/版本锚点.h
+-- 接入下层：EngineRenderer → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineRenderer → EngineRenderer
+          库文件：D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Release/lib/EngineRenderer.lib
+-- 渲染层着色器已拷贝：D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Release/shaders → D:/代码仓库/白银纪元/Application/Test/shaders
+-- Configuring done (0.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/代码仓库/白银纪元/Application/Test/tests/Renderer/out/build/x64-Release
+[0/2] Re-checking globbed directories...
+[1/96] Building CXX object CMakeFiles\TestRenderer.dir\src\注册锚.cpp.obj
+[2/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染HiZ遮挡测试.cpp.obj
+[3/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染中文字形测试.cpp.obj
+[4/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染交换链重建测试.cpp.obj
+[5/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染同帧后处理测试.cpp.obj
+[6/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染动态网格测试.cpp.obj
+[7/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理反射测试.cpp.obj
+[8/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染PCSS软阴影测试.cpp.obj
+[9/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染像素回读测试.cpp.obj
+[10/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染初始化测试.cpp.obj
+[11/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染Alpha覆盖测试.cpp.obj
+[12/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理体积雾测试.cpp.obj
+[13/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染可见窗口测试.cpp.obj
+[14/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染光照查询测试.cpp.obj
+[15/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理分级调色测试.cpp.obj
+[16/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染合批测试.cpp.obj
+[17/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染光照选择测试.cpp.obj
+[18/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染GPU耗时测试.cpp.obj
+[19/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理扩展预设测试.cpp.obj
+[20/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理伽马测试.cpp.obj
+[21/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染GPU驱动测试.cpp.obj
+[22/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理体积光测试.cpp.obj
+[23/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染HiZ测试.cpp.obj
+[24/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理接触阴影测试.cpp.obj
+[25/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染光照测试.cpp.obj
+[26/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染MSAA测试.cpp.obj
+[27/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染Cluster测试.cpp.obj
+[28/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理法线描边测试.cpp.obj
+[29/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理景深测试.cpp.obj
+[30/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理查找表测试.cpp.obj
+[31/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理模糊测试.cpp.obj
+[32/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理泛光测试.cpp.obj
+[33/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理色相曝光测试.cpp.obj
+[34/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理调色测试.cpp.obj
+[35/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理色彩校正测试.cpp.obj
+[36/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染外扩描边测试.cpp.obj
+[37/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染多线程测试.cpp.obj
+[38/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染关卡测试.cpp.obj
+[39/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染多管线测试.cpp.obj
+[40/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染天空盒测试.cpp.obj
+[41/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理遮蔽测试.cpp.obj
+[42/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染场景效果测试.cpp.obj
+[43/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染实例化测试.cpp.obj
+[44/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染帧测试.cpp.obj
+[45/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染文字布局测试.cpp.obj
+[46/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理链测试.cpp.obj
+[47/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染后处理颗粒测试.cpp.obj
+[48/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染多线程阈值测试.cpp.obj
+[49/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染曝光补偿测试.cpp.obj
+[50/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染文字测试.cpp.obj
+[51/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染帧统计测试.cpp.obj
+[52/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染场景数据测试.cpp.obj
+[53/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染材质测试.cpp.obj
+[54/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染水平面测试.cpp.obj
+[55/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染材质贴图测试.cpp.obj
+[56/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染深度描边测试.cpp.obj
+[57/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染混合测试.cpp.obj
+[58/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染物体多材质测试.cpp.obj
+[59/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染相机测试.cpp.obj
+[60/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染窗口属性测试.cpp.obj
+[61/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染级联淡化数据测试.cpp.obj
+[62/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染着色器校验测试.cpp.obj
+[63/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染离屏目标测试.cpp.obj
+[64/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染级联配置数据测试.cpp.obj
+[65/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染纹理分级测试.cpp.obj
+[66/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染缓存与阴影范围测试.cpp.obj
+[67/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染聚光偏置缩放测试.cpp.obj
+[68/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染级联阴影测试.cpp.obj
+[69/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染网格纹理测试.cpp.obj
+[70/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染超采样测试.cpp.obj
+[71/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染聚光灯测试.cpp.obj
+[72/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染聚光逐盏阴影测试.cpp.obj
+[73/96] Building CXX object CMakeFiles\TestRendererMain.dir\entry\薄入口.cpp.obj
+[74/96] Building CXX object CMakeFiles\TestRenderer.dir\src\粒子数据测试.cpp.obj
+[75/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染资源与链查询测试.cpp.obj
+[76/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染逐物体卡通测试.cpp.obj
+[77/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染计算测试.cpp.obj
+[78/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染逐绘制项纹理测试.cpp.obj
+[79/96] Building CXX object CMakeFiles\TestRenderer.dir\src\粒子系统测试.cpp.obj
+[80/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染资产加载测试.cpp.obj
+[81/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染采样器各向异性测试.cpp.obj
+[82/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染阴影稳定性测试.cpp.obj
+[83/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染阴影口径一致性测试.cpp.obj
+[84/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染阴影纹素钳制测试.cpp.obj
+[85/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染阴影预算测试.cpp.obj
+[86/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染聚光阴影测试.cpp.obj
+[87/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染粒子测试.cpp.obj
+[88/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染阴影诊断测试.cpp.obj
+[89/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染阴影测试.cpp.obj
+[90/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染风格化测试.cpp.obj
+[91/96] Building CXX object CMakeFiles\TestRenderer.dir\src\纹理Mipmap测试.cpp.obj
+[92/96] Building CXX object CMakeFiles\TestRenderer.dir\src\渲染雾测试.cpp.obj
+[93/96] Building CXX object CMakeFiles\TestRenderer.dir\src\纹理解码测试.cpp.obj
+[94/96] Linking CXX static library lib\TestRenderer.lib
+[95/96] Linking CXX executable D:\代码仓库\白银纪元\Application\Test\TestRenderer.exe

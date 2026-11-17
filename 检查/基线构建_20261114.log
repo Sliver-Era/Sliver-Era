@@ -1,0 +1,120 @@
+﻿==== EngineFoundation / Debug ====
+-- 构建类型：Debug（构建树：D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug）
+-- 归档响应文件 BOM 包装器已启用：D:/代码仓库/白银纪元/Engine/EngineFoundation/cmake/ar_rsp_bom.ps1
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug
+[0/2] Re-checking globbed directories...
+[1/3] 导出 EngineFoundation 对外头快照 → D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/include
+-- 导出头快照：头文件 69 个 / 清理失效 0 个 → D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/include
+[2/3] 发布 EngineFoundation 版本缓存
+-- 版本缓存：EngineFoundation / x64-Debug / 27e368e1b47e（头 69 个）→ D:/代码仓库/白银纪元/Engine/版本缓存/EngineFoundation/x64-Debug/27e368e1b47e
+==== EngineSystem / Debug ====
+-- 归档响应文件 BOM 包装器已启用：D:/代码仓库/白银纪元/Engine/EngineSystem/../EngineFoundation/cmake/ar_rsp_bom.ps1
+-- 构建类型：Debug（构建树：D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug）
+-- 版本：EngineFoundation / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/../EngineFoundation/out/build/x64-Debug）
+-- 版本：EngineFoundation / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/../EngineFoundation/out/build/x64-Release）
+-- 接入下层：EngineFoundation → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/include/Engine/EngineFoundation/版本锚点.h
+-- 接入下层：EngineFoundation → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineFoundation → EngineFoundation
+          库文件：D:/代码仓库/白银纪元/Engine/EngineSystem/../EngineFoundation/out/build/x64-Debug/lib/EngineFoundation.lib
+-- EngineSystem(Debug)：EngineFoundation 头完整性校验通过（快照含 69 个公共头）
+-- EngineSystem(Release)：EngineFoundation 头完整性校验通过（快照含 69 个公共头）
+-- Configuring done (1.4s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug
+[0/2] Re-checking globbed directories...
+[1/3] 导出 EngineSystem 对外头快照 → D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug/include
+-- 导出头快照：头文件 51 个 / 清理失效 0 个 → D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug/include
+[2/3] 发布 EngineSystem 版本缓存
+-- 版本缓存：EngineSystem / x64-Debug / dd73ebb7256d（头 51 个）→ D:/代码仓库/白银纪元/Engine/版本缓存/EngineSystem/x64-Debug/dd73ebb7256d
+==== EngineRenderer / Debug ====
+-- 归档响应文件 BOM 包装器已启用：D:/代码仓库/白银纪元/Engine/EngineRenderer/../../Engine/EngineFoundation/cmake/ar_rsp_bom.ps1
+-- 构建类型：Debug（构建树：D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Debug）
+-- Vulkan SDK：采用环境变量 VULKAN_SDK = C:\VulkanSDK\1.4.363.0
+-- 版本：EngineFoundation / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug）
+-- 版本：EngineFoundation / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release）
+-- 版本：EngineSystem / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug）
+-- 版本：EngineSystem / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Release）
+-- 接入下层：EngineFoundation → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/include/Engine/EngineFoundation/版本锚点.h
+-- 接入下层：EngineFoundation → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineFoundation → EngineFoundation
+          库文件：D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/lib/EngineFoundation.lib
+-- 接入下层：EngineSystem → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug/include/Engine/EngineSystem/版本锚点.h
+-- 接入下层：EngineSystem → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineSystem → EngineSystem
+          库文件：D:/代码仓库/白银纪元/Engine/EngineSystem/out/build/x64-Debug/lib/EngineSystem.lib
+-- EngineRenderer(Debug)：EngineFoundation 头完整性校验通过（快照含 69 个公共头）
+-- EngineRenderer(Debug)：EngineSystem 头完整性校验通过（快照含 51 个公共头）
+-- EngineRenderer(Release)：EngineFoundation 头完整性校验通过（快照含 69 个公共头）
+-- EngineRenderer(Release)：EngineSystem 头完整性校验通过（快照含 49 个公共头）
+-- Renderer：glslc = C:/VulkanSDK/1.4.363.0/Bin/glslc.exe
+-- Renderer：源着色器 D:/代码仓库/白银纪元/Engine/EngineRenderer/assets/shaders → D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Debug/shaders
+-- Configuring done (3.8s)
+-- Generating done (0.3s)
+-- Build files have been written to: D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Debug
+[0/2] Re-checking globbed directories...
+[1/31] 生成 Renderer 版次锚点
+-- 版本锚点：renderer → byjy_stamp_renderer_6c0aeae6f6ec（头 98 个）
+[2/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_帧阶段_描述符集.cpp.obj
+[3/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_帧阶段_场景UBO.cpp.obj
+[4/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器内部工具.cpp.obj
+[5/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_帧阶段_分派.cpp.obj
+[6/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_帧阶段_实例缓冲.cpp.obj
+[7/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_关闭.cpp.obj
+[8/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_帧阶段_输入与矩阵.cpp.obj
+[9/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_采样与尺寸.cpp.obj
+[10/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_初始化_界面.cpp.obj
+[11/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_初始化_帧与着色器.cpp.obj
+[12/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_帧阶段_天空项.cpp.obj
+[13/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_光源.cpp.obj
+[14/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_初始化_内存与交换链.cpp.obj
+[15/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_场景应用.cpp.obj
+[16/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_雾与环境.cpp.obj
+[17/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_阴影开关.cpp.obj
+[18/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_帧阶段_阴影.cpp.obj
+[19/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_初始化_服务.cpp.obj
+[20/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_初始化_平台.cpp.obj
+[21/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_初始化.cpp.obj
+[22/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_初始化_图形资源.cpp.obj
+[23/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_相机.cpp.obj
+[24/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_聚光阴影.cpp.obj
+[25/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_生命周期.cpp.obj
+[26/30] Building CXX object CMakeFiles\EngineRenderer.dir\src\render\Renderer\core\渲染器_帧渲染.cpp.obj
+[27/30] Linking CXX static library lib\EngineRenderer.lib
+[28/30] 导出 Renderer 对外头快照 → D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Debug/include
+-- 导出头快照：头文件 99 个 / 清理失效 0 个 → D:/代码仓库/白银纪元/Engine/EngineRenderer/out/build/x64-Debug/include
+[29/30] 发布 EngineRenderer 版本缓存
+-- 版本缓存：EngineRenderer / x64-Debug / 6c0aeae6f6ec（头 99 个）→ D:/代码仓库/白银纪元/Engine/版本缓存/EngineRenderer/x64-Debug/6c0aeae6f6ec
+==== TestFoundation / Debug ====
+-- 版本：EngineFoundation / Debug → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug）
+-- 版本：EngineFoundation / Release → 跟随最新（D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Release）
+-- 接入下层：EngineFoundation → 版次锚点 D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/include/Engine/EngineFoundation/版本锚点.h
+-- 接入下层：EngineFoundation → 版次锚点按 $<CONFIG> 分别注入
+-- 接入下层：EngineFoundation → EngineFoundation
+          库文件：D:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/lib/EngineFoundation.lib
+-- Configuring done (0.3s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/代码仓库/白银纪元/Application/Test/tests/Foundation/out/build/x64-Debug
+[0/2] Re-checking globbed directories...
+[1/7] Building CXX object CMakeFiles\TestFoundation.dir\src\注册锚.cpp.obj
+[2/7] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\路径校验测试.cpp.obj
+FAILED: [code=2] CMakeFiles/TestFoundation.dir/src/工具/路径校验测试.cpp.obj 
+D:\ViusalStudioCommunity2026\VC\Tools\MSVC\14.51.36231\bin\Hostx64\x64\cl.exe  /nologo /TP -D_CRT_SECURE_NO_WARNINGS -ID:\代码仓库\白银纪元\Engine\EngineFoundation\out\build\x64-Debug\include -ID:\代码仓库\白银纪元\Application\Test -external:ID:\代码仓库\白银纪元 -external:ID:\代码仓库\白银纪元\Engine\EngineFoundation\external\Json -external:ID:\代码仓库\白银纪元\Application\Test\external\googletest\googletest\include -external:ID:\代码仓库\白银纪元\Application\Test\external\googletest\googletest -external:W0 /DWIN32 /D_WINDOWS /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /WX- /MP /utf-8 /FID:/代码仓库/白银纪元/Engine/EngineFoundation/out/build/x64-Debug/include/Engine/EngineFoundation/版本锚点.h /showIncludes /FoCMakeFiles\TestFoundation.dir\src\工具\路径校验测试.cpp.obj /FdCMakeFiles\TestFoundation.dir\TestFoundation.pdb /FS -c D:\代码仓库\白银纪元\Application\Test\tests\Foundation\src\工具\路径校验测试.cpp
+D:\代码仓库\白银纪元\Application\Test\tests\Foundation\src\工具\路径校验测试.cpp(7): fatal error C1083: 无法打开包括文件: “Engine/EngineFoundation/src/tools/Detail/文件路径可用性校验.h”: No such file or directory
+[3/7] Building CXX object CMakeFiles\TestFoundationMain.dir\entry\薄入口.cpp.obj
+[4/7] Building CXX object CMakeFiles\TestFoundation.dir\src\工具\网格加载器测试.cpp.obj
+ninja: build stopped: subcommand failed.
+powershell : TestFoundation 构建失败（Debug）
+所在位置 行:15 字符: 1881
++ ... M = 'dumb'; powershell -ExecutionPolicy Bypass -Command "& 'D:\agent\ ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (TestFoundation 构建失败（Debug）:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+At D:\agent\working_station\silver_era\构建双配置.ps1:78 char:17
++                 throw ("{0} 构建失败（{1}）" -f $layer.Name, $cfg)
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (TestFoundation 构建失败（Debug）:String) [], RuntimeException
+    + FullyQualifiedErrorId : TestFoundation 构建失败（Debug）
+ 

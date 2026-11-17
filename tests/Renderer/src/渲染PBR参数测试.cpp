@@ -113,3 +113,47 @@ TEST_F(Renderer_Scene_Test, PBR逐物体覆盖优先于全局)
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
 }
+
+//多重散射能量补偿：高粗糙金属提亮，低粗糙几乎不变
+TEST_F(Renderer_Scene_Test, PBR多重散射补偿)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle mesh = 0;
+	uint64_t texture = 0;
+	pbr_param_scene_register(renderer, mesh, texture);
+	//纯白反照率使金属 F0 接近 1，放大补偿差异
+	uint64_t white = 0;
+	std::vector<uint8_t> white_texels = solid_white();
+	ASSERT_TRUE(renderer.resource().texture_load(white, white_texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(white);
+	renderer.scene().pbr_metallic_set(1.0f);
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.0f);
+	renderer.scene().specular_set(0.5f, 64.0f);
+	//按粗糙度与开关取帧
+	auto frame_with = [&](float roughness, bool multiscatter)
+	{
+		renderer.scene().pbr_roughness_set(roughness);
+		renderer.scene().pbr_multiscatter_set(multiscatter);
+		return pbr_param_frame(renderer, mesh);
+	};
+	std::vector<uint8_t> high_off = frame_with(0.9f, false);
+	std::vector<uint8_t> high_on = frame_with(0.9f, true);
+	EXPECT_TRUE(renderer.scene().pbr_multiscatter()) << "多重散射开关未登记";
+	std::vector<uint8_t> low_off = frame_with(0.1f, false);
+	std::vector<uint8_t> low_on = frame_with(0.1f, true);
+	uint32_t high_changed = byjy_render_test::changed_pixels(high_off, high_on, 3);
+	uint32_t low_changed = byjy_render_test::changed_pixels(low_off, low_on, 3);
+	EXPECT_GT(high_changed, 0u) << "高粗糙金属未获得能量补偿";
+	EXPECT_LE(low_changed, high_changed) << "低粗糙补偿强于高粗糙";
+	RecordProperty("multiscatter_high_changed", static_cast<int>(high_changed));
+	RecordProperty("multiscatter_low_changed", static_cast<int>(low_changed));
+	RecordProperty("multiscatter_high_off_center", static_cast<int>(center_brightness(high_off)));
+	RecordProperty("multiscatter_high_on_center", static_cast<int>(center_brightness(high_on)));
+	renderer.resource().texture_unload(white);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
+}

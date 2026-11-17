@@ -28,7 +28,8 @@ namespace
 	}
 
 	//实例规模场景：返回中位帧耗时；初始化失败返回 -1
-	double run_instance_case(uint32_t instances, bool pbr)
+	//feature_mask 位：0 = 多重散射、1 = 环境 BRDF、2 = 各向异性、3 = 皮肤 wrap、4 = 布料 sheen
+	double run_instance_case(uint32_t instances, bool pbr, uint32_t feature_mask = 0)
 	{
 		engine::Renderer renderer;
 		//实例容量按用例规模放宽（默认 256）；关闭 vsync / 校验层以测真实开销
@@ -54,6 +55,12 @@ namespace
 		renderer.scene().pbr_roughness_absolute_set(true);
 		renderer.scene().pbr_roughness_set(0.5f);
 		renderer.scene().pbr_metallic_set(0.2f);
+		//按位开启方向九新增特性
+		renderer.scene().pbr_multiscatter_set((feature_mask & 1u) != 0);
+		renderer.scene().pbr_env_brdf_set((feature_mask & 2u) != 0);
+		renderer.scene().pbr_aniso_set((feature_mask & 4u) != 0);
+		renderer.scene().pbr_skin_sss_set((feature_mask & 8u) != 0);
+		renderer.scene().pbr_sheen_set((feature_mask & 16u) != 0);
 		if (!renderer.resource().mesh_draw_instanced(mesh, nullptr, instances))
 			return -1.0;
 		double ms = median_frame_ms(renderer, 20);
@@ -147,4 +154,27 @@ TEST_F(Renderer_Scene_Test, PBR材质切换开销)
 	EXPECT_GT(alternating, 0.0);
 	RecordProperty("material_single_ms", single);
 	RecordProperty("material_alternating_ms", alternating);
+}
+
+/*
+方向九特性组合开销（第 725 轮）：1000 个实例、PBR 开启，逐项与全开对比基线。
+仅记录数值并做健全性断言；不设硬阈值（Debug/Release 与机型差异较大）。
+*/
+TEST_F(Renderer_Scene_Test, PBR特性组合开销)
+{
+	double baseline = run_instance_case(1000, true, 0);
+	double multiscatter = run_instance_case(1000, true, 1);
+	double env_brdf = run_instance_case(1000, true, 2);
+	double aniso = run_instance_case(1000, true, 4);
+	double all = run_instance_case(1000, true, 31);
+	EXPECT_GT(baseline, 0.0);
+	EXPECT_GT(multiscatter, 0.0);
+	EXPECT_GT(env_brdf, 0.0);
+	EXPECT_GT(aniso, 0.0);
+	EXPECT_GT(all, 0.0);
+	RecordProperty("feature_baseline_ms", baseline);
+	RecordProperty("feature_multiscatter_ms", multiscatter);
+	RecordProperty("feature_env_brdf_ms", env_brdf);
+	RecordProperty("feature_aniso_ms", aniso);
+	RecordProperty("feature_all_ms", all);
 }

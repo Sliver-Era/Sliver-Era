@@ -31,6 +31,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染HiZ测试.cpp"
     "src/渲染HiZ遮挡测试.cpp"
     "src/渲染MSAA测试.cpp"
+    "src/渲染PBR参数测试.cpp"
     "src/渲染PBR基线测试.cpp"
     "src/渲染PCSS软阴影测试.cpp"
     "src/渲染中文字形测试.cpp"

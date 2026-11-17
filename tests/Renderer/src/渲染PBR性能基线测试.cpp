@@ -7,6 +7,7 @@ PBR 性能基线（2026-11-17 · 方向九阶段 A 第 712 轮）
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 
 namespace
 {
@@ -177,4 +178,57 @@ TEST_F(Renderer_Scene_Test, PBR特性组合开销)
 	RecordProperty("feature_env_brdf_ms", env_brdf);
 	RecordProperty("feature_aniso_ms", aniso);
 	RecordProperty("feature_all_ms", all);
+}
+
+/*
+强光照压力场景（第 726 轮）：32 盏点光 ＋ 1000 实例 ＋ 环境光照 ＋ 全部 PBR 特性。
+核对可渲染并记录帧耗时；用于阶段 F「强光照 / 多物体」的最低验收。
+*/
+TEST_F(Renderer_Scene_Test, PBR强光照压力场景)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config(640, 360);
+	config.instance_capacity = 1024;
+	config.vsync = false;
+	config.validation = false;
+	ASSERT_TRUE(renderer.init(config));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle mesh = 0;
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_gray();
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.5f)));
+	//32 盏点光环绕场景
+	const float light_color[3] = { 1.0f, 0.85f, 0.7f };
+	for (uint32_t index = 0; index < 32; ++index)
+	{
+		float angle = 6.2831853f * static_cast<float>(index) / 32.0f;
+		const float position[3] = { 3.0f * std::cos(angle), 1.5f, 3.0f * std::sin(angle) };
+		renderer.scene().light_point_set(position, light_color, 6.0f, 0.35f, 0.0f);
+	}
+	const float direction[3] = { 0.0f, -0.5f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 0.4f, 0.05f);
+	//PBR ＋ 环境光照 ＋ 全特性
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_absolute_set(true);
+	renderer.scene().pbr_roughness_set(0.4f);
+	renderer.scene().pbr_metallic_set(0.3f);
+	const float environment[3] = { 0.4f, 0.45f, 0.5f };
+	renderer.scene().environment_set(environment, 0.6f);
+	renderer.scene().pbr_multiscatter_set(true);
+	renderer.scene().pbr_env_brdf_set(true);
+	renderer.scene().pbr_env_irradiance_set(true);
+	renderer.scene().pbr_aniso_set(true);
+	renderer.scene().pbr_aniso_strength_set(0.6f);
+	renderer.scene().pbr_skin_sss_set(true);
+	renderer.scene().pbr_sheen_set(true);
+	renderer.scene().pbr_sheen_strength_set(0.4f);
+	ASSERT_TRUE(renderer.resource().mesh_draw_instanced(mesh, nullptr, 1000));
+	double ms = median_frame_ms(renderer, 10);
+	EXPECT_GT(ms, 0.0) << "强光照压力场景未能出帧";
+	RecordProperty("stress_32lights_1000_instances_ms", ms);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
 }

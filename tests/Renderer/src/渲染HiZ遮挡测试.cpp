@@ -9,6 +9,7 @@
 
 //遮挡测试公开面（Vulkan-free）
 #include "Engine/EngineRenderer/src/render/HiZ/遮挡测试.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {

@@ -11,17 +11,14 @@
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
 //线程组数换算与屏障用途（第二百四十二轮）
 #include "Engine/EngineRenderer/src/render/Compute/计算数据.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
 	//构造隐藏窗口配置
 	engine::Renderer_Config hidden_config(void)
 	{
-		engine::Renderer_Config config;
-		config.width = 64;
-		config.height = 36;
-		config.hidden = true;
-		return config;
+		return byjy_render_test::hidden_config(64, 36);
 	}
 }
 

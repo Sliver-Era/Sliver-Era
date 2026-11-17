@@ -15,6 +15,7 @@
 #include "Engine/EngineRenderer/src/render/Scene/场景装配.h"
 #include "Engine/EngineRenderer/src/render/Asset/资产缓存.h"
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {

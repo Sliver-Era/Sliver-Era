@@ -5,6 +5,7 @@
 口径：2 盏聚光灯 ＋ 多盏聚光阴影 ＋ 方向光阴影关闭；瓦片数取 Frame_Stats.spot_shadow_tiles。
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {

@@ -9,6 +9,7 @@
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
 //契约常量（实现常量的唯一来源）
 #include "测试辅助/渲染契约常量.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
@@ -19,24 +20,13 @@ namespace
 	//构造隐藏窗口配置
 	engine::Renderer_Config hidden_config(void)
 	{
-		engine::Renderer_Config config;
-		config.width = 320;
-		config.height = 180;
-		config.hidden = true;
-		return config;
+		return byjy_render_test::hidden_config(320, 180);
 	}
 
 	//构造三角形网格
-	engine::Mesh_Data triangle_data(void)
+	inline engine::Mesh_Data triangle_data(void)
 	{
-		engine::Mesh_Data data;
-		data.vertices = {
-			{ { 0.0f, 0.5f, 0.0f }, { 0.5f, 0.0f } },
-			{ { 0.5f, -0.5f, 0.0f }, { 1.0f, 1.0f } },
-			{ { -0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f } },
-		};
-		data.indices = { 0, 1, 2 };
-		return data;
+		return byjy_render_test::triangle_data();
 	}
 }
 

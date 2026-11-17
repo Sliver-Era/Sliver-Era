@@ -10,6 +10,7 @@
 
 //获取渲染器门面与网格数据
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
@@ -30,17 +31,13 @@ namespace
 	//构造隐藏窗口配置
 	engine::Renderer_Config hidden_config(void)
 	{
-		engine::Renderer_Config config;
-		config.width = WINDOW_WIDTH;
-		config.height = WINDOW_HEIGHT;
-		config.hidden = true;
-		return config;
+		return byjy_render_test::hidden_config(WINDOW_WIDTH, WINDOW_HEIGHT);
 	}
 
 	//本帧像素字节数（RGBA8 紧排）
-	uint32_t pixel_bytes(void)
+	inline uint32_t pixel_bytes(void)
 	{
-		return WINDOW_WIDTH * WINDOW_HEIGHT * 4;
+		return byjy_render_test::pixel_bytes(WINDOW_WIDTH, WINDOW_HEIGHT);
 	}
 
 	//构造中心小四边形（两个三角形；UV 满铺）

@@ -6,6 +6,7 @@
   ③ 覆盖率写入在 Opaque 档同样生效（不依赖混合），未开启时仍为纯不透明。
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 //半透明白色纹理（RGBA8：rgb = 255、alpha = 128 → 约 0.5）
 std::vector<uint8_t> half_alpha_white(void)

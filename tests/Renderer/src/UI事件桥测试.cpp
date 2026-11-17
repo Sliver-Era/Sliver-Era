@@ -14,6 +14,7 @@ UI 事件桥测试（L1 无 GPU）
 //获取 UI 控件树与事件桥
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
 #include "Engine/EngineRenderer/src/render/UI/UI事件桥.h"
+#include "测试辅助/渲染测试辅助.h"
 
 //游戏引擎命名空间
 using namespace engine;

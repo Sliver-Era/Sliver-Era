@@ -8,6 +8,7 @@
 
 //获取帧输入聚合器（公共扩展头，含 SDL3 类型）
 #include "Engine/EngineRenderer/src/render/Input/输入聚合.h"
+#include "测试辅助/渲染测试辅助.h"
 
 //游戏引擎命名空间
 using namespace engine;

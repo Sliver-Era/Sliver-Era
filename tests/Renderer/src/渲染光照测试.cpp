@@ -3,6 +3,7 @@
 （第五十八轮由「渲染场景数据测试.cpp」拆出后再次细分：聚光灯与衰减见「渲染聚光灯测试.cpp」）
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 
 TEST_F(Renderer_Scene_Test, 朝向光源更亮)

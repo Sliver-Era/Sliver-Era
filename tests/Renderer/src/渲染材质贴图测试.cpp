@@ -12,6 +12,7 @@
      UV 变换默认 (1,1)/(0,0) 时与原 UV 一致。
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {

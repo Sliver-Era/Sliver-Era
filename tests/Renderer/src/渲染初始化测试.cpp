@@ -8,6 +8,7 @@
 
 //获取渲染器门面与配置
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {

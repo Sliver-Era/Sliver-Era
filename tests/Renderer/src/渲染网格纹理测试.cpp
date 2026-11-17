@@ -10,30 +10,20 @@
 
 //获取渲染器门面与网格数据
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
 	//构造隐藏窗口配置
 	engine::Renderer_Config hidden_config(void)
 	{
-		engine::Renderer_Config config;
-		config.width = 320;
-		config.height = 180;
-		config.hidden = true;
-		return config;
+		return byjy_render_test::hidden_config(320, 180);
 	}
 
 	//构造三角形网格（三顶点、三索引）
-	engine::Mesh_Data triangle_data(void)
+	inline engine::Mesh_Data triangle_data(void)
 	{
-		engine::Mesh_Data data;
-		data.vertices = {
-			{ { 0.0f, 0.5f, 0.0f }, { 0.5f, 0.0f } },
-			{ { 0.5f, -0.5f, 0.0f }, { 1.0f, 1.0f } },
-			{ { -0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f } },
-		};
-		data.indices = { 0, 1, 2 };
-		return data;
+		return byjy_render_test::triangle_data();
 	}
 }
 

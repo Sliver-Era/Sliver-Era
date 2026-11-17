@@ -16,6 +16,7 @@
 
 //获取渲染器门面与网格数据
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
@@ -31,28 +32,19 @@ namespace
 	//构造隐藏窗口配置
 	engine::Renderer_Config hidden_config(void)
 	{
-		engine::Renderer_Config config;
-		config.width = WINDOW_WIDTH;
-		config.height = WINDOW_HEIGHT;
-		config.hidden = true;
-		return config;
+		return byjy_render_test::hidden_config(WINDOW_WIDTH, WINDOW_HEIGHT);
 	}
 
 	//本帧像素字节数（RGBA8 紧排）
-	uint32_t pixel_bytes(void)
+	inline uint32_t pixel_bytes(void)
 	{
-		return WINDOW_WIDTH * WINDOW_HEIGHT * 4;
+		return byjy_render_test::pixel_bytes(WINDOW_WIDTH, WINDOW_HEIGHT);
 	}
 
 	//取指定像素的四个字节
-	std::array<uint8_t, 4> pixel_get(const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
+	inline std::array<uint8_t, 4> pixel_get(const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
 	{
-		//行内偏移（每行宽 × 4 字节）
-		const std::size_t offset = (static_cast<std::size_t>(y) * WINDOW_WIDTH + x) * 4;
-		std::array<uint8_t, 4> value{};
-		for (std::size_t index = 0; index < 4; ++index)
-			value[index] = pixels[offset + index];
-		return value;
+		return byjy_render_test::pixel_get(pixels, x, y, WINDOW_WIDTH);
 	}
 
 	//平移 ＋ 三轴非等比缩放（列主序）

@@ -10,6 +10,7 @@
 
 //获取渲染器门面与网格数据
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
@@ -39,28 +40,19 @@ namespace
 	//构造隐藏窗口配置
 	engine::Renderer_Config hidden_config(void)
 	{
-		engine::Renderer_Config config;
-		config.width = READBACK_WIDTH;
-		config.height = READBACK_HEIGHT;
-		config.hidden = true;
-		return config;
+		return byjy_render_test::hidden_config(READBACK_WIDTH, READBACK_HEIGHT);
 	}
 
 	//本帧像素字节数（RGBA8 紧排）
-	uint32_t pixel_bytes(void)
+	inline uint32_t pixel_bytes(void)
 	{
-		return READBACK_WIDTH * READBACK_HEIGHT * 4;
+		return byjy_render_test::pixel_bytes(READBACK_WIDTH, READBACK_HEIGHT);
 	}
 
 	//取指定像素的四个字节
-	std::array<uint8_t, 4> pixel_get(const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
+	inline std::array<uint8_t, 4> pixel_get(const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
 	{
-		//行内偏移（每行宽 × 4 字节）
-		std::size_t offset = (static_cast<std::size_t>(y) * READBACK_WIDTH + x) * 4;
-		std::array<uint8_t, 4> value{};
-		for (std::size_t index = 0; index < 4; ++index)
-			value[index] = pixels[offset + index];
-		return value;
+		return byjy_render_test::pixel_get(pixels, x, y, READBACK_WIDTH);
 	}
 
 	//升序排序后的四通道值（消除通道序差异）
@@ -99,17 +91,9 @@ namespace
 	}
 
 	//构造覆盖视口中央的四边形（NDC 尺度 1，位于 z = 0；默认相机在 +Z 3 单位处）
-	engine::Mesh_Data quad_data(void)
+	inline engine::Mesh_Data quad_data(void)
 	{
-		engine::Mesh_Data data;
-		data.vertices = {
-			{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 1.0f } },
-			{ { 1.0f, -1.0f, 0.0f }, { 1.0f, 1.0f } },
-			{ { 1.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-			{ { -1.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
-		};
-		data.indices = { 0, 1, 2, 0, 2, 3 };
-		return data;
+		return byjy_render_test::quad_data();
 	}
 
 	//统计回读结果中的不同颜色数（按四通道去重）

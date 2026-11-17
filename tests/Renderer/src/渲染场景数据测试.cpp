@@ -4,6 +4,7 @@
 「渲染场景效果测试.cpp」、阴影用例移至「渲染阴影测试.cpp」；本文件逻辑未改）
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 
 TEST_F(Renderer_Scene_Test, 未初始化应用场景无副作用)

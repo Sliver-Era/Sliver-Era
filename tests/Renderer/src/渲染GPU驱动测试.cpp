@@ -12,6 +12,7 @@
 #include "Engine/EngineRenderer/src/render/GPU驱动/包围体.h"
 //视锥平面与 CPU 参考判定（第二百四十八轮）
 #include "Engine/EngineRenderer/src/render/GPU驱动/剔除数据.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
@@ -31,11 +32,7 @@ namespace
 	//构造隐藏窗口配置
 	engine::Renderer_Config hidden_config(void)
 	{
-		engine::Renderer_Config config;
-		config.width = WINDOW_WIDTH;
-		config.height = WINDOW_HEIGHT;
-		config.hidden = true;
-		return config;
+		return byjy_render_test::hidden_config(WINDOW_WIDTH, WINDOW_HEIGHT);
 	}
 
 	//构造中心小四边形（两个三角形）

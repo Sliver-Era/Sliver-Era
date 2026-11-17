@@ -13,17 +13,14 @@
 
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
 #include "Engine/EngineRenderer/src/render/Particle/粒子宿主.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
 	//隐藏窗口配置
 	engine::Renderer_Config hidden_config(void)
 	{
-		engine::Renderer_Config config;
-		config.width = 64;
-		config.height = 36;
-		config.hidden = true;
-		return config;
+		return byjy_render_test::hidden_config(64, 36);
 	}
 
 	//点发射器（数量 32、寿命 0.5..1.0）

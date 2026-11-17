@@ -13,6 +13,7 @@
 //获取渲染层输入快照与系统输入桥
 #include "Engine/EngineRenderer/src/render/Input/输入聚合.h"
 #include "Engine/EngineRenderer/src/render/Input/系统输入桥.h"
+#include "测试辅助/渲染测试辅助.h"
 
 //游戏引擎命名空间
 using namespace engine;

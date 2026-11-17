@@ -5,6 +5,7 @@
 口径：方向光阴影开启，单级 / 双级对照；读取 Frame_Stats.shadow_resolution。
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {

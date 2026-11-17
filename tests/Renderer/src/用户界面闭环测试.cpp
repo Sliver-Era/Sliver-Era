@@ -13,6 +13,7 @@
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
 //获取帧输入聚合器（公共扩展头，含 SDL3）
 #include "Engine/EngineRenderer/src/render/Input/输入聚合.h"
+#include "测试辅助/渲染测试辅助.h"
 
 //游戏引擎命名空间
 using namespace engine;
@@ -46,9 +47,9 @@ namespace
 	}
 
 	//本帧像素字节数
-	uint32_t pixel_bytes(void)
+	inline uint32_t pixel_bytes(void)
 	{
-		return WINDOW_WIDTH * WINDOW_HEIGHT * 4;
+		return byjy_render_test::pixel_bytes(WINDOW_WIDTH, WINDOW_HEIGHT);
 	}
 
 	//系统字体是否可用
@@ -59,13 +60,9 @@ namespace
 	}
 
 	//取指定像素的四个字节
-	std::array<uint8_t, 4> pixel_get(const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
+	inline std::array<uint8_t, 4> pixel_get(const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
 	{
-		std::size_t offset = (static_cast<std::size_t>(y) * WINDOW_WIDTH + x) * 4;
-		std::array<uint8_t, 4> value{};
-		for (std::size_t index = 0; index < 4; ++index)
-			value[index] = pixels[offset + index];
-		return value;
+		return byjy_render_test::pixel_get(pixels, x, y, WINDOW_WIDTH);
 	}
 
 	//判断像素是否近似等于清屏色（通道排序后比对，兼容 RGBA / BGRA 读回顺序）

@@ -14,6 +14,7 @@
 
 //获取渲染器门面与网格数据
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
@@ -43,11 +44,7 @@ namespace
 	//构造隐藏窗口配置
 	engine::Renderer_Config hidden_config(void)
 	{
-		engine::Renderer_Config config;
-		config.width = INIT_WIDTH;
-		config.height = INIT_HEIGHT;
-		config.hidden = true;
-		return config;
+		return byjy_render_test::hidden_config(INIT_WIDTH, INIT_HEIGHT);
 	}
 
 	//取指定像素的四个字节（width 为该帧回读宽度，用于计算行内偏移）
@@ -97,17 +94,9 @@ namespace
 	}
 
 	//构造覆盖视口中央的四边形（NDC 尺度 1，位于 z = 0；默认相机在 +Z 3 单位处）
-	engine::Mesh_Data quad_data(void)
+	inline engine::Mesh_Data quad_data(void)
 	{
-		engine::Mesh_Data data;
-		data.vertices = {
-			{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 1.0f } },
-			{ { 1.0f, -1.0f, 0.0f }, { 1.0f, 1.0f } },
-			{ { 1.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-			{ { -1.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
-		};
-		data.indices = { 0, 1, 2, 0, 2, 3 };
-		return data;
+		return byjy_render_test::quad_data();
 	}
 }
 

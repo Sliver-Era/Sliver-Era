@@ -23,12 +23,12 @@ namespace byjy_render_test
 	inline constexpr uint32_t WINDOW_WIDTH = 64;
 	inline constexpr uint32_t WINDOW_HEIGHT = 36;
 
-	//构造隐藏窗口配置
-	inline engine::Renderer_Config hidden_config(void)
+	//构造隐藏窗口配置（默认 64×36；自定义尺寸用例显式传入）
+	inline engine::Renderer_Config hidden_config(uint32_t width = WINDOW_WIDTH, uint32_t height = WINDOW_HEIGHT)
 	{
 		engine::Renderer_Config config;
-		config.width = WINDOW_WIDTH;
-		config.height = WINDOW_HEIGHT;
+		config.width = width;
+		config.height = height;
 		config.hidden = true;
 		return config;
 	}
@@ -41,17 +41,18 @@ namespace byjy_render_test
 		return config;
 	}
 
-	//本帧像素字节数（RGBA8 紧排）
-	inline uint32_t pixel_bytes(void)
+	//本帧像素字节数（RGBA8 紧排；默认 64×36）
+	inline uint32_t pixel_bytes(uint32_t width = WINDOW_WIDTH, uint32_t height = WINDOW_HEIGHT)
 	{
-		return WINDOW_WIDTH * WINDOW_HEIGHT * 4;
+		return width * height * 4;
 	}
 
-	//取指定像素的四个字节
-	inline std::array<uint8_t, 4> pixel_get(const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
+	//取指定像素的四个字节（row_width 为整帧行宽）
+	inline std::array<uint8_t, 4> pixel_get(const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y,
+		uint32_t row_width = WINDOW_WIDTH)
 	{
 		//行内偏移（每行宽 × 4 字节）
-		std::size_t offset = (static_cast<std::size_t>(y) * WINDOW_WIDTH + x) * 4;
+		std::size_t offset = (static_cast<std::size_t>(y) * row_width + x) * 4;
 		std::array<uint8_t, 4> value{};
 		for (std::size_t index = 0; index < 4; ++index)
 			value[index] = pixels[offset + index];
@@ -71,10 +72,11 @@ namespace byjy_render_test
 		return value[0] > value[2] ? value[0] : value[2];
 	}
 
-	//中心像素的 RGB 均值（亮度粗量；通道序无关）
-	inline uint32_t center_brightness(const std::vector<uint8_t>& pixels)
+	//中心像素的 RGB 均值（亮度粗量；通道序无关；默认 64×36）
+	inline uint32_t center_brightness(const std::vector<uint8_t>& pixels,
+		uint32_t width = WINDOW_WIDTH, uint32_t height = WINDOW_HEIGHT)
 	{
-		std::array<uint8_t, 4> center = pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+		std::array<uint8_t, 4> center = pixel_get(pixels, width / 2, height / 2, width);
 		return (static_cast<uint32_t>(center[0]) + center[1] + center[2]) / 3;
 	}
 
@@ -259,15 +261,16 @@ namespace byjy_render_test
 	统计「本帧比参考帧暗至少 threshold」的像素数（用于验证描边 / 阴影压暗）
 	逐像素按 Rec.709 亮度差判定，通道序无关。
 	*/
-	inline uint32_t darkened_count(const std::vector<uint8_t>& tested, const std::vector<uint8_t>& reference, float threshold)
+	inline uint32_t darkened_count(const std::vector<uint8_t>& tested, const std::vector<uint8_t>& reference, float threshold,
+		uint32_t width = WINDOW_WIDTH, uint32_t height = WINDOW_HEIGHT)
 	{
 		uint32_t count = 0;
-		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
+		for (uint32_t y = 0; y < height; ++y)
 		{
-			for (uint32_t x = 0; x < WINDOW_WIDTH; ++x)
+			for (uint32_t x = 0; x < width; ++x)
 			{
 				//两帧亮度差
-				float difference = luma_of(pixel_get(reference, x, y)) - luma_of(pixel_get(tested, x, y));
+				float difference = luma_of(pixel_get(reference, x, y, width)) - luma_of(pixel_get(tested, x, y, width));
 				if (difference >= threshold)
 					++count;
 			}
@@ -276,15 +279,16 @@ namespace byjy_render_test
 	}
 
 	//统计「本帧比参考帧亮至少 threshold」的像素数（用于验证泛光扩散范围）
-	inline uint32_t brightened_count(const std::vector<uint8_t>& tested, const std::vector<uint8_t>& reference, float threshold)
+	inline uint32_t brightened_count(const std::vector<uint8_t>& tested, const std::vector<uint8_t>& reference, float threshold,
+		uint32_t width = WINDOW_WIDTH, uint32_t height = WINDOW_HEIGHT)
 	{
 		uint32_t count = 0;
-		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
+		for (uint32_t y = 0; y < height; ++y)
 		{
-			for (uint32_t x = 0; x < WINDOW_WIDTH; ++x)
+			for (uint32_t x = 0; x < width; ++x)
 			{
 				//两帧亮度差
-				float difference = luma_of(pixel_get(tested, x, y)) - luma_of(pixel_get(reference, x, y));
+				float difference = luma_of(pixel_get(tested, x, y, width)) - luma_of(pixel_get(reference, x, y, width));
 				if (difference >= threshold)
 					++count;
 			}

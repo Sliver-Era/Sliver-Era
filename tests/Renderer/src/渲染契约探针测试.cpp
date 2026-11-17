@@ -8,6 +8,7 @@
 
 //契约常量
 #include "测试辅助/渲染契约常量.h"
+#include "测试辅助/渲染测试辅助.h"
 
 //场景 UBO 首帧整块上传字节数
 TEST_F(Renderer_Scene_Test, 场景UBO整块字节)

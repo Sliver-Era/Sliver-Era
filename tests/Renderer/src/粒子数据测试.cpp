@@ -7,6 +7,7 @@
 
 
 #include "Engine/EngineSystem/src/world/data/particle/Particle_Data/粒子数据.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {

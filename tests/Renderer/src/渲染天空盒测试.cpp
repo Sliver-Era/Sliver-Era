@@ -6,6 +6,7 @@
   ③ 天空盒漫反射强度增大时物体被环境补光提亮，强度归零并关闭后恢复基线。
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 //构造六面同色的立方体贴图数据（RGBA8，顺序 +X / -X / +Y / -Y / +Z / -Z）
 std::vector<uint8_t> solid_cube_faces(uint8_t red, uint8_t green, uint8_t blue)

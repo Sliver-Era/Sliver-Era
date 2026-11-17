@@ -4,6 +4,7 @@
      Scene_Data 扁平入口透传。
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {

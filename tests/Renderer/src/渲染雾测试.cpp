@@ -4,6 +4,7 @@
 （第五十九轮由「渲染场景效果测试.cpp」按功能域拆分；逻辑未改）
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 TEST_F(Renderer_Scene_Test, 距离雾压暗远处物体)
 {

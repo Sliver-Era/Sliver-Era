@@ -3,6 +3,7 @@
 （第五十七轮由「渲染场景数据测试.cpp」按功能域拆分；逻辑未改）
 */
 #include "渲染场景测试辅助.h"
+#include "测试辅助/渲染测试辅助.h"
 
 TEST_F(Renderer_Scene_Test, 方向光阴影生效)
 {

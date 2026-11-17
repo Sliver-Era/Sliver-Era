@@ -213,3 +213,57 @@ TEST_F(Renderer_Environment_Test, 环境立方图采样生效)
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+环境漫反射辐照度方向平均（方向九第 720 轮）
+六面异色立方图 ＋ 灰球：开启方向平均后，环境漫反射由单点法线采样变为多方向均值，画面可区分。
+*/
+TEST_F(Renderer_Environment_Test, 环境漫反射方向平均生效)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	//灰球（球面法线覆盖多个立方体面）
+	std::vector<uint8_t> gray = solid_gray();
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, gray.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 24, 12));
+	//压低方向光、关闭高光，突出环境漫反射
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 0.2f, 0.0f);
+	renderer.scene().specular_set(0.0f, 16.0f);
+	const float tint[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().environment_set(tint, 1.0f);
+	renderer.resource().sky_params_set(0.0f, 0.0f);
+	renderer.resource().sky_enable_set(true);
+	//六面异色：+X 红、-X 蓝、+Y / -Y 绿、+Z 红、-Z 蓝
+	std::vector<uint8_t> faces(6 * 4, 0);
+	for (std::size_t face = 0; face < 6; ++face)
+	{
+		bool red = (face == 0 || face == 4);
+		bool green = (face == 2 || face == 3);
+		faces[face * 4 + 0] = red ? 255 : 0;
+		faces[face * 4 + 1] = green ? 255 : 0;
+		faces[face * 4 + 2] = (!red && !green) ? 255 : 0;
+		faces[face * 4 + 3] = 255;
+	}
+	uint64_t cube = 0;
+	ASSERT_TRUE(renderer.resource().texture_cube_load(cube, faces.data(), 1, 1));
+	renderer.resource().sky_texture_set(cube);
+	//关闭态基线
+	renderer.scene().pbr_env_irradiance_set(false);
+	std::vector<uint8_t> off = environment_frame(renderer, sphere);
+	//开启方向平均后画面应变化
+	renderer.scene().pbr_env_irradiance_set(true);
+	EXPECT_TRUE(renderer.scene().pbr_env_irradiance());
+	std::vector<uint8_t> on = environment_frame(renderer, sphere);
+	uint32_t changed = changed_pixels(off, on, 2);
+	EXPECT_GT(changed, 0u) << "环境漫反射方向平均未改变画面";
+	RecordProperty("environment_irradiance_changed", static_cast<int>(changed));
+	renderer.resource().texture_unload(cube);
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().texture_unload(texture);
+}

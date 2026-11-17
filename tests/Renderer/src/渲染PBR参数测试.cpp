@@ -32,6 +32,40 @@ namespace
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		return pixels;
 	}
+
+	//构造沿 X 平移的模型矩阵（列主序）
+	std::array<float, 16> quad_offset_matrix(float offset_x)
+	{
+		std::array<float, 16> matrix{};
+		matrix[0] = 1.0f;
+		matrix[5] = 1.0f;
+		matrix[10] = 1.0f;
+		matrix[12] = offset_x;
+		matrix[15] = 1.0f;
+		return matrix;
+	}
+
+	//统计某一半画面（0 = 左半、1 = 右半）相对参考帧的变化像素数
+	uint32_t half_changed(const std::vector<uint8_t>& left, const std::vector<uint8_t>& right, uint32_t half, int threshold)
+	{
+		uint32_t count = 0;
+		uint32_t begin = half == 0 ? 0 : WINDOW_WIDTH / 2;
+		uint32_t end = half == 0 ? WINDOW_WIDTH / 2 : WINDOW_WIDTH;
+		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
+		{
+			for (uint32_t x = begin; x < end; ++x)
+			{
+				std::array<uint8_t, 4> a = pixel_get(left, x, y);
+				std::array<uint8_t, 4> b = pixel_get(right, x, y);
+				int red = std::abs(static_cast<int>(a[0]) - static_cast<int>(b[0]));
+				int green = std::abs(static_cast<int>(a[1]) - static_cast<int>(b[1]));
+				int blue = std::abs(static_cast<int>(a[2]) - static_cast<int>(b[2]));
+				if (red >= threshold || green >= threshold || blue >= threshold)
+					++count;
+			}
+		}
+		return count;
+	}
 }
 
 //全局 PBR 参数越界时被忽略：画面与前一合法值完全一致
@@ -496,5 +530,71 @@ TEST_F(Renderer_Scene_Test, PBR布料绒感sheen)
 	EXPECT_FLOAT_EQ(renderer.scene().pbr_sheen_strength(), 0.8f);
 	renderer.resource().mesh_unload(sphere);
 	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
+}
+
+/*
+写实与二次元双轨同帧（方向九第 728 轮）
+左侧写实 PBR、右侧二次元卡通；仅切换右侧材质时左半画面必须逐像素不变。
+*/
+TEST_F(Renderer_Scene_Test, PBR写实与二次元双轨同帧)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_gray();
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 24, 12));
+	//斜射主光：球面法线变化产生明暗交界，卡通量化才可观测
+	const float direction[3] = { 0.4f, -0.25f, -0.9f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.15f);
+	renderer.scene().specular_set(0.2f, 32.0f);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_absolute_set(true);
+	renderer.scene().pbr_roughness_set(0.5f);
+	//写实材质与卡通材质
+	engine::Material_Data realistic;
+	realistic.texture = texture;
+	realistic.pbr_override = true;
+	realistic.pbr_roughness = 0.4f;
+	realistic.pbr_metallic = 0.0f;
+	engine::Material_Handle realistic_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(realistic_handle, realistic));
+	engine::Material_Data anime = realistic;
+	anime.toon_override = true;
+	anime.toon_steps = 1.0f;
+	anime.toon_rim = 0.6f;
+	engine::Material_Handle anime_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(anime_handle, anime));
+	//左写实 / 右任意材质的单帧
+	auto draw_frame = [&](engine::Material_Handle right_handle)
+	{
+		std::array<float, 16> left_matrix = quad_offset_matrix(-1.1f);
+		std::array<float, 16> right_matrix = quad_offset_matrix(1.1f);
+		renderer.resource().material_bind_set(realistic_handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(sphere, left_matrix.data()));
+		renderer.resource().material_bind_set(right_handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(sphere, right_matrix.data()));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		return pixels;
+	};
+	//基线：两侧都写实
+	std::vector<uint8_t> both_realistic = draw_frame(realistic_handle);
+	//右侧改卡通
+	std::vector<uint8_t> right_anime = draw_frame(anime_handle);
+	uint32_t right_changed = half_changed(both_realistic, right_anime, 1, 2);
+	uint32_t left_changed = half_changed(both_realistic, right_anime, 0, 2);
+	EXPECT_GT(right_changed, 0u) << "右侧卡通材质未改变画面";
+	EXPECT_EQ(left_changed, 0u) << "右侧材质切换影响了左侧写实物体";
+	RecordProperty("dual_track_right_changed", static_cast<int>(right_changed));
+	RecordProperty("dual_track_left_changed", static_cast<int>(left_changed));
+	renderer.resource().material_unload(anime_handle);
+	renderer.resource().material_unload(realistic_handle);
+	renderer.resource().mesh_unload(sphere);
 	renderer.resource().texture_unload(texture);
 }

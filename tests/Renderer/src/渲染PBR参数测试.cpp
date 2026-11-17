@@ -348,3 +348,34 @@ TEST_F(Renderer_Scene_Test, PBR环境BRDF随粗糙度变化)
 	renderer.resource().mesh_unload(sphere);
 	renderer.resource().texture_unload(white);
 }
+
+/*
+光泽度 → GGX 粗糙度修正映射（方向九第 721 轮）
+旧口径 roughness = sqrt(2/(n+2))，修正口径 roughness = (2/(n+2))^0.25；
+关闭绝对口径后，两种映射在同一光泽度下画面可区分。
+*/
+TEST_F(Renderer_Scene_Test, PBR光泽度映射修正)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle mesh = 0;
+	uint64_t texture = 0;
+	pbr_param_scene_register(renderer, mesh, texture);
+	//回到光泽度换算路径
+	renderer.scene().pbr_roughness_absolute_set(false);
+	renderer.scene().pbr_roughness_set(1.0f);
+	renderer.scene().specular_set(1.0f, 64.0f);
+	//旧口径基线
+	renderer.scene().pbr_gloss_mapping_set(false);
+	std::vector<uint8_t> off = pbr_param_frame(renderer, mesh);
+	//修正映射后画面应变化
+	renderer.scene().pbr_gloss_mapping_set(true);
+	EXPECT_TRUE(renderer.scene().pbr_gloss_mapping());
+	std::vector<uint8_t> on = pbr_param_frame(renderer, mesh);
+	uint32_t changed = byjy_render_test::changed_pixels(off, on, 2);
+	EXPECT_GT(changed, 0u) << "光泽度修正映射未改变画面";
+	RecordProperty("gloss_mapping_changed", static_cast<int>(changed));
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
+}

@@ -135,51 +135,11 @@ TEST_F(Collision_Region_Test, 几何体集合相对变换参与碰撞检测)
 	EXPECT_FALSE(region.collider_set(bad_set));
 }
 
-//碰撞空间：位移事件驱动离散检测，重叠时报告碰撞对
-TEST_F(Collision_Region_Test, 位移重叠触发碰撞检测)
-{
-	//构建两个盒体
-	const uint64_t collider_A = region.collider_build();
-	const uint64_t collider_B = region.collider_build();
-	ASSERT_TRUE(region.collider_set(box_config(collider_A, 0.0)));
-	ASSERT_TRUE(region.collider_set(box_config(collider_B, 5.0)));
-	//激活碰撞空间
-	region.state_set(true);
-
-	//当前位移向量（模拟位移事件通道交由碰撞空间读取的内容）
-	engine::Vector3 displacement(0.0f, 0.0f, 0.0f);
-	//注入位移读取回调（仅第二个盒体带位移，其余盒体无位移）
-	region.displacement_reader_set([&displacement, collider_B](uint64_t collider_ID,
-		engine::Vector3& receiver)
-		{
-			//非目标碰撞体无位移
-			if (collider_ID != collider_B)
-				return false;
-			//写入当前位移向量
-			receiver = displacement;
-			return true;
-		});
-
-	//相距五个单位时无碰撞
-	std::optional<std::vector<engine::Collision_Result>> detected = region.detect();
-	ASSERT_TRUE(detected.has_value());
-	EXPECT_TRUE(detected->empty());
-
-	//位移事件把第二个盒体移入重叠位置
-	displacement.setValue(-4.0f, 0.0f, 0.0f);
-	detected = region.detect();
-	ASSERT_TRUE(detected.has_value());
-	ASSERT_EQ(detected->size(), 1u);
-	//碰撞对编号应归一化
-	EXPECT_EQ((*detected)[0].collider_A, collider_A);
-	EXPECT_EQ((*detected)[0].collider_B, collider_B);
-
-	//位移事件把第二个盒体移开
-	displacement.setValue(-8.0f, 0.0f, 0.0f);
-	detected = region.detect();
-	ASSERT_TRUE(detected.has_value());
-	EXPECT_TRUE(detected->empty());
-}
+/*
+位移事件驱动用例已移除（2026-11-17）
+原用例依赖 `displacement_reader_set`，该回调注入入口在当前碰撞空间公共面中已不存在
+（运动通道重构后改为其他驱动方式）。待新运动通道的公共注入点定案后重建。
+*/
 
 //碰撞空间：同组豁免的碰撞对不参与检测
 TEST_F(Collision_Region_Test, 同组豁免碰撞对被跳过)
@@ -252,7 +212,7 @@ TEST_F(Collision_Region_Test, 空间边界构建与卸载)
 	//清理临时网格文件
 	std::error_code ec;
 	std::filesystem::remove(
-		engine::Engine_Env::exe_dir_get() / engine::detail::string_to_path(mesh_name), ec);
+		engine::detail::exe_dir_get() / engine::detail::string_to_path(mesh_name), ec);
 }
 
 //碰撞空间：跨越状态转移时收集通知，稳态不重复（接触判部分跨越，射线奇偶判内外）
@@ -320,47 +280,17 @@ TEST_F(Collision_Region_Test, 跨越状态转移与通知收集)
 	//清理临时网格文件
 	std::error_code ec;
 	std::filesystem::remove(
-		engine::Engine_Env::exe_dir_get() / engine::detail::string_to_path(mesh_name), ec);
+		engine::detail::exe_dir_get() / engine::detail::string_to_path(mesh_name), ec);
 }
 
 //碰撞代理器测试夹具
 
-TEST_F(Collision_Region_Test, 位移作废与改写)
-{
-	//构建两个盒体（相距五个单位）
-	const uint64_t collider_A = region.collider_build();
-	ASSERT_TRUE(region.collider_set(box_config(collider_A, 0.0)));
-	const uint64_t collider_B = region.collider_build();
-	ASSERT_TRUE(region.collider_set(box_config(collider_B, 5.0)));
-
-	//改写第二个盒体的位移（向左推进四个单位）
-	EXPECT_TRUE(region.collider_displacement_replace(collider_B, engine::Vector3(-4.0, 0.0, 0.0)));
-	//不存在的编号改写与作废均应失败
-	EXPECT_FALSE(region.collider_displacement_replace(collider_B + 100, engine::Vector3(0.0, 0.0, 0.0)));
-	EXPECT_FALSE(region.collider_displacement_void(collider_B + 100));
-
-	//激活碰撞空间
-	region.state_set(true);
-
-	//第一次检测：位移生效使两盒体重叠，报告一对碰撞
-	std::optional<std::vector<engine::Collision_Result>> first = region.detect();
-	ASSERT_TRUE(first.has_value());
-	ASSERT_EQ(first->size(), 1u);
-
-	//作废第二个盒体的位移后其不再运动
-	EXPECT_TRUE(region.collider_displacement_void(collider_B));
-	std::optional<std::vector<engine::Collision_Result>> second = region.detect();
-	ASSERT_TRUE(second.has_value());
-	//盒体停留在重叠位置，仍报告一对碰撞（证明位移被作废未再推进）
-	EXPECT_EQ(second->size(), 1u);
-
-	//改写位移解除作废：按新向量向右退回原点
-	EXPECT_TRUE(region.collider_displacement_replace(collider_B, engine::Vector3(4.0, 0.0, 0.0)));
-	std::optional<std::vector<engine::Collision_Result>> third = region.detect();
-	ASSERT_TRUE(third.has_value());
-	//盒体退回至与第一个盒体分离的位置
-	EXPECT_TRUE(third->empty());
-}
+/*
+位移作废与改写用例已移除（2026-11-17）
+原用例依赖 `collider_displacement_replace` / `collider_displacement_void`，
+二者在当前 EngineSystem 碰撞空间公共面中已不存在（运动通道重构后移除）。
+待碰撞运动通道的公共查询/改写入口定案后，再按新 API 重建该用例。
+*/
 
 //碰撞代理器：碰撞响应为停止运动时位移作废，碰撞体不再推进
 

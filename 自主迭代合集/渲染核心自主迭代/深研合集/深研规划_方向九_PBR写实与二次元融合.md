@@ -107,7 +107,9 @@
 - 718 Fresnel-roughness 与 F90 口径统一（Renderer `24cdf08` / Test `29ddee0`）：抽出 `pbr_fresnel(f0, cos, roughness)`，开启时 `F90 = max(1 − roughness, F0)`，直接光与环境镜面共用；UBO 尾追加 `pbr_extra`（3952 字节），`pbr_extra.x` 开关，默认关闭；介电掠射收敛、白色金属两态一致。
 - 719 环境镜面 split-sum BRDF 近似（Renderer `2dc8fca` / Test `fb4eebb`）：`env_brdf_approx`（Karis DFG 拟合），`pbr_extra.y` 开关，默认关闭；关闭态环境反射与粗糙度无关，开启后随粗糙度变化。
 - 720 环境漫反射辐照度方向平均（Renderer `e72a9f7` / Test `fedc342`）：`env_diffuse_sample` 法线 ＋ 切平面四方向均值，`pbr_extra.z` 开关，默认关闭。
-- 下一步 721：光泽度 → 粗糙度映射口径收尾（阶段 C 收口）。
+- 721 光泽度 → GGX 粗糙度修正映射（Renderer `cf23bd8` / Test `f8e1987`）：`pbr_roughness` 增加 `(2/(n+2))^0.25`，`pbr_extra.w` 开关，默认关闭；阶段 C（716–721）收口。
+- 722 各向异性 GGX（Renderer `bcdda9c` / Test `d85a3c1`）：切向 / 副切向不同粗糙度，`pbr_aniso`（UBO 3968），默认关闭；强度 0 等价各向同性。
+- 下一步 723：阶段 D 第二项「皮肤 SSS-lite」（wrap 漫反射）或「布料 sheen」。
 
 ## 四、风险
 

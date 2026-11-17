@@ -12,6 +12,7 @@ namespace
 {
 	using byjy_render_test::hidden_config;
 	using byjy_render_test::pixel_bytes;
+	using byjy_render_test::pixel_get;
 	using byjy_render_test::center_brightness;
 	using byjy_render_test::changed_pixels;
 	using byjy_render_test::solid_gray;
@@ -43,6 +44,20 @@ namespace
 		std::vector<uint8_t> pixels(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		return pixels;
+	}
+
+	//六面同色立方体贴图（1×1 × 6 面）
+	std::vector<uint8_t> environment_cube(uint8_t red, uint8_t green, uint8_t blue)
+	{
+		std::vector<uint8_t> faces(6 * 4);
+		for (std::size_t index = 0; index < faces.size(); index += 4)
+		{
+			faces[index] = red;
+			faces[index + 1] = green;
+			faces[index + 2] = blue;
+			faces[index + 3] = 255;
+		}
+		return faces;
 	}
 }
 
@@ -152,6 +167,49 @@ TEST_F(Renderer_Environment_Test, 环境开启提亮画面)
 	EXPECT_GE(center_brightness(lit), center_brightness(baseline)) << "环境光照使中心变暗";
 	RecordProperty("environment_baseline_center", static_cast<int>(center_brightness(baseline)));
 	RecordProperty("environment_lit_center", static_cast<int>(center_brightness(lit)));
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
+}
+
+//环境立方图采样：天空盒开启时环境颜色随贴图变化，关闭时退回常量
+TEST_F(Renderer_Environment_Test, 环境立方图采样生效)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle mesh = 0;
+	uint64_t texture = 0;
+	environment_scene_register(renderer, mesh, texture);
+	//环境白色 tint、强度 1；天空盒自身 IBL 强度归零，避免混入
+	const float tint[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().environment_set(tint, 1.0f);
+	renderer.resource().sky_params_set(0.0f, 0.0f);
+	renderer.resource().sky_enable_set(true);
+	//蓝色立方体
+	uint64_t blue_cube = 0;
+	std::vector<uint8_t> blue_faces = environment_cube(0, 0, 255);
+	ASSERT_TRUE(renderer.resource().texture_cube_load(blue_cube, blue_faces.data(), 1, 1));
+	renderer.resource().sky_texture_set(blue_cube);
+	std::vector<uint8_t> blue_frame = environment_frame(renderer, mesh);
+	std::array<uint8_t, 4> blue_center = pixel_get(blue_frame, 32, 18);
+	//红色立方体
+	uint64_t red_cube = 0;
+	std::vector<uint8_t> red_faces = environment_cube(255, 0, 0);
+	ASSERT_TRUE(renderer.resource().texture_cube_load(red_cube, red_faces.data(), 1, 1));
+	renderer.resource().sky_texture_set(red_cube);
+	std::vector<uint8_t> red_frame = environment_frame(renderer, mesh);
+	std::array<uint8_t, 4> red_center = pixel_get(red_frame, 32, 18);
+	EXPECT_NE(blue_center, red_center) << "环境立方图未参与着色";
+	//关闭天空盒：环境退回常量（白色 tint），中心应与蓝色贴图不同
+	renderer.resource().sky_enable_set(false);
+	std::vector<uint8_t> constant_frame = environment_frame(renderer, mesh);
+	std::array<uint8_t, 4> constant_center = pixel_get(constant_frame, 32, 18);
+	EXPECT_NE(blue_center, constant_center) << "关闭天空盒后环境未退回常量";
+	RecordProperty("environment_cube_blue", static_cast<int>(center_brightness(blue_frame)));
+	RecordProperty("environment_cube_red", static_cast<int>(center_brightness(red_frame)));
+	RecordProperty("environment_cube_constant", static_cast<int>(center_brightness(constant_frame)));
+	renderer.resource().texture_unload(red_cube);
+	renderer.resource().texture_unload(blue_cube);
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
 }

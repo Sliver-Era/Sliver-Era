@@ -437,6 +437,47 @@ TEST_F(Renderer_Post_Chain_Test, 色调映射压缩高亮)
 }
 
 /*
+曝光与色调映射联动（方向九第 738 轮）
+口径：ACES 链下 EV −2 / 0 / +2 的中心亮度单调不减，且 −2 严格低于 0。
+注意：绘制项按帧提交，每帧必须重新登记绘制（737 轮首版用例漏掉此步，后续帧只剩清屏色）。
+*/
+TEST_F(Renderer_Post_Chain_Test, 曝光与色调映射联动)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t scene_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	uint64_t tone = post_pipeline_register(renderer, "色调映射.frag.spv");
+	ASSERT_NE(tone, 0u);
+	ASSERT_TRUE(renderer.device().post_chain_set(&tone, 1));
+	engine::Mesh_Handle handle = 0;
+	scene_register(renderer, handle);
+	renderer.device().render_target_present_set(scene_target);
+	auto frame_at = [&](float ev)
+	{
+		EXPECT_TRUE(renderer.scene().exposure_set(ev));
+		//每帧重新登记绘制
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		return static_cast<int>(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	};
+	int dark = frame_at(-2.0f);
+	int base = frame_at(0.0f);
+	int bright = frame_at(2.0f);
+	EXPECT_LT(dark, base) << "负曝光未压暗";
+	EXPECT_LE(base, bright) << "正曝光使画面变暗";
+	RecordProperty("exposure_dark", dark);
+	RecordProperty("exposure_base", base);
+	RecordProperty("exposure_bright", bright);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(tone);
+	renderer.resource().render_target_destroy(scene_target);
+}
+
+/*
 后处理预设可串联：灰度 → 描边 两级链可正常出帧，且中心仍为去色后的亮色
 */
 TEST_F(Renderer_Post_Chain_Test, 预设可串联)

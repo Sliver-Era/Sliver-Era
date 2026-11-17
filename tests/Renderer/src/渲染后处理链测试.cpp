@@ -3,6 +3,8 @@
 （第五十九轮按功能域拆分：泛光相关见「渲染后处理泛光测试.cpp」、调色与可观测性见「渲染后处理调色测试.cpp」；逻辑未改）
 */
 #include "渲染后处理链测试辅助.h"
+//场景几何与纹理构造（强光照压力场景用例）
+#include "渲染场景测试辅助.h"
 
 //UI 通道（后处理链「UI 后置」用例需要向帧链路挂接绘制回调）
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器_UI通道.h"
@@ -535,6 +537,128 @@ TEST_F(Renderer_Post_Chain_Test, 胶片曲线白点可配)
 	RecordProperty("filmic_default_center", static_cast<int>(default_center[0]));
 	RecordProperty("filmic_bright_center", static_cast<int>(bright_center[0]));
 	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(filmic_stage);
+	renderer.resource().render_target_destroy(scene_target);
+}
+
+/*
+强光照压力场景 × 胶片色调映射（方向九第 743 轮）
+32 盏点光 ＋ 1000 实例 ＋ 环境光照 ＋ 全部方向九 PBR 特性：
+胶片曲线下亮部不顶满（最大通道 ≤ 210），ACES 基线仍饱和（≥ 220），且整体亮度更低。
+*/
+TEST_F(Renderer_Post_Chain_Test, 强光照下胶片曲线不顶满)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config(320, 180);
+	config.instance_capacity = 128;
+	config.vsync = false;
+	config.validation = false;
+	ASSERT_TRUE(renderer.init(config));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	//帧范围（与窗口配置一致）
+	const uint32_t frame_width = 320;
+	const uint32_t frame_height = 180;
+	uint64_t scene_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	uint64_t filmic_stage = post_pipeline_register(renderer, "胶片色调映射.frag.spv");
+	uint64_t aces_stage = post_pipeline_register(renderer, "色调映射.frag.spv");
+	ASSERT_NE(filmic_stage, 0u);
+	ASSERT_NE(aces_stage, 0u);
+	//灰纹理与小方块网格
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_gray();
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	engine::Mesh_Handle mesh = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(mesh, cube_data(0.15f)));
+	//100 个实例：10 × 10 网格平铺在 z = 0 平面（多物体场景）
+	std::vector<std::array<float, 16>> instances(100, rotation_y_matrix(0.0f));
+	for (std::size_t index = 0; index < instances.size(); ++index)
+	{
+		float column = static_cast<float>(index % 10) - 4.5f;
+		float row = static_cast<float>((index / 10) % 10) - 4.5f;
+		instances[index][12] = column * 0.2f;
+		instances[index][13] = row * 0.2f;
+		instances[index][14] = 0.0f;
+	}
+	//8 盏点光环绕 ＋ 主平行光（强度抬高 ＋ 曝光 +2，确保进入亮部饱和区间）
+	const float light_color[3] = { 1.0f, 0.85f, 0.7f };
+	for (uint32_t index = 0; index < 8; ++index)
+	{
+		float angle = 6.2831853f * static_cast<float>(index) / 8.0f;
+		const float position[3] = { 3.0f * std::cos(angle), 1.5f, 3.0f * std::sin(angle) };
+		renderer.scene().light_point_set(position, light_color, 200.0f, 12.0f, 0.0f);
+	}
+	const float direction[3] = { 0.0f, -0.5f, -1.0f };
+	const float white[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, white, 8.0f, 0.05f);
+	//曝光 +2（×4）：把场景推入过曝区间，检验色调映射的亮部收束
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	//PBR ＋ 环境光照 ＋ 方向九全部特性
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_absolute_set(true);
+	renderer.scene().pbr_roughness_set(0.4f);
+	renderer.scene().pbr_metallic_set(0.3f);
+	const float environment[3] = { 0.4f, 0.45f, 0.5f };
+	renderer.scene().environment_set(environment, 0.6f);
+	renderer.scene().pbr_multiscatter_set(true);
+	renderer.scene().pbr_env_brdf_set(true);
+	renderer.scene().pbr_env_irradiance_set(true);
+	renderer.scene().pbr_aniso_set(true);
+	renderer.scene().pbr_skin_sss_set(true);
+	renderer.scene().pbr_sheen_set(true);
+	//相机置于原点前方，确保方块进入画面
+	renderer.scene().camera_position_set(0.0f, 0.0f, 3.0f);
+	renderer.device().render_target_present_set(scene_target);
+	//按指定算子出帧（实例绘制按帧重新登记）
+	auto frame_with = [&](uint64_t stage, std::vector<uint8_t>& pixels)
+	{
+		EXPECT_TRUE(renderer.device().post_chain_set(&stage, 1));
+		EXPECT_TRUE(renderer.resource().mesh_draw_instanced(mesh, instances[0].data(), static_cast<uint32_t>(instances.size())));
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	};
+	std::vector<uint8_t> filmic_pixels(static_cast<std::size_t>(frame_width) * frame_height * 4);
+	std::vector<uint8_t> aces_pixels(static_cast<std::size_t>(frame_width) * frame_height * 4);
+	frame_with(filmic_stage, filmic_pixels);
+	frame_with(aces_stage, aces_pixels);
+	//整帧 RGB 最大通道
+	auto max_channel = [](const std::vector<uint8_t>& pixels)
+	{
+		int maximum = 0;
+		for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
+			for (std::size_t channel = 0; channel < 3; ++channel)
+				maximum = std::max(maximum, static_cast<int>(pixels[index + channel]));
+		return maximum;
+	};
+	//整帧平均亮度（Rec.709 权重）
+	auto mean_luma = [](const std::vector<uint8_t>& pixels)
+	{
+		double sum = 0.0;
+		std::size_t count = 0;
+		for (std::size_t index = 0; index + 3 < pixels.size(); index += 4)
+		{
+			sum += 0.2126 * pixels[index] + 0.7152 * pixels[index + 1] + 0.0722 * pixels[index + 2];
+			++count;
+		}
+		return count == 0 ? 0.0 : sum / static_cast<double>(count);
+	};
+	int filmic_max = max_channel(filmic_pixels);
+	int aces_max = max_channel(aces_pixels);
+	double filmic_mean = mean_luma(filmic_pixels);
+	double aces_mean = mean_luma(aces_pixels);
+	//几何确实进入画面（两算子只在非清屏像素上不同）
+	EXPECT_GT(changed_pixels(filmic_pixels, aces_pixels, 4), 0u) << "强光照压力场景未绘制出几何";
+	EXPECT_LE(filmic_max, 210) << "胶片曲线下亮部仍顶满（最大通道 " << filmic_max << "）";
+	EXPECT_GE(aces_max, 220) << "ACES 基线未出现亮部饱和（最大通道 " << aces_max << "）";
+	EXPECT_LT(filmic_mean, aces_mean) << "胶片曲线未整体压低亮度";
+	RecordProperty("stress_filmic_max", filmic_max);
+	RecordProperty("stress_aces_max", aces_max);
+	RecordProperty("stress_filmic_mean", filmic_mean);
+	RecordProperty("stress_aces_mean", aces_mean);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
+	renderer.resource().pipeline_unload(aces_stage);
 	renderer.resource().pipeline_unload(filmic_stage);
 	renderer.resource().render_target_destroy(scene_target);
 }

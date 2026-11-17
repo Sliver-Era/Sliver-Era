@@ -160,6 +160,13 @@ namespace engine
 		//半球混合强度（0..1；0 = 关闭）
 		float ambient_hemisphere = 0.0f;
 		/*
+		环境光照（方向九 IBL 常量近似；默认关闭）
+		environment_color：环境光颜色（RGB，0..1）；environment_intensity：强度（≥0）。
+		强度 0 时不参与着色，画面与引入前逐字节一致。
+		*/
+		float environment_color[3] = { 0.0f, 0.0f, 0.0f };
+		float environment_intensity = 0.0f;
+		/*
 		补光（第四十七轮）
 		第二盏方向光，用于主光背面补光；默认强度 0 = 关闭，画面与引入前逐字节一致。
 		*/
@@ -579,6 +586,9 @@ namespace engine
 		//环境光地面颜色与半球混合强度（第四十七轮；语义见 Light_Data::ambient_ground / ambient_hemisphere）
 		float ambient_ground[3] = { 1.0f, 1.0f, 1.0f };
 		float ambient_hemisphere = 0.0f;
+		//环境光照（方向九；语义见 Light_Data::environment_color / environment_intensity）
+		float environment_color[3] = { 0.0f, 0.0f, 0.0f };
+		float environment_intensity = 0.0f;
 		//补光（第四十七轮；语义见 Light_Data::fill_direction / fill_color / fill_intensity）
 		float fill_direction[3] = { 0.0f, 0.0f, -1.0f };
 		float fill_color[3] = { 1.0f, 1.0f, 1.0f };

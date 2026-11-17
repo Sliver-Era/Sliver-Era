@@ -464,3 +464,37 @@ TEST_F(Renderer_Scene_Test, PBR皮肤wrap漫反射)
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+布料绒感 sheen（方向九第 724 轮）
+球面轮廓按 (1 − N·V)^3 叠加受光绒边；开启后轮廓提亮，关闭态不变。
+*/
+TEST_F(Renderer_Scene_Test, PBR布料绒感sheen)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle mesh = 0;
+	uint64_t texture = 0;
+	pbr_param_scene_register(renderer, mesh, texture);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 32, 16));
+	//关闭态基线
+	renderer.scene().pbr_sheen_set(false);
+	std::vector<uint8_t> off = pbr_param_frame(renderer, sphere);
+	//开启 sheen 后轮廓应提亮
+	renderer.scene().pbr_sheen_set(true);
+	renderer.scene().pbr_sheen_strength_set(0.8f);
+	EXPECT_TRUE(renderer.scene().pbr_sheen());
+	EXPECT_FLOAT_EQ(renderer.scene().pbr_sheen_strength(), 0.8f);
+	std::vector<uint8_t> on = pbr_param_frame(renderer, sphere);
+	uint32_t brightened = byjy_render_test::brightened_count(on, off, 2.0f);
+	EXPECT_GT(brightened, 0u) << "sheen 未提亮轮廓";
+	RecordProperty("sheen_brightened", static_cast<int>(brightened));
+	//越界强度被忽略
+	renderer.scene().pbr_sheen_strength_set(-0.5f);
+	EXPECT_FLOAT_EQ(renderer.scene().pbr_sheen_strength(), 0.8f);
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
+}

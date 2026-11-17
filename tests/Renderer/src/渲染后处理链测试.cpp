@@ -484,6 +484,62 @@ TEST_F(Renderer_Post_Chain_Test, 胶片色调映射压缩高亮)
 }
 
 /*
+后处理预设 · Reinhard 扩展色调映射（方向九第 740 轮）
+中性白输入下：中心落在 195–218、通道中性（差 ≤ 2），
+且与 ACES（约 232）与胶片（约 186）三算子两两可区分（差异像素 > 0）。
+*/
+TEST_F(Renderer_Post_Chain_Test, Reinhard色调映射压缩高亮)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t scene_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	uint64_t aces = post_pipeline_register(renderer, "色调映射.frag.spv");
+	uint64_t filmic_stage = post_pipeline_register(renderer, "胶片色调映射.frag.spv");
+	uint64_t reinhard_stage = post_pipeline_register(renderer, "Reinhard扩展色调映射.frag.spv");
+	ASSERT_NE(aces, 0u);
+	ASSERT_NE(filmic_stage, 0u);
+	ASSERT_NE(reinhard_stage, 0u);
+	engine::Mesh_Handle handle = 0;
+	scene_register(renderer, handle);
+	renderer.device().render_target_present_set(scene_target);
+	//按指定算子出帧（绘制项按帧提交，每帧重新登记）
+	auto frame_by = [&](uint64_t stage, std::vector<uint8_t>& pixels)
+	{
+		EXPECT_TRUE(renderer.device().post_chain_set(&stage, 1));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	};
+	std::vector<uint8_t> aces_pixels(pixel_bytes());
+	std::vector<uint8_t> filmic_pixels(pixel_bytes());
+	std::vector<uint8_t> reinhard_pixels(pixel_bytes());
+	frame_by(aces, aces_pixels);
+	frame_by(filmic_stage, filmic_pixels);
+	frame_by(reinhard_stage, reinhard_pixels);
+	std::array<uint8_t, 4> aces_center = pixel_get(aces_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	std::array<uint8_t, 4> filmic_center = pixel_get(filmic_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	std::array<uint8_t, 4> reinhard_center = pixel_get(reinhard_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	EXPECT_GE(reinhard_center[0], 195) << "Reinhard 压暗过头：" << pixel_text(reinhard_center);
+	EXPECT_LE(reinhard_center[0], 218) << "Reinhard 未压缩高光：" << pixel_text(reinhard_center);
+	EXPECT_LE(std::abs(static_cast<int>(reinhard_center[0]) - static_cast<int>(reinhard_center[1])), 2)
+		<< "Reinhard 出现通道色偏：" << pixel_text(reinhard_center);
+	EXPECT_LE(std::abs(static_cast<int>(reinhard_center[1]) - static_cast<int>(reinhard_center[2])), 2)
+		<< "Reinhard 出现通道色偏：" << pixel_text(reinhard_center);
+	EXPECT_GT(changed_pixels(aces_pixels, reinhard_pixels, 4), 0u) << "Reinhard 与 ACES 画面无法区分";
+	EXPECT_GT(changed_pixels(filmic_pixels, reinhard_pixels, 4), 0u) << "Reinhard 与胶片画面无法区分";
+	RecordProperty("reinhard_center", static_cast<int>(reinhard_center[0]));
+	RecordProperty("filmic_center", static_cast<int>(filmic_center[0]));
+	RecordProperty("aces_center", static_cast<int>(aces_center[0]));
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(reinhard_stage);
+	renderer.resource().pipeline_unload(filmic_stage);
+	renderer.resource().pipeline_unload(aces);
+	renderer.resource().render_target_destroy(scene_target);
+}
+
+/*
 曝光与色调映射联动（方向九第 738 轮）
 口径：ACES 链下 EV −2 / 0 / +2 的中心亮度单调不减，且 −2 严格低于 0。
 注意：绘制项按帧提交，每帧必须重新登记绘制（737 轮首版用例漏掉此步，后续帧只剩清屏色）。

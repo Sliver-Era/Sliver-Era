@@ -540,6 +540,68 @@ TEST_F(Renderer_Post_Chain_Test, 胶片曲线白点可配)
 }
 
 /*
+胶片与 ACES 的 look 混合（方向九第 742 轮）
+口径：混合比例 z 取 0 时与纯胶片画面逐字节相同；取 1 时与 ACES 预设逐字节相同；
+中间值 0.5 的中心亮度夹在两者之间（可连续调校强光照亮部收束）。
+*/
+TEST_F(Renderer_Post_Chain_Test, 胶片与ACES可混合)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t scene_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	uint64_t filmic_stage = post_pipeline_register(renderer, "胶片色调映射.frag.spv");
+	uint64_t aces_stage = post_pipeline_register(renderer, "色调映射.frag.spv");
+	ASSERT_NE(filmic_stage, 0u);
+	ASSERT_NE(aces_stage, 0u);
+	engine::Mesh_Handle handle = 0;
+	scene_register(renderer, handle);
+	renderer.device().render_target_present_set(scene_target);
+	//纯胶片帧（额外四参全 0）
+	ASSERT_TRUE(renderer.device().post_chain_set(&filmic_stage, 1));
+	renderer.device().post_stage_extra_set(0, 0.0f, 0.0f, 0.0f, 0.0f);
+	std::vector<uint8_t> filmic_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(filmic_pixels.data(), static_cast<uint32_t>(filmic_pixels.size())));
+	//混合比例 1.0（等价 ACES）
+	renderer.device().post_stage_extra_set(0, 0.0f, 0.0f, 1.0f, 0.0f);
+	std::vector<uint8_t> mix_full_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(mix_full_pixels.data(), static_cast<uint32_t>(mix_full_pixels.size())));
+	//混合比例 0.5
+	renderer.device().post_stage_extra_set(0, 0.0f, 0.0f, 0.5f, 0.0f);
+	std::vector<uint8_t> mix_half_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(mix_half_pixels.data(), static_cast<uint32_t>(mix_half_pixels.size())));
+	//参照：ACES 预设本身
+	ASSERT_TRUE(renderer.device().post_chain_set(&aces_stage, 1));
+	std::vector<uint8_t> aces_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(aces_pixels.data(), static_cast<uint32_t>(aces_pixels.size())));
+	//混合比例 1.0 与 ACES 预设逐字节一致
+	int full_diff = max_channel_diff(aces_pixels, mix_full_pixels);
+	EXPECT_EQ(full_diff, 0) << "混合比例 1 未等价 ACES（最大通道差 " << full_diff << "）";
+	//中心亮度：胶片 < 中间 < ACES
+	int filmic_center = static_cast<int>(pixel_get(filmic_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	int half_center = static_cast<int>(pixel_get(mix_half_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	int aces_center = static_cast<int>(pixel_get(aces_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	EXPECT_LT(filmic_center, half_center) << "混合 0.5 未比纯胶片更亮";
+	EXPECT_LT(half_center, aces_center) << "混合 0.5 未比 ACES 更暗";
+	//混合 0.5 的画面既不等于胶片也不等于 ACES
+	EXPECT_GT(changed_pixels(filmic_pixels, mix_half_pixels, 2), 0u);
+	EXPECT_GT(changed_pixels(aces_pixels, mix_half_pixels, 2), 0u);
+	RecordProperty("mix_filmic_center", filmic_center);
+	RecordProperty("mix_half_center", half_center);
+	RecordProperty("mix_aces_center", aces_center);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(aces_stage);
+	renderer.resource().pipeline_unload(filmic_stage);
+	renderer.resource().render_target_destroy(scene_target);
+}
+
+/*
 后处理预设 · Reinhard 扩展色调映射（方向九第 740 轮）
 中性白输入下：中心落在 195–218、通道中性（差 ≤ 2），
 且与 ACES（约 232）与胶片（约 186）三算子两两可区分（差异像素 > 0）。

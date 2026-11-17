@@ -157,3 +157,43 @@ TEST_F(Renderer_Scene_Test, PBR多重散射补偿)
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
 }
+
+//镜面抗锯齿：球面高频法线处粗糙度被加宽，关闭态两帧稳定
+TEST_F(Renderer_Scene_Test, PBR镜面抗锯齿)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle cube = 0;
+	uint64_t texture = 0;
+	pbr_param_scene_register(renderer, cube, texture);
+	//白色金属球（球面法线导数在轮廓处显著）
+	uint64_t white = 0;
+	std::vector<uint8_t> white_texels = solid_white();
+	ASSERT_TRUE(renderer.resource().texture_load(white, white_texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(white);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 32, 16));
+	renderer.scene().pbr_metallic_set(1.0f);
+	renderer.scene().pbr_roughness_set(0.15f);
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.0f);
+	renderer.scene().specular_set(1.0f, 64.0f);
+	//关闭态两帧一致
+	renderer.scene().pbr_specular_aa_set(false);
+	std::vector<uint8_t> off_first = pbr_param_frame(renderer, sphere);
+	std::vector<uint8_t> off_second = pbr_param_frame(renderer, sphere);
+	EXPECT_EQ(off_first, off_second) << "镜面抗锯齿关闭态两帧不一致";
+	//开启后画面应可区分
+	renderer.scene().pbr_specular_aa_set(true);
+	EXPECT_TRUE(renderer.scene().pbr_specular_aa());
+	std::vector<uint8_t> on = pbr_param_frame(renderer, sphere);
+	uint32_t changed = byjy_render_test::changed_pixels(off_second, on, 1);
+	EXPECT_GT(changed, 0u) << "镜面抗锯齿未改变画面";
+	RecordProperty("specular_aa_changed_pixels", static_cast<int>(changed));
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().texture_unload(white);
+	renderer.resource().mesh_unload(cube);
+	renderer.resource().texture_unload(texture);
+}

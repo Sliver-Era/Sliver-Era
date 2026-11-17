@@ -49,7 +49,8 @@
 
 | 轮次 | 报告目录 | 文档落盘 | 对应代码提交 | 任务类型 |
 | --- | --- | --- | --- | --- |
-| 环境 BRDF 近似 | [环境BRDF近似_2dc8fca+fb4eebb](main/2026年/11月/17日/环境BRDF近似_2dc8fca+fb4eebb/执行报告.md) **← 最新（2026-11-17）** | 2026-11-17 | Renderer `2dc8fca` ＋ Test `fb4eebb` | 方向九第 719 轮：环境镜面 split-sum DFG 解析近似（`pbr_extra.y`，默认关闭）；PBR 19/19 |
+| 环境漫反射方向平均 | [环境漫反射方向平均_e72a9f7+fedc342](main/2026年/11月/17日/环境漫反射方向平均_e72a9f7+fedc342/执行报告.md) **← 最新（2026-11-17）** | 2026-11-17 | Renderer `e72a9f7` ＋ Test `fedc342` | 方向九第 720 轮：环境漫反射法线 ＋ 切平面四方向均值（`pbr_extra.z`，默认关闭）；环境 8/8 |
+| 环境 BRDF 近似 | [环境BRDF近似_2dc8fca+fb4eebb](main/2026年/11月/17日/环境BRDF近似_2dc8fca+fb4eebb/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `2dc8fca` ＋ Test `fb4eebb` | 方向九第 719 轮：环境镜面 split-sum DFG 解析近似（`pbr_extra.y`，默认关闭）；PBR 19/19 |
 | Fresnel 口径统一 | [Fresnel口径统一_24cdf08+29ddee0](main/2026年/11月/17日/Fresnel口径统一_24cdf08+29ddee0/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `24cdf08` ＋ Test `29ddee0` | 方向九第 718 轮：统一直接光 / 环境镜面菲涅尔，`F90 = max(1 − roughness, F0)`（默认关闭）；UBO 3952；PBR 17/17、场景 191/191 |
 | 镜面抗锯齿 | [镜面抗锯齿_5dcf55a+68e99ac](main/2026年/11月/17日/镜面抗锯齿_5dcf55a+68e99ac/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `5dcf55a` ＋ Test `68e99ac` | 方向九第 717 轮：法线导数加宽粗糙度抑制高光闪烁（`lighting_extra.w`，默认关闭）；PBR 15/15 |
 | 多重散射补偿 | [多重散射补偿_66ea7c8+fcf354e](main/2026年/11月/17日/多重散射补偿_66ea7c8+fcf354e/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `66ea7c8` ＋ Test `fcf354e` | 方向九第 716 轮：GGX 多重散射能量补偿（`lighting_extra.z` 开关，默认关闭）；PBR 14/14 |

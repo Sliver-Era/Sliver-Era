@@ -106,7 +106,8 @@
 - 说明：阶段 C 的 716/717 两项提前落地，原阶段 B 的「mip 链 / 镜面预过滤 / 漫反射辐照度」顺延为 718 起候选。
 - 718 Fresnel-roughness 与 F90 口径统一（Renderer `24cdf08` / Test `29ddee0`）：抽出 `pbr_fresnel(f0, cos, roughness)`，开启时 `F90 = max(1 − roughness, F0)`，直接光与环境镜面共用；UBO 尾追加 `pbr_extra`（3952 字节），`pbr_extra.x` 开关，默认关闭；介电掠射收敛、白色金属两态一致。
 - 719 环境镜面 split-sum BRDF 近似（Renderer `2dc8fca` / Test `fb4eebb`）：`env_brdf_approx`（Karis DFG 拟合），`pbr_extra.y` 开关，默认关闭；关闭态环境反射与粗糙度无关，开启后随粗糙度变化。
-- 下一步 720：漫反射辐照度（环境漫反射方向平均）或镜面预过滤 mip（评估立方图 mip 链成本）。
+- 720 环境漫反射辐照度方向平均（Renderer `e72a9f7` / Test `fedc342`）：`env_diffuse_sample` 法线 ＋ 切平面四方向均值，`pbr_extra.z` 开关，默认关闭。
+- 下一步 721：光泽度 → 粗糙度映射口径收尾（阶段 C 收口）。
 
 ## 四、风险
 

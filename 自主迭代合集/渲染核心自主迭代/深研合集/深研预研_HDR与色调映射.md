@@ -45,3 +45,53 @@
 1. 后处理链中泛光 / 亮度提取是否需要在 HDR 空间做阈值（建议是，但需新增参数）。
 2. sRGB 附件与线性 16F 附件的混合方程差异（UI 通道混合需复核）。
 3. MSAA 4× 下 16F 解析目标的显存与带宽开销（需实测后再定默认 MSAA 档）。
+
+---
+
+## 六、路线 A 落地勘察（第 744 轮，代码零改动）
+
+> 本节把「路线 A 到底要改哪几处」查清，供下一窗口直接实施。
+
+### 6.1 已具备的能力（无需改动）
+
+- `render/Pipeline/管线.h` 的 `Pipeline_Entry` **已有 `color_format` 字段**
+  （`VK_FORMAT_UNDEFINED` = 跟随上下文；非未定义 = 该管线固定按此格式创建，阴影管线即用此机制固定 `R8G8B8A8_UNORM`）。
+- `Render_Target` 创建接口已支持显式颜色格式：
+  `Render_Resource::render_target_create_format(handle, w, h, color_format, depth_format, sample_count)`。
+- `Frame_Render_Target` 已携带 `color_format` / `depth_format`（供并行录制的继承渲染信息使用）。
+- 后处理链每级「源 / 宿」映射已固定：第 i 级源 = `targets[i % count]`、宿 = 末级交换链 / 非末级 `targets[(i+1) % count]`
+  （`render/Frame/core/命令录制_链呈现.cpp`）。
+
+### 6.2 唯一缺口
+
+`Render_Resource::pipeline_load_ex(...)`（`render/Renderer/渲染资源.h`、`render/Renderer/core/渲染器_图形管线.cpp`）
+**不透传 `color_format`**，一律走 `VK_FORMAT_UNDEFINED`（跟随交换链上下文）。
+
+### 6.3 最小改动方案（方案 A，建议）
+
+1. `pipeline_load_ex` 末尾追加形参 `uint32_t color_format = 0`（0 = 跟随上下文），
+   写入 `Pipeline_Entry.color_format`；既有调用点零改动。
+2. 调用方需要渲染到 16F 目标时，用同一对着色器登记一条 `color_format = VK_FORMAT_R16G16B16A16_SFLOAT` 的管线变体。
+3. 链录制逻辑**不改**：第 i 级的管线只负责写它的宿，故：
+   - 中间目标为 16F → 第 0..n−2 级登记 16F 变体；
+   - 末级写交换链 → 保持既有 8 位管线。
+4. 场景 pass 的几何管线同样需要 16F 变体（场景目标为 16F 时）。
+
+### 6.4 垂直切片（可单轮交付的最小验证）
+
+- 新建 16F 场景目标（`render_target_create_format(..., R16G16B16A16_SFLOAT, depth, 1)`）。
+- 登记「场景着色器 16F 变体」＋「ACES 8 位变体」两条管线，链长 1。
+- 曝光 +2：8 位场景目标在写入时把 >1 截断，ACES 输出约 232；
+  16F 场景目标保留 >1，ACES 输出更高（接近 250）。
+- 断言：16F 路径中心亮度 > 8 位路径中心亮度 + 10，且 16F 路径仍 ≤ 255。
+- 默认关闭：不创建 16F 目标、不登记 16F 管线，全部既有用例逐字节不变。
+
+### 6.5 仍需单独决策的点
+
+1. **链中间目标全 16F**：`post_chain_set` 的级数与目标轮转语义不变，但每级都需 16F 变体；
+   是否由渲染器**自动派生变体**（按 shader + blend + format 键控缓存）需拍板，否则调用方要成对登记。
+2. **读回口径**：`render_target_readback` 目前按 8 位返回；16F 目标读回需新增浮点路径
+   （或明确「16F 仅作中间态，不作为可读回目标」）。
+3. **UI 混合**：16F 线性附件上的 ImGui 混合与 8 位 sRGB 不同，需单列用例。
+4. **MSAA**：`sample_count > 1` 时解析目标必须与颜色附件同格式；目标创建内部已按同一 color_format 建解析图，
+   但显存翻倍的实测数据仍缺。

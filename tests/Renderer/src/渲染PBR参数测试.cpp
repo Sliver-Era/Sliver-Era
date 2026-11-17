@@ -379,3 +379,50 @@ TEST_F(Renderer_Scene_Test, PBR光泽度映射修正)
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+各向异性 GGX（方向九第 722 轮）
+1) 金属球开启各向异性（强度 0.8）后高光形状改变，画面可区分；
+2) 强度 0 时与关闭态等价（差异不超过 2 级）。
+*/
+TEST_F(Renderer_Scene_Test, PBR各向异性改变高光)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	uint64_t white = 0;
+	std::vector<uint8_t> white_texels = solid_white();
+	ASSERT_TRUE(renderer.resource().texture_load(white, white_texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(white);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 32, 16));
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_absolute_set(true);
+	renderer.scene().pbr_metallic_set(0.9f);
+	renderer.scene().pbr_roughness_set(0.3f);
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.0f);
+	renderer.scene().specular_set(1.0f, 64.0f);
+	//关闭态基线
+	renderer.scene().pbr_aniso_set(false);
+	std::vector<uint8_t> off = pbr_param_frame(renderer, sphere);
+	//开启各向异性
+	renderer.scene().pbr_aniso_set(true);
+	renderer.scene().pbr_aniso_strength_set(0.8f);
+	EXPECT_TRUE(renderer.scene().pbr_aniso());
+	EXPECT_FLOAT_EQ(renderer.scene().pbr_aniso_strength(), 0.8f);
+	std::vector<uint8_t> on = pbr_param_frame(renderer, sphere);
+	uint32_t changed = byjy_render_test::changed_pixels(off, on, 2);
+	EXPECT_GT(changed, 0u) << "各向异性未改变高光";
+	RecordProperty("aniso_changed_pixels", static_cast<int>(changed));
+	//强度 0 应与各向同性等价
+	renderer.scene().pbr_aniso_strength_set(0.0f);
+	std::vector<uint8_t> zero = pbr_param_frame(renderer, sphere);
+	EXPECT_LE(byjy_render_test::max_channel_diff(off, zero), 2) << "零强度与各向同性不等价";
+	//越界强度被忽略
+	renderer.scene().pbr_aniso_strength_set(1.5f);
+	EXPECT_FLOAT_EQ(renderer.scene().pbr_aniso_strength(), 0.0f);
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().texture_unload(white);
+}

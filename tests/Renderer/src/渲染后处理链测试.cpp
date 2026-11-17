@@ -664,6 +664,69 @@ TEST_F(Renderer_Post_Chain_Test, 强光照下胶片曲线不顶满)
 }
 
 /*
+HDR 场景目标保留高光（方向九第 745 轮）
+口径：曝光 +2 时，8 位场景目标在写入处把 >1 截断（ACES 中心约 232）；
+16F 场景目标保留 >1 光强，经同一 ACES 后中心更亮（≥ 242），证明高光信息未被丢失。
+默认 8 位路径不受影响（本用例不改变默认目标的创建方式）。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR场景目标保留高光)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	//内置白纹理与四边形
+	renderer.resource().texture_bind_set(0);
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	//曝光 +2（×4）：白四边形输出 4.0，超过 8 位目标的表示范围
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	//ACES 后处理级（宿为交换链，跟随上下文颜色格式）
+	uint64_t tone = post_pipeline_register(renderer, "色调映射.frag.spv");
+	ASSERT_NE(tone, 0u);
+	ASSERT_TRUE(renderer.device().post_chain_set(&tone, 1));
+	//基线：8 位场景目标 ＋ 默认场景管线
+	uint64_t ldr_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create(ldr_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	renderer.device().render_target_present_set(ldr_target);
+	std::vector<uint8_t> ldr_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(ldr_pixels.data(), static_cast<uint32_t>(ldr_pixels.size())));
+	//16F 场景目标（深度固定 D32，与下方管线变体一致）
+	uint64_t hdr_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(hdr_target,
+		renderer.device().extent_width(), renderer.device().extent_height(),
+		static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 1));
+	//16F 场景管线变体（同一对着色器，仅颜色附件格式不同）
+	uint64_t hdr_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(hdr_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true,
+		static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 1, static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT)));
+	renderer.device().render_target_present_set(hdr_target);
+	renderer.resource().pipeline_bind_set(hdr_pipeline);
+	std::vector<uint8_t> hdr_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(hdr_pixels.data(), static_cast<uint32_t>(hdr_pixels.size())));
+	//中心（白四边形）亮度对照
+	int ldr_center = static_cast<int>(pixel_get(ldr_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	int hdr_center = static_cast<int>(pixel_get(hdr_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	EXPECT_GE(ldr_center, 220) << "8 位基线未进入高光区间：" << ldr_center;
+	EXPECT_LE(ldr_center, 240) << "8 位基线口径异常：" << ldr_center;
+	EXPECT_GE(hdr_center, ldr_center + 8) << "16F 目标未保留高光（8 位 " << ldr_center
+		<< " / 16F " << hdr_center << "）";
+	EXPECT_LE(hdr_center, 255) << "16F 目标输出越界：" << hdr_center;
+	EXPECT_GT(changed_pixels(ldr_pixels, hdr_pixels, 4), 0u) << "16F 与 8 位画面无差异";
+	RecordProperty("hdr_ldr_center", ldr_center);
+	RecordProperty("hdr_16f_center", hdr_center);
+	renderer.resource().pipeline_bind_set(0);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(hdr_pipeline);
+	renderer.resource().pipeline_unload(tone);
+	renderer.resource().render_target_destroy(hdr_target);
+	renderer.resource().render_target_destroy(ldr_target);
+}
+
+/*
 胶片与 ACES 的 look 混合（方向九第 742 轮）
 口径：混合比例 z 取 0 时与纯胶片画面逐字节相同；取 1 时与 ACES 预设逐字节相同；
 中间值 0.5 的中心亮度夹在两者之间（可连续调校强光照亮部收束）。

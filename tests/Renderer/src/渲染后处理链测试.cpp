@@ -664,6 +664,84 @@ TEST_F(Renderer_Post_Chain_Test, 强光照下胶片曲线不顶满)
 }
 
 /*
+HDR 多级链传递（方向九第 746 轮）
+口径：场景 16F → 第 0 级拷贝到中间目标 → 第 1 级 ACES → 交换链。
+中间目标为 16F 时高光穿过两级仍保留（中心 ≥ 242）；
+中间目标为 8 位时在第 0 级写入处被截断（约 232）。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR多级链传递)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	renderer.resource().texture_bind_set(0);
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t ldr_format = static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	//场景目标（16F）与两条场景管线变体
+	uint64_t scene_hdr = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_hdr,
+		renderer.device().extent_width(), renderer.device().extent_height(), hdr_format, depth_format, 1));
+	uint64_t scene_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	//中间目标：16F 与 8 位各一
+	uint64_t mid_hdr = 0;
+	uint64_t mid_ldr = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(mid_hdr,
+		renderer.device().extent_width(), renderer.device().extent_height(), hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().render_target_create_format(mid_ldr,
+		renderer.device().extent_width(), renderer.device().extent_height(), ldr_format, depth_format, 1));
+	//第 0 级：拷贝（16F 与 8 位两条变体）；第 1 级：ACES（8 位，写交换链）
+	uint64_t copy_hdr = 0;
+	uint64_t copy_ldr = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(copy_hdr, "后处理.vert.spv", "后处理.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, hdr_format));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(copy_ldr, "后处理.vert.spv", "后处理.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, ldr_format));
+	uint64_t tone = post_pipeline_register(renderer, "色调映射.frag.spv");
+	ASSERT_NE(tone, 0u);
+	renderer.device().render_target_present_set(scene_hdr);
+	renderer.resource().pipeline_bind_set(scene_pipeline);
+	//按「第 0 级拷贝管线 ＋ 中间目标」出帧
+	auto frame_by = [&](uint64_t copy_stage, uint64_t intermediate, std::vector<uint8_t>& pixels)
+	{
+		uint64_t stages[2] = { copy_stage, tone };
+		EXPECT_TRUE(renderer.device().post_chain_set(stages, 2));
+		uint64_t chain_targets[2] = { scene_hdr, intermediate };
+		EXPECT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 2));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	};
+	std::vector<uint8_t> hdr_pixels(pixel_bytes());
+	std::vector<uint8_t> ldr_pixels(pixel_bytes());
+	frame_by(copy_hdr, mid_hdr, hdr_pixels);
+	frame_by(copy_ldr, mid_ldr, ldr_pixels);
+	int hdr_center = static_cast<int>(pixel_get(hdr_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	int ldr_center = static_cast<int>(pixel_get(ldr_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	EXPECT_GE(ldr_center, 220) << "8 位中间态基线异常：" << ldr_center;
+	EXPECT_LE(ldr_center, 240) << "8 位中间态基线异常：" << ldr_center;
+	EXPECT_GE(hdr_center, 242) << "16F 中间目标未保留高光（8 位 " << ldr_center
+		<< " / 16F " << hdr_center << "）";
+	EXPECT_GT(hdr_center, ldr_center) << "中间目标格式未产生差异";
+	RecordProperty("chain_ldr_center", ldr_center);
+	RecordProperty("chain_hdr_center", hdr_center);
+	renderer.resource().pipeline_bind_set(0);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(tone);
+	renderer.resource().pipeline_unload(copy_ldr);
+	renderer.resource().pipeline_unload(copy_hdr);
+	renderer.resource().pipeline_unload(scene_pipeline);
+	renderer.resource().render_target_destroy(mid_ldr);
+	renderer.resource().render_target_destroy(mid_hdr);
+	renderer.resource().render_target_destroy(scene_hdr);
+}
+
+/*
 HDR 场景目标保留高光（方向九第 745 轮）
 口径：曝光 +2 时，8 位场景目标在写入处把 >1 截断（ACES 中心约 232）；
 16F 场景目标保留 >1 光强，经同一 ACES 后中心更亮（≥ 242），证明高光信息未被丢失。

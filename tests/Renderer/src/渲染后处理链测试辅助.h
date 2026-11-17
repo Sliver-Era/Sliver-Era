@@ -2,19 +2,32 @@
 //预编译头
 #include "Engine/EngineFoundation/common/前置头文件包含.h"
 /*
-渲染后处理链测试辅助（第五十九轮拆分；由原「渲染后处理链测试.cpp」抽出）
-提供隐藏窗口配置、像素读取、纹理与网格构造，以及夹具 Renderer_Post_Chain_Test。
+渲染后处理链测试辅助（2026-11-17 测试层改造 A：公共部分迁入 测试辅助/渲染测试辅助.h）
+本文件只保留后处理链特有的常量、场景登记与管线登记；窗口配置、像素读取、几何构造、
+亮度 / 差异统计经 using 引入，不再按文件复制实现。
 */
 #include <gtest/gtest.h>
 
 //获取渲染器门面（含管线登记与后处理链接口）与网格数据
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+//公共测试辅助
+#include "测试辅助/渲染测试辅助.h"
 
 namespace
 {
-	//窗口尺寸（小尺寸便于逐像素遍历；目标与交换链同尺寸以满足后处理 1:1 取源）
-	constexpr uint32_t WINDOW_WIDTH = 64;
-	constexpr uint32_t WINDOW_HEIGHT = 36;
+	using byjy_render_test::WINDOW_WIDTH;
+	using byjy_render_test::WINDOW_HEIGHT;
+	using byjy_render_test::hidden_config;
+	using byjy_render_test::msaa_config;
+	using byjy_render_test::pixel_bytes;
+	using byjy_render_test::pixel_get;
+	using byjy_render_test::pixel_text;
+	using byjy_render_test::quad_data;
+	using byjy_render_test::max_channel_diff;
+	using byjy_render_test::luma_of;
+	using byjy_render_test::darkened_count;
+	using byjy_render_test::brightened_count;
+
 	//系统字体路径（存在才跑文字兼容用例；字号 16）
 	const char* const FONT_PATH = "C:\\Windows\\Fonts\\consola.ttf";
 	constexpr uint32_t FONT_PIXEL_HEIGHT = 16;
@@ -30,63 +43,8 @@ namespace
 	//「近黑」判定的通道上限
 	constexpr int DARK_THRESHOLD = 4;
 
-	//把像素写成可读文本（失败诊断用）
-	std::string pixel_text(const std::array<uint8_t, 4>& value)
-	{
-		return std::to_string(value[0]) + "/" + std::to_string(value[1]) + "/"
-			+ std::to_string(value[2]) + "/" + std::to_string(value[3]);
-	}
-
-	//构造隐藏窗口配置
-	engine::Renderer_Config hidden_config(void)
-	{
-		engine::Renderer_Config config;
-		config.width = WINDOW_WIDTH;
-		config.height = WINDOW_HEIGHT;
-		config.hidden = true;
-		return config;
-	}
-
-	//构造多重采样配置（第一百九十一轮；尺寸与 hidden_config 相同，仅改采样数）
-	engine::Renderer_Config msaa_config(uint32_t samples)
-	{
-		engine::Renderer_Config config = hidden_config();
-		config.msaa_samples = samples;
-		return config;
-	}
-
-	//本帧像素字节数（RGBA8 紧排）
-	uint32_t pixel_bytes(void)
-	{
-		return WINDOW_WIDTH * WINDOW_HEIGHT * 4;
-	}
-
-	//取指定像素的四个字节
-	std::array<uint8_t, 4> pixel_get(const std::vector<uint8_t>& pixels, uint32_t x, uint32_t y)
-	{
-		std::size_t offset = (static_cast<std::size_t>(y) * WINDOW_WIDTH + x) * 4;
-		std::array<uint8_t, 4> value{};
-		for (std::size_t index = 0; index < 4; ++index)
-			value[index] = pixels[offset + index];
-		return value;
-	}
-
-	//构造覆盖视口中央的四边形（NDC 尺度 1，位于 z = 0；默认相机在 +Z 3 单位处，故四角留清屏色）
-	engine::Mesh_Data quad_data(void)
-	{
-		engine::Mesh_Data data;
-		data.vertices = {
-			{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 1.0f } },
-			{ { 1.0f, -1.0f, 0.0f }, { 1.0f, 1.0f } },
-			{ { 1.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-			{ { -1.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
-		};
-		data.indices = { 0, 1, 2, 0, 2, 3 };
-		return data;
-	}
-
 	//登记「白纹理四边形」场景（供各路径复用，保证输入一致）
-	void scene_register(engine::Renderer& renderer, engine::Mesh_Handle& handle_out)
+	inline void scene_register(engine::Renderer& renderer, engine::Mesh_Handle& handle_out)
 	{
 		//回落内置默认白纹理
 		renderer.resource().texture_bind_set(0);
@@ -96,66 +54,11 @@ namespace
 	}
 
 	//登记一条后处理管线（顶点复用 后处理.vert，片元取给定文件名）
-	uint64_t post_pipeline_register(engine::Renderer& renderer, const std::string& frag_shader)
+	inline uint64_t post_pipeline_register(engine::Renderer& renderer, const std::string& frag_shader)
 	{
 		uint64_t handle = 0;
 		EXPECT_TRUE(renderer.resource().pipeline_load(handle, "后处理.vert.spv", frag_shader));
 		return handle;
-	}
-
-	//两帧回读画面的最大逐通道差
-	int max_channel_diff(const std::vector<uint8_t>& left, const std::vector<uint8_t>& right)
-	{
-		int maximum = 0;
-		for (std::size_t index = 0; index < left.size(); ++index)
-		{
-			int delta = static_cast<int>(left[index]) - static_cast<int>(right[index]);
-			if (delta < 0)
-				delta = -delta;
-			if (delta > maximum)
-				maximum = delta;
-		}
-		return maximum;
-	}
-
-	//按 Rec.709 求像素亮度
-	float luma_of(const std::array<uint8_t, 4>& value)
-	{
-		return 0.2126f * static_cast<float>(value[0]) + 0.7152f * static_cast<float>(value[1])
-			+ 0.0722f * static_cast<float>(value[2]);
-	}
-
-	//统计「本帧比参考帧暗至少 threshold」的像素数（用于验证描边压暗）
-	uint32_t darkened_count(const std::vector<uint8_t>& tested, const std::vector<uint8_t>& reference, float threshold)
-	{
-		uint32_t count = 0;
-		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
-		{
-			for (uint32_t x = 0; x < WINDOW_WIDTH; ++x)
-			{
-				//两帧亮度差
-				float difference = luma_of(pixel_get(reference, x, y)) - luma_of(pixel_get(tested, x, y));
-				if (difference >= threshold)
-					++count;
-			}
-		}
-		return count;
-	}
-	//统计「本帧比参考帧亮至少 threshold」的像素数（用于验证泛光扩散范围）
-	uint32_t brightened_count(const std::vector<uint8_t>& tested, const std::vector<uint8_t>& reference, float threshold)
-	{
-		uint32_t count = 0;
-		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
-		{
-			for (uint32_t x = 0; x < WINDOW_WIDTH; ++x)
-			{
-				//两帧亮度差
-				float difference = luma_of(pixel_get(tested, x, y)) - luma_of(pixel_get(reference, x, y));
-				if (difference >= threshold)
-					++count;
-			}
-		}
-		return count;
 	}
 }
 

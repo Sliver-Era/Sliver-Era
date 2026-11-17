@@ -443,8 +443,8 @@ TEST_F(Renderer_Scene_Test, 场景UBO按需写入)
 		ASSERT_TRUE(renderer.frame_render());
 		uint64_t current = renderer.scene_upload_bytes();
 		uint64_t delta = current - previous;
-		//单帧上传不得超过整块大小（第七百零九轮起 3920 字节）
-		EXPECT_LE(delta, 3920u) << "第 " << frame + 1 << " 帧上传超出整块";
+		//单帧上传不得超过整块大小（契约常量 SCENE_UBO_BYTES）
+		EXPECT_LE(delta, SCENE_UBO_BYTES) << "第 " << frame + 1 << " 帧上传超出整块";
 		deltas.push_back(delta);
 		previous = current;
 	}
@@ -452,8 +452,8 @@ TEST_F(Renderer_Scene_Test, 场景UBO按需写入)
 	RecordProperty("scene_upload_frame2", static_cast<int>(deltas[1]));
 	RecordProperty("scene_upload_frame3", static_cast<int>(deltas[2]));
 	RecordProperty("scene_upload_frame4", static_cast<int>(deltas[3]));
-	//首帧必整块写入（整块 3920 字节）
-	EXPECT_EQ(deltas[0], 3920u) << "首帧未整块写入场景 UBO";
+	//首帧必整块写入（契约常量 SCENE_UBO_BYTES）
+	EXPECT_EQ(deltas[0], SCENE_UBO_BYTES) << "首帧未整块写入场景 UBO";
 	//静止场景下应出现 0 字节上传（各帧槽预热完成后）
 	EXPECT_EQ(*std::min_element(deltas.begin(), deltas.end()), 0u) << "静止场景仍整块上传";
 
@@ -516,10 +516,10 @@ TEST_F(Renderer_Scene_Test, 实例缓冲按需写入)
 	upload_delta(deltas, previous, 4, nullptr);
 	RecordProperty("instance_upload_frame1", static_cast<int>(deltas[0]));
 	RecordProperty("instance_upload_frame3", static_cast<int>(deltas[2]));
-	EXPECT_EQ(deltas[0], 112u) << "首帧未写入单个实例";
+	EXPECT_EQ(deltas[0], INSTANCE_STRIDE_BYTES) << "首帧未写入单个实例";
 	EXPECT_EQ(*std::min_element(deltas.begin(), deltas.end()), 0u) << "静止场景仍整块上传";
 	for (uint64_t delta : deltas)
-		EXPECT_LE(delta, 112u) << "单帧上传超出本帧实例字节数";
+		EXPECT_LE(delta, INSTANCE_STRIDE_BYTES) << "单帧上传超出本帧实例字节数";
 
 	//平移模型矩阵 → 模型矩阵变化，应重新上传该实例
 	std::array<float, 16> model = {};

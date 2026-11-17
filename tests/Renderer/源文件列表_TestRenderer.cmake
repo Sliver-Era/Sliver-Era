@@ -69,6 +69,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染多线程测试.cpp"
     "src/渲染多线程阈值测试.cpp"
     "src/渲染天空盒测试.cpp"
+    "src/渲染契约探针测试.cpp"
     "src/渲染实例化测试.cpp"
     "src/渲染帧测试.cpp"
     "src/渲染帧统计测试.cpp"
@@ -89,6 +90,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染级联淡化数据测试.cpp"
     "src/渲染级联配置数据测试.cpp"
     "src/渲染级联阴影测试.cpp"
+    "src/渲染纯数据测试.cpp"
     "src/渲染纹理分级测试.cpp"
     "src/渲染缓存与阴影范围测试.cpp"
     "src/渲染网格纹理测试.cpp"
@@ -123,6 +125,8 @@ target_sources(TestRenderer PRIVATE
 # 头文件不参与编译，只为让 IDE 建立文件索引；同样经 target_sources 列出，
 # 使头文件改名 / 迁移时 VS 也能改写引用
 target_sources(TestRenderer PRIVATE
+    "src/测试辅助/渲染契约常量.h"
+    "src/测试辅助/渲染测试辅助.h"
     "src/渲染后处理链测试辅助.h"
     "src/渲染场景测试辅助.h"
 )

@@ -285,7 +285,7 @@ TEST_F(Renderer_Scene_Test, 多材质分段绘制项数与实例字节)
 	RecordProperty("sections_draw_items", static_cast<int>(stats.last_draw_items));
 	RecordProperty("sections_instance_bytes", static_cast<int>(after - before));
 	EXPECT_EQ(stats.last_draw_items, 2u) << "两段应登记两个绘制项";
-	EXPECT_EQ(after - before, 2u * 112u) << "两段实例数据应为 2 × 112 字节";
+	EXPECT_EQ(after - before, 2u * INSTANCE_STRIDE_BYTES) << "两段实例数据应为 2 × 实例步长";
 
 	renderer.resource().material_unload(red);
 	renderer.resource().material_unload(blue);
@@ -400,7 +400,7 @@ TEST_F(Renderer_Scene_Test, 实例化上传字节按步长计算)
 	ASSERT_TRUE(renderer.frame_render());
 	uint64_t after = renderer.instance_upload_bytes();
 	RecordProperty("instanced_upload_bytes", static_cast<int>(after - before));
-	EXPECT_EQ(after - before, 200u * 112u) << "实例上传字节与步长不符";
+	EXPECT_EQ(after - before, 200u * INSTANCE_STRIDE_BYTES) << "实例上传字节与步长不符";
 
 	renderer.resource().mesh_unload(mesh);
 }

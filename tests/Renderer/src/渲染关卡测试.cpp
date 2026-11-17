@@ -11,7 +11,8 @@
 */
 #include <gtest/gtest.h>
 
-
+//结构化像素指标（实现收敛到公共辅助）
+#include "测试辅助/渲染测试辅助.h"
 #include "Engine/EngineSystem/src/world/data/scene/Level/关卡文本.h"
 #include "Engine/EngineRenderer/src/render/Scene/场景装配.h"
 #include "Engine/EngineRenderer/src/render/Asset/资产缓存.h"
@@ -53,25 +54,10 @@ namespace
 		return std::memcmp(&left, &right, sizeof(float)) == 0;
 	}
 
-	//两帧之间逐通道差 ≥ 6 的像素数
-	uint32_t changed_pixels(const std::vector<uint8_t>& left, const std::vector<uint8_t>& right)
+	//两帧之间逐通道差 ≥ 6 的像素数（实现收敛到公共辅助）
+	inline uint32_t changed_pixels(const std::vector<uint8_t>& left, const std::vector<uint8_t>& right)
 	{
-		uint32_t count = 0;
-		for (std::size_t index = 0; index + 3 < left.size(); index += 4)
-		{
-			int maximum = 0;
-			for (std::size_t channel = 0; channel < 3; ++channel)
-			{
-				int delta = static_cast<int>(left[index + channel]) - static_cast<int>(right[index + channel]);
-				if (delta < 0)
-					delta = -delta;
-				if (maximum < delta)
-					maximum = delta;
-			}
-			if (maximum >= 6)
-				++count;
-		}
-		return count;
+		return byjy_render_test::changed_pixels(left, right, 6);
 	}
 
 	//写方盒几何 ＋ 单材质（关卡端到端用）

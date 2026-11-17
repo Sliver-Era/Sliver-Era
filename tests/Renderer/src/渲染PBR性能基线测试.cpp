@@ -181,6 +181,75 @@ TEST_F(Renderer_Scene_Test, PBR特性组合开销)
 }
 
 /*
+色调映射算子开销（方向九第 749 轮）
+口径：640×360、单级后处理链、白四边形；逐算子测 CPU 帧耗时中位数（含每帧重新登记绘制）。
+仅记录数值并做健全性断言，不设硬阈值（机型 / Debug-Release 差异较大）。
+*/
+namespace
+{
+	//单算子场景：返回中位帧耗时（毫秒；失败返回 -1）
+	double run_tonemap_case(const char* fragment_shader)
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config(640, 360);
+		config.vsync = false;
+		config.validation = false;
+		if (!renderer.init(config))
+			return -1.0;
+		uint64_t scene_target = 0;
+		if (!renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()))
+			return -1.0;
+		uint64_t stage = 0;
+		if (!renderer.resource().pipeline_load(stage, "后处理.vert.spv", fragment_shader))
+			return -1.0;
+		renderer.device().post_chain_set(&stage, 1);
+		renderer.resource().texture_bind_set(0);
+		engine::Mesh_Handle handle = 0;
+		if (!renderer.resource().mesh_load(handle, quad_data()))
+			return -1.0;
+		renderer.device().render_target_present_set(scene_target);
+		//预热 3 帧
+		for (int index = 0; index < 3; ++index)
+		{
+			if (!renderer.resource().mesh_draw(handle, nullptr) || !renderer.frame_render())
+				return -1.0;
+		}
+		std::vector<double> samples;
+		for (int index = 0; index < 20; ++index)
+		{
+			auto begin = std::chrono::steady_clock::now();
+			//每帧重新登记绘制（绘制项不跨帧保留）
+			if (!renderer.resource().mesh_draw(handle, nullptr) || !renderer.frame_render())
+				return -1.0;
+			auto end = std::chrono::steady_clock::now();
+			samples.push_back(std::chrono::duration<double, std::milli>(end - begin).count());
+		}
+		std::sort(samples.begin(), samples.end());
+		double ms = samples[samples.size() / 2];
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(stage);
+		renderer.resource().render_target_destroy(scene_target);
+		return ms;
+	}
+}
+
+TEST_F(Renderer_Scene_Test, Tonemap算子开销)
+{
+	double aces = run_tonemap_case("色调映射.frag.spv");
+	double filmic = run_tonemap_case("胶片色调映射.frag.spv");
+	double reinhard = run_tonemap_case("Reinhard扩展色调映射.frag.spv");
+	double exponent = run_tonemap_case("指数色调映射.frag.spv");
+	EXPECT_GT(aces, 0.0);
+	EXPECT_GT(filmic, 0.0);
+	EXPECT_GT(reinhard, 0.0);
+	EXPECT_GT(exponent, 0.0);
+	RecordProperty("tonemap_aces_ms", aces);
+	RecordProperty("tonemap_filmic_ms", filmic);
+	RecordProperty("tonemap_reinhard_ms", reinhard);
+	RecordProperty("tonemap_exponent_ms", exponent);
+}
+
+/*
 强光照压力场景（第 726 轮）：32 盏点光 ＋ 1000 实例 ＋ 环境光照 ＋ 全部 PBR 特性。
 核对可渲染并记录帧耗时；用于阶段 F「强光照 / 多物体」的最低验收。
 */

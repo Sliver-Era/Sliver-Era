@@ -85,6 +85,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染深度描边测试.cpp"
     "src/渲染混合测试.cpp"
     "src/渲染物体多材质测试.cpp"
+    "src/渲染环境数据测试.cpp"
     "src/渲染相机测试.cpp"
     "src/渲染着色器校验测试.cpp"
     "src/渲染离屏目标测试.cpp"

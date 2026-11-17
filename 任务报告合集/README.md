@@ -49,7 +49,10 @@
 
 | 轮次 | 报告目录 | 文档落盘 | 对应代码提交 | 任务类型 |
 | --- | --- | --- | --- | --- |
-| 各向异性 GGX | [各向异性GGX_bcdda9c+d85a3c1](main/2026年/11月/17日/各向异性GGX_bcdda9c+d85a3c1/执行报告.md) **← 最新（2026-11-17）** | 2026-11-17 | Renderer `bcdda9c` ＋ Test `d85a3c1` | 方向九第 722 轮：各向异性 GGX（`pbr_aniso`，UBO 3968，默认关闭）；PBR＋环境 29/29 |
+| PBR 特性组合开销 | [特性组合开销_fcafd22](main/2026年/11月/17日/特性组合开销_fcafd22/执行报告.md) **← 最新（2026-11-17）** | 2026-11-17 | Test `fcafd22`（Renderer 未改） | 方向九第 725 轮：1000 实例特性逐项 / 全开；Debug 0.272–0.298 ms，噪声内 |
+| 布料绒感 sheen | [布料sheen_c6a4f2d+f093ffd](main/2026年/11月/17日/布料sheen_c6a4f2d+f093ffd/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `c6a4f2d` ＋ Test `f093ffd` | 方向九第 724 轮：`(1−N·V)^3` 受光绒边（`pbr_sheen`，UBO 3984）；PBR 23/23 |
+| 皮肤 wrap 漫反射 | [皮肤wrap漫反射_f7bf091+46264ef](main/2026年/11月/17日/皮肤wrap漫反射_f7bf091+46264ef/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `f7bf091` ＋ Test `46264ef` | 方向九第 723 轮：半兰伯特 wrap（`pbr_aniso.z/.w`）；背光提亮；PBR 22/22 |
+| 各向异性 GGX | [各向异性GGX_bcdda9c+d85a3c1](main/2026年/11月/17日/各向异性GGX_bcdda9c+d85a3c1/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `bcdda9c` ＋ Test `d85a3c1` | 方向九第 722 轮：各向异性 GGX（`pbr_aniso`，UBO 3968，默认关闭）；PBR＋环境 29/29 |
 | 光泽度映射修正 | [光泽度映射修正_cf23bd8+f8e1987](main/2026年/11月/17日/光泽度映射修正_cf23bd8+f8e1987/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `cf23bd8` ＋ Test `f8e1987` | 方向九第 721 轮：光泽度 → GGX 粗糙度修正映射（`pbr_extra.w`，默认关闭）；PBR 20/20；阶段 C 收口 |
 | 环境漫反射方向平均 | [环境漫反射方向平均_e72a9f7+fedc342](main/2026年/11月/17日/环境漫反射方向平均_e72a9f7+fedc342/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `e72a9f7` ＋ Test `fedc342` | 方向九第 720 轮：环境漫反射法线 ＋ 切平面四方向均值（`pbr_extra.z`，默认关闭）；环境 8/8 |
 | 环境 BRDF 近似 | [环境BRDF近似_2dc8fca+fb4eebb](main/2026年/11月/17日/环境BRDF近似_2dc8fca+fb4eebb/执行报告.md)（2026-11-17） | 2026-11-17 | Renderer `2dc8fca` ＋ Test `fb4eebb` | 方向九第 719 轮：环境镜面 split-sum DFG 解析近似（`pbr_extra.y`，默认关闭）；PBR 19/19 |

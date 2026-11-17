@@ -437,6 +437,53 @@ TEST_F(Renderer_Post_Chain_Test, 色调映射压缩高亮)
 }
 
 /*
+后处理预设 · 胶片色调映射（方向九第 739 轮）
+Hable filmic 曲线（无色彩矩阵）：白四边形中心压缩到 170–220、三通道中性（差 ≤ 2），
+且与 ACES 预设画面可区分（新增算子可切换）。
+*/
+TEST_F(Renderer_Post_Chain_Test, 胶片色调映射压缩高亮)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t scene_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	uint64_t aces = post_pipeline_register(renderer, "色调映射.frag.spv");
+	uint64_t filmic_stage = post_pipeline_register(renderer, "胶片色调映射.frag.spv");
+	ASSERT_NE(aces, 0u);
+	ASSERT_NE(filmic_stage, 0u);
+	engine::Mesh_Handle handle = 0;
+	scene_register(renderer, handle);
+	renderer.device().render_target_present_set(scene_target);
+	//ACES 基线
+	ASSERT_TRUE(renderer.device().post_chain_set(&aces, 1));
+	std::vector<uint8_t> aces_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(aces_pixels.data(), static_cast<uint32_t>(aces_pixels.size())));
+	//胶片曲线
+	ASSERT_TRUE(renderer.device().post_chain_set(&filmic_stage, 1));
+	std::vector<uint8_t> filmic_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(filmic_pixels.data(), static_cast<uint32_t>(filmic_pixels.size())));
+	std::array<uint8_t, 4> aces_center = pixel_get(aces_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	std::array<uint8_t, 4> filmic_center = pixel_get(filmic_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	EXPECT_GE(filmic_center[0], 170) << "胶片曲线压暗过头：" << pixel_text(filmic_center);
+	EXPECT_LE(filmic_center[0], 220) << "胶片曲线未压缩高光：" << pixel_text(filmic_center);
+	EXPECT_LE(std::abs(static_cast<int>(filmic_center[0]) - static_cast<int>(filmic_center[1])), 2)
+		<< "胶片曲线出现通道色偏：" << pixel_text(filmic_center);
+	EXPECT_LE(std::abs(static_cast<int>(filmic_center[1]) - static_cast<int>(filmic_center[2])), 2)
+		<< "胶片曲线出现通道色偏：" << pixel_text(filmic_center);
+	EXPECT_GT(changed_pixels(aces_pixels, filmic_pixels, 4), 0u) << "胶片曲线与 ACES 画面无法区分";
+	RecordProperty("filmic_center", static_cast<int>(filmic_center[0]));
+	RecordProperty("aces_center", static_cast<int>(aces_center[0]));
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(filmic_stage);
+	renderer.resource().pipeline_unload(aces);
+	renderer.resource().render_target_destroy(scene_target);
+}
+
+/*
 曝光与色调映射联动（方向九第 738 轮）
 口径：ACES 链下 EV −2 / 0 / +2 的中心亮度单调不减，且 −2 严格低于 0。
 注意：绘制项按帧提交，每帧必须重新登记绘制（737 轮首版用例漏掉此步，后续帧只剩清屏色）。

@@ -24,6 +24,7 @@ namespace
 	using byjy_render_test::pixel_text;
 	using byjy_render_test::quad_data;
 	using byjy_render_test::max_channel_diff;
+	using byjy_render_test::changed_pixels;
 	using byjy_render_test::luma_of;
 	using byjy_render_test::darkened_count;
 	using byjy_render_test::brightened_count;

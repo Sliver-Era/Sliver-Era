@@ -426,3 +426,41 @@ TEST_F(Renderer_Scene_Test, PBR各向异性改变高光)
 	renderer.resource().mesh_unload(sphere);
 	renderer.resource().texture_unload(white);
 }
+
+/*
+皮肤 SSS-lite wrap 漫反射（方向九第 723 轮）
+斜射方向光下开启 wrap：明暗交界推向背光侧，背光区域提亮（不会压暗任何像素）。
+*/
+TEST_F(Renderer_Scene_Test, PBR皮肤wrap漫反射)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	engine::Mesh_Handle mesh = 0;
+	uint64_t texture = 0;
+	pbr_param_scene_register(renderer, mesh, texture);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 32, 16));
+	//斜射方向光（光传播方向偏离相机轴）
+	const float direction[3] = { 0.6f, -0.5f, -0.8f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.05f);
+	//关闭态基线
+	renderer.scene().pbr_skin_sss_set(false);
+	std::vector<uint8_t> off = pbr_param_frame(renderer, sphere);
+	//开启 wrap 后背光侧应变亮
+	renderer.scene().pbr_skin_sss_set(true);
+	renderer.scene().pbr_skin_wrap_set(0.8f);
+	EXPECT_TRUE(renderer.scene().pbr_skin_sss());
+	EXPECT_FLOAT_EQ(renderer.scene().pbr_skin_wrap(), 0.8f);
+	std::vector<uint8_t> on = pbr_param_frame(renderer, sphere);
+	uint32_t brightened = byjy_render_test::brightened_count(on, off, 2.0f);
+	EXPECT_GT(brightened, 0u) << "wrap 漫反射未提亮背光侧";
+	RecordProperty("skin_wrap_brightened", static_cast<int>(brightened));
+	//越界 wrap 被忽略
+	renderer.scene().pbr_skin_wrap_set(2.0f);
+	EXPECT_FLOAT_EQ(renderer.scene().pbr_skin_wrap(), 0.8f);
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().mesh_unload(mesh);
+	renderer.resource().texture_unload(texture);
+}

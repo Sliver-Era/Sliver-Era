@@ -664,6 +664,62 @@ TEST_F(Renderer_Post_Chain_Test, 强光照下胶片曲线不顶满)
 }
 
 /*
+HDR 下简化算子同样保留高光（方向九第 748 轮）
+口径：第 185 轮的简化 Reinhard / 指数两个预设，输入改为只钳下界；
+16F 场景目标下指数曲线中心应接近 253，而 8 位路径因提前截断只有约 210。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR简化算子保留高光)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	renderer.resource().texture_bind_set(0);
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	uint64_t exponent = post_pipeline_register(renderer, "指数色调映射.frag.spv");
+	ASSERT_NE(exponent, 0u);
+	ASSERT_TRUE(renderer.device().post_chain_set(&exponent, 1));
+	//基线：8 位场景目标 ＋ 默认场景管线
+	uint64_t ldr_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create(ldr_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	renderer.device().render_target_present_set(ldr_target);
+	std::vector<uint8_t> ldr_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(ldr_pixels.data(), static_cast<uint32_t>(ldr_pixels.size())));
+	//16F 场景目标 ＋ 16F 场景管线变体
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	uint64_t hdr_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(hdr_target,
+		renderer.device().extent_width(), renderer.device().extent_height(), hdr_format, depth_format, 1));
+	uint64_t hdr_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(hdr_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	renderer.device().render_target_present_set(hdr_target);
+	renderer.resource().pipeline_bind_set(hdr_pipeline);
+	std::vector<uint8_t> hdr_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(hdr_pixels.data(), static_cast<uint32_t>(hdr_pixels.size())));
+	int ldr_center = static_cast<int>(pixel_get(ldr_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	int hdr_center = static_cast<int>(pixel_get(hdr_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	EXPECT_GE(ldr_center, 195) << "8 位指数口径异常：" << ldr_center;
+	EXPECT_LE(ldr_center, 225) << "8 位指数口径异常：" << ldr_center;
+	EXPECT_GE(hdr_center, 245) << "16F 下指数算子未保留高光（8 位 " << ldr_center
+		<< " / 16F " << hdr_center << "）";
+	EXPECT_GT(hdr_center, ldr_center + 20) << "16F 与 8 位差异不足";
+	RecordProperty("exponent_ldr_center", ldr_center);
+	RecordProperty("exponent_16f_center", hdr_center);
+	renderer.resource().pipeline_bind_set(0);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(hdr_pipeline);
+	renderer.resource().pipeline_unload(exponent);
+	renderer.resource().render_target_destroy(hdr_target);
+	renderer.resource().render_target_destroy(ldr_target);
+}
+
+/*
 HDR 多级链传递（方向九第 746 轮）
 口径：场景 16F → 第 0 级拷贝到中间目标 → 第 1 级 ACES → 交换链。
 中间目标为 16F 时高光穿过两级仍保留（中心 ≥ 242）；

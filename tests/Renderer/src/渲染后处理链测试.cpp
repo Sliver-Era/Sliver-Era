@@ -484,6 +484,62 @@ TEST_F(Renderer_Post_Chain_Test, 胶片色调映射压缩高亮)
 }
 
 /*
+胶片曲线白点可配（方向九第 741 轮）
+口径：未设参（泛光参数槽全 0）与第 739 轮逐字节一致；
+白点调到 4.0 后中心亮度上升且通道仍中性；参数复位后画面逐字节回到默认。
+*/
+TEST_F(Renderer_Post_Chain_Test, 胶片曲线白点可配)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t scene_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_target, renderer.device().extent_width(), renderer.device().extent_height()));
+	uint64_t filmic_stage = post_pipeline_register(renderer, "胶片色调映射.frag.spv");
+	ASSERT_NE(filmic_stage, 0u);
+	ASSERT_TRUE(renderer.device().post_chain_set(&filmic_stage, 1));
+	engine::Mesh_Handle handle = 0;
+	scene_register(renderer, handle);
+	renderer.device().render_target_present_set(scene_target);
+	//按当前参数出帧（绘制项按帧提交）
+	auto frame_now = [&](std::vector<uint8_t>& pixels)
+	{
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	};
+	//默认口径（参数槽全 0）
+	std::vector<uint8_t> default_pixels(pixel_bytes());
+	frame_now(default_pixels);
+	//白点 4.0、曝光偏置保持默认（逐级额外四参槽）
+	renderer.device().post_stage_extra_set(0, 4.0f, 2.0f, 0.0f, 0.0f);
+	std::vector<uint8_t> bright_pixels(pixel_bytes());
+	frame_now(bright_pixels);
+	//参数复位
+	renderer.device().post_stage_extra_set(0, 0.0f, 0.0f, 0.0f, 0.0f);
+	std::vector<uint8_t> reset_pixels(pixel_bytes());
+	frame_now(reset_pixels);
+	std::array<uint8_t, 4> default_center = pixel_get(default_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	std::array<uint8_t, 4> bright_center = pixel_get(bright_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	//默认口径落在第 739 轮的既有区间
+	EXPECT_GE(default_center[0], 170) << "默认胶片曲线偏离既有口径：" << pixel_text(default_center);
+	EXPECT_LE(default_center[0], 220) << "默认胶片曲线偏离既有口径：" << pixel_text(default_center);
+	//白点变小 → 归一化分母变小 → 中心更亮
+	EXPECT_GE(static_cast<int>(bright_center[0]), static_cast<int>(default_center[0]) + 8)
+		<< "白点参数未生效：" << pixel_text(default_center) << " → " << pixel_text(bright_center);
+	EXPECT_LE(std::abs(static_cast<int>(bright_center[0]) - static_cast<int>(bright_center[1])), 2)
+		<< "参数化后出现通道色偏：" << pixel_text(bright_center);
+	//参数复位后逐字节回到默认
+	int difference = max_channel_diff(default_pixels, reset_pixels);
+	EXPECT_EQ(difference, 0) << "参数复位后未回到默认画面（最大通道差 " << difference << "）";
+	RecordProperty("filmic_default_center", static_cast<int>(default_center[0]));
+	RecordProperty("filmic_bright_center", static_cast<int>(bright_center[0]));
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(filmic_stage);
+	renderer.resource().render_target_destroy(scene_target);
+}
+
+/*
 后处理预设 · Reinhard 扩展色调映射（方向九第 740 轮）
 中性白输入下：中心落在 195–218、通道中性（差 ≤ 2），
 且与 ACES（约 232）与胶片（约 186）三算子两两可区分（差异像素 > 0）。

@@ -271,3 +271,80 @@ TEST_F(Renderer_Scene_Test, PBR金属菲涅尔口径不变)
 	renderer.resource().mesh_unload(cube);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+环境镜面 split-sum BRDF 近似（方向九第 719 轮）
+1) 黑色介电球 ＋ 白色环境：开启后走 DFG 近似，画面与环境菲涅尔路径可区分；
+2) 白色金属球：关闭时环境反射与粗糙度无关（两档一致），开启后随粗糙度变化。
+*/
+TEST_F(Renderer_Scene_Test, PBR环境BRDF近似生效)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	uint64_t black = 0;
+	std::vector<uint8_t> black_texels(2 * 2 * 4, 0);
+	ASSERT_TRUE(renderer.resource().texture_load(black, black_texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(black);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 32, 16));
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_absolute_set(true);
+	renderer.scene().pbr_metallic_set(0.0f);
+	renderer.scene().pbr_roughness_set(0.5f);
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 0.0f, 0.0f);
+	const float environment[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().environment_set(environment, 1.0f);
+	renderer.scene().pbr_env_brdf_set(false);
+	std::vector<uint8_t> off = pbr_param_frame(renderer, sphere);
+	renderer.scene().pbr_env_brdf_set(true);
+	EXPECT_TRUE(renderer.scene().pbr_env_brdf());
+	std::vector<uint8_t> on = pbr_param_frame(renderer, sphere);
+	uint32_t changed = byjy_render_test::changed_pixels(off, on, 2);
+	EXPECT_GT(changed, 0u) << "环境 BRDF 近似未改变画面";
+	RecordProperty("env_brdf_changed_pixels", static_cast<int>(changed));
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().texture_unload(black);
+}
+
+//环境镜面 split-sum BRDF 近似（方向九第 719 轮）：关闭时与粗糙度无关，开启后随粗糙度变化
+TEST_F(Renderer_Scene_Test, PBR环境BRDF随粗糙度变化)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	uint64_t white = 0;
+	std::vector<uint8_t> white_texels = solid_white();
+	ASSERT_TRUE(renderer.resource().texture_load(white, white_texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(white);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 32, 16));
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_absolute_set(true);
+	renderer.scene().pbr_metallic_set(1.0f);
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 0.0f, 0.0f);
+	const float environment[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().environment_set(environment, 1.0f);
+	auto frame_with = [&](float roughness, bool env_brdf)
+	{
+		renderer.scene().pbr_roughness_set(roughness);
+		renderer.scene().pbr_env_brdf_set(env_brdf);
+		return pbr_param_frame(renderer, sphere);
+	};
+	//关闭：常量环境 ＋ 白色金属，环境项与粗糙度无关
+	std::vector<uint8_t> smooth_off = frame_with(0.15f, false);
+	std::vector<uint8_t> rough_off = frame_with(0.85f, false);
+	EXPECT_EQ(smooth_off, rough_off) << "关闭态环境反射不应随粗糙度变化";
+	//开启：DFG 近似引入粗糙度响应
+	std::vector<uint8_t> smooth_on = frame_with(0.15f, true);
+	std::vector<uint8_t> rough_on = frame_with(0.85f, true);
+	uint32_t changed = byjy_render_test::changed_pixels(smooth_on, rough_on, 2);
+	EXPECT_GT(changed, 0u) << "环境 BRDF 近似未引入粗糙度响应";
+	RecordProperty("env_brdf_roughness_changed", static_cast<int>(changed));
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().texture_unload(white);
+}

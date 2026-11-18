@@ -976,6 +976,99 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光闭环强于八位)
 }
 
 /*
+HDR 目标开关（方向九第 756 轮）
+口径：Renderer_Config.hdr_targets 默认关闭 —— resource().render_target_create 跟随交换链格式（8 位）；
+开启后该接口改用 16F，使离屏目标可保存 >1 的线性值。
+用例以曝光 +2 的白四边形为输入，同一段读回逻辑区分两种目标：8 位中心 ≈1.0、16F 中心 ≈4.0。
+16F 目标的渲染通道需要格式匹配的场景管线变体，故该分支经 pipeline_load_ex 登记。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR目标开关生效)
+{
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	//读回目标中心 R（16F 原始线性值 / 8 位按 255 归一）
+	auto center_of = [](engine::Renderer& renderer, uint64_t target)
+	{
+		const uint32_t width = renderer.device().extent_width();
+		const uint32_t height = renderer.device().extent_height();
+		std::vector<float> values(static_cast<std::size_t>(width) * height * 4);
+		uint32_t read_width = 0;
+		uint32_t read_height = 0;
+		EXPECT_TRUE(renderer.resource().render_target_readback_float(target, values.data(),
+			static_cast<uint32_t>(values.size()), &read_width, &read_height));
+		if (read_width == 0 || read_height == 0)
+			return 0.0f;
+		return values[(static_cast<std::size_t>(read_height / 2) * read_width + read_width / 2) * 4];
+	};
+	//关闭（默认）：目标为 8 位，中心被写入处截断
+	float ldr_center = 0.0f;
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		ASSERT_TRUE(renderer.init(config));
+		if (!renderer.compute().readback_supported())
+			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+		EXPECT_FALSE(renderer.device().hdr_targets()) << "默认配置不应开启 16F 目标";
+		renderer.resource().texture_bind_set(0);
+		ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+		uint64_t target = 0;
+		ASSERT_TRUE(renderer.resource().render_target_create(target,
+			renderer.device().extent_width(), renderer.device().extent_height()));
+		engine::Mesh_Handle handle = 0;
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		renderer.device().render_target_present_set(target);
+		std::vector<uint8_t> pixels(pixel_bytes());
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		ldr_center = center_of(renderer, target);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().render_target_destroy(target);
+	}
+	//开启：目标为 16F，中心保留 >1
+	float hdr_center = 0.0f;
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		ASSERT_TRUE(renderer.init(config));
+		if (!renderer.compute().readback_supported())
+			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+		EXPECT_TRUE(renderer.device().hdr_targets()) << "配置开启后查询应为真";
+		renderer.resource().texture_bind_set(0);
+		ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+		//16F 目标需要格式匹配的场景管线变体
+		uint64_t scene_pipeline = 0;
+		ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
+			engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+		uint64_t target = 0;
+		ASSERT_TRUE(renderer.resource().render_target_create(target,
+			renderer.device().extent_width(), renderer.device().extent_height()));
+		engine::Mesh_Handle handle = 0;
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		renderer.resource().pipeline_bind_set(scene_pipeline);
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		renderer.device().render_target_present_set(target);
+		std::vector<uint8_t> pixels(pixel_bytes());
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		hdr_center = center_of(renderer, target);
+		renderer.resource().pipeline_bind_set(0);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().pipeline_unload(scene_pipeline);
+		renderer.resource().render_target_destroy(target);
+	}
+	RecordProperty("hdr_switch_ldr_center", ldr_center);
+	RecordProperty("hdr_switch_16f_center", hdr_center);
+	//默认关闭 → 8 位目标（1.0 上限）
+	EXPECT_LE(ldr_center, 1.0f) << "关闭开关时目标出现 >1（实测 " << ldr_center << "）";
+	EXPECT_GE(ldr_center, 0.9f) << "关闭开关时目标基线异常（实测 " << ldr_center << "）";
+	//开启 → 16F 目标（保留曝光后的 4.0）
+	EXPECT_GT(hdr_center, 1.5f) << "开启开关后目标未保留 >1（实测 " << hdr_center << "）";
+	EXPECT_NEAR(hdr_center, 4.0f, 0.6f) << "16F 目标口径异常（应 ≈ 曝光后原值 4.0）";
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

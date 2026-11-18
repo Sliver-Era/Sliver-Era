@@ -1720,6 +1720,76 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光不损失高光算子矩阵)
 }
 
 /*
+HDR 自动泛光不覆盖用户配置（方向九第 770 轮）
+口径（761 的介入条件）：用户已设后处理链时，自动泛光不得改写链与额外目标。
+断言：1) 用户两级链保持 2 级（渲染时因缺额外目标回落单级，但链本身不被覆盖）；
+      2) 自动泛光关闭时不残留链与额外目标（多帧稳定为单级）。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR自动泛光不覆盖用户链)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	config.hdr_targets = true;
+	config.hdr_auto_bloom = true;
+	ASSERT_TRUE(renderer.init(config));
+	//用户自设两级链（拷贝 / 色调映射）；不设额外目标，渲染时按既有规则回落单级
+	uint64_t copy_stage = post_pipeline_register(renderer, "后处理.frag.spv");
+	uint64_t tone_stage = post_pipeline_register(renderer, "色调映射.frag.spv");
+	ASSERT_NE(copy_stage, 0u);
+	ASSERT_NE(tone_stage, 0u);
+	uint64_t stages[2] = { copy_stage, tone_stage };
+	ASSERT_TRUE(renderer.device().post_chain_set(stages, 2));
+	renderer.resource().texture_bind_set(0);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	uint32_t chain_after = renderer.device().post_chain_count();
+	uint32_t stages_after = renderer.frame_stats_get().post_stages;
+	RecordProperty("user_chain_count", static_cast<int>(chain_after));
+	RecordProperty("user_chain_stages", static_cast<int>(stages_after));
+	//链本身不被自动泛光改写
+	EXPECT_EQ(chain_after, 2u) << "自动泛光覆盖了用户后处理链";
+	//缺额外目标 → 本帧按既有规则回落单级
+	EXPECT_EQ(stages_after, 1u) << "用户两级链（无额外目标）未按规则回落单级";
+	//第二帧仍保持用户链
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	EXPECT_EQ(renderer.device().post_chain_count(), 2u) << "多帧后用户链被改写";
+	renderer.resource().pipeline_unload(tone_stage);
+	renderer.resource().pipeline_unload(copy_stage);
+	renderer.resource().mesh_unload(handle);
+}
+
+//HDR 自动泛光关闭：不残留链与额外目标（多帧稳定为单级路径）
+TEST_F(Renderer_Post_Chain_Test, HDR自动泛光关闭无残留)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	config.hdr_targets = true;
+	config.hdr_auto_bloom = false;
+	ASSERT_TRUE(renderer.init(config));
+	renderer.resource().texture_bind_set(0);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	for (uint32_t frame = 0; frame < 3; ++frame)
+	{
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())))
+			<< "第 " << frame << " 帧出帧失败";
+		EXPECT_EQ(renderer.device().post_chain_count(), 0u) << "第 " << frame << " 帧出现残留链";
+		EXPECT_EQ(renderer.frame_stats_get().post_stages, 1u) << "第 " << frame << " 帧未走单级路径";
+	}
+	renderer.resource().mesh_unload(handle);
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

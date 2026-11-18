@@ -1248,6 +1248,59 @@ TEST_F(Renderer_Post_Chain_Test, HDR默认路径AgX去饱和)
 }
 
 /*
+HDR 默认路径 · 自动泛光（方向九第 761 轮）
+口径：hdr_auto_bloom 开启且走 HDR 默认路径时，自动挂「亮部提取 → 模糊(半径 4) → 泛光叠加 → 色调映射」。
+曝光 +2 的白四边形在边界外形成泛光扩散：开启帧的边界外测点应明显亮于关闭帧。
+测点不硬编码：用关闭帧从中心沿 +X 扫描出亮暗边界，再测边界外 2 像素。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR默认路径自动泛光)
+{
+	//按配置出一帧，返回像素与帧结果
+	auto frame_by = [&](bool auto_bloom, std::vector<uint8_t>& pixels)
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_auto_bloom = auto_bloom;
+		EXPECT_TRUE(renderer.init(config));
+		renderer.resource().texture_bind_set(0);
+		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		renderer.resource().mesh_unload(handle);
+	};
+	std::vector<uint8_t> without(pixel_bytes());
+	std::vector<uint8_t> with(pixel_bytes());
+	frame_by(false, without);
+	frame_by(true, with);
+	//从中心沿 +X 扫描第一个暗像素（关闭泛光帧，边界确定）
+	uint32_t edge_x = WINDOW_WIDTH;
+	for (uint32_t x = WINDOW_WIDTH / 2; x < WINDOW_WIDTH; ++x)
+	{
+		if (pixel_get(without, x, WINDOW_HEIGHT / 2)[0] < 100)
+		{
+			edge_x = x;
+			break;
+		}
+	}
+	ASSERT_LT(edge_x, WINDOW_WIDTH) << "未找到亮暗边界（四边形可能铺满视口）";
+	uint32_t probe_x = edge_x + 2;
+	if (probe_x >= WINDOW_WIDTH)
+		probe_x = WINDOW_WIDTH - 1;
+	int plain_probe = static_cast<int>(pixel_get(without, probe_x, WINDOW_HEIGHT / 2)[0]);
+	int bloom_probe = static_cast<int>(pixel_get(with, probe_x, WINDOW_HEIGHT / 2)[0]);
+	RecordProperty("bloom_auto_edge_x", static_cast<int>(edge_x));
+	RecordProperty("bloom_auto_plain_probe", plain_probe);
+	RecordProperty("bloom_auto_bloom_probe", bloom_probe);
+	//自动泛光应把边界外暗区提亮
+	EXPECT_GE(bloom_probe, plain_probe + 10) << "自动泛光未扩散到边界外：关闭 " << plain_probe
+		<< " / 开启 " << bloom_probe;
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

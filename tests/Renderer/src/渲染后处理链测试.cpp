@@ -832,6 +832,150 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光提取保留高光)
 }
 
 /*
+HDR 泛光闭环强于 8 位（方向九第 755 轮）
+口径：完整「亮部提取 → 模糊 → 泛光叠加」三级链，仅场景目标与两级中间目标的格式不同（16F / RGBA8）。
+曝光 +2 使白四边形在 16F 链路输出线性 4.0、8 位链路在写入处被截断为 1.0；
+亮部经半径 4 的模糊扩散到四边形边界外的暗区，该处 16F 链路的泛光应明显强于 8 位链路。
+测点不硬编码几何：先用「直通参考帧」（无泛光）从中心沿 +X 扫描出第一个暗像素作为边界，
+再测边界外 2 像素（仍在模糊半径内）。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR泛光闭环强于八位)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	ASSERT_TRUE(renderer.init(config));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	renderer.resource().texture_bind_set(0);
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	//曝光 +2（×4）：16F 链路的白四边形输出 4.0，8 位链路截断为 1.0
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	const uint32_t width = renderer.device().extent_width();
+	const uint32_t height = renderer.device().extent_height();
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t ldr_format = static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	//场景目标（16F / 8 位）
+	uint64_t scene_hdr = 0;
+	uint64_t scene_ldr = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_hdr, width, height, hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_ldr, width, height, ldr_format, depth_format, 1));
+	//泛光中间目标：提取输出与模糊输出（两链路各一套）
+	uint64_t extract_out_hdr = 0;
+	uint64_t blur_out_hdr = 0;
+	uint64_t extract_out_ldr = 0;
+	uint64_t blur_out_ldr = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(extract_out_hdr, width, height, hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().render_target_create_format(blur_out_hdr, width, height, hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().render_target_create_format(extract_out_ldr, width, height, ldr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().render_target_create_format(blur_out_ldr, width, height, ldr_format, depth_format, 1));
+	//场景管线变体（16F / 8 位）
+	uint64_t scene_hdr_pipeline = 0;
+	uint64_t scene_ldr_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_hdr_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_ldr_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, ldr_format));
+	//泛光各级管线变体（亮部提取 / 模糊按链路格式，叠加写交换链故跟随上下文）
+	uint64_t extract_hdr = 0;
+	uint64_t extract_ldr = 0;
+	uint64_t blur_hdr = 0;
+	uint64_t blur_ldr = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(extract_hdr, "后处理.vert.spv", "亮部提取.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, hdr_format));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(extract_ldr, "后处理.vert.spv", "亮部提取.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, ldr_format));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(blur_hdr, "后处理.vert.spv", "模糊.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, hdr_format));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(blur_ldr, "后处理.vert.spv", "模糊.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, ldr_format));
+	uint64_t overlay = post_pipeline_register(renderer, "泛光叠加.frag.spv");
+	ASSERT_NE(overlay, 0u);
+	//参考帧：8 位场景 ＋ 单级直通（无泛光），用于确定亮暗边界
+	std::vector<uint8_t> pixels(pixel_bytes());
+	{
+		uint64_t passthrough = post_pipeline_register(renderer, "后处理.frag.spv");
+		ASSERT_NE(passthrough, 0u);
+		renderer.device().render_target_present_set(scene_ldr);
+		renderer.resource().pipeline_bind_set(scene_ldr_pipeline);
+		uint64_t stage = passthrough;
+		ASSERT_TRUE(renderer.device().post_chain_set(&stage, 1));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		renderer.resource().pipeline_unload(passthrough);
+	}
+	std::vector<uint8_t> reference = pixels;
+	//从中心沿 +X 扫描第一个「暗」像素（参考帧无泛光，边界确定）
+	uint32_t edge_x = width;
+	for (uint32_t x = width / 2; x < width; ++x)
+	{
+		//亮块约 255，清屏色约 62（线性 0.05 经 SRGB 编码）
+		if (pixel_get(reference, x, height / 2)[0] < 100)
+		{
+			edge_x = x;
+			break;
+		}
+	}
+	ASSERT_LT(edge_x, width) << "参考帧中未找到亮暗边界（四边形可能铺满视口）";
+	//测点：边界外 2 像素（模糊半径 4 的扩散范围内）
+	uint32_t probe_x = edge_x + 2;
+	if (probe_x >= width)
+		probe_x = width - 1;
+	RecordProperty("bloom_probe_edge_x", static_cast<int>(edge_x));
+	RecordProperty("bloom_probe_x", static_cast<int>(probe_x));
+	//按链路格式出「提取 → 模糊 → 叠加」一帧
+	auto frame_by = [&](uint64_t scene_target, uint64_t scene_pipeline,
+		uint64_t extract_stage, uint64_t blur_stage, uint64_t extract_out, uint64_t blur_out)
+	{
+		renderer.device().render_target_present_set(scene_target);
+		renderer.resource().pipeline_bind_set(scene_pipeline);
+		uint64_t stages[3] = { extract_stage, blur_stage, overlay };
+		EXPECT_TRUE(renderer.device().post_chain_set(stages, 3));
+		//模糊半径取 4（须在链长 3 之后设置：级序 1 即模糊级，链外下标会被忽略）
+		renderer.device().post_stage_param_set(1, 0.6f, 0.1f, 4.0f);
+		uint64_t chain_targets[3] = { scene_target, extract_out, blur_out };
+		EXPECT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 3));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	};
+	//16F 链路
+	frame_by(scene_hdr, scene_hdr_pipeline, extract_hdr, blur_hdr, extract_out_hdr, blur_out_hdr);
+	int hdr_probe = static_cast<int>(pixel_get(pixels, probe_x, height / 2)[0]);
+	//8 位链路
+	frame_by(scene_ldr, scene_ldr_pipeline, extract_ldr, blur_ldr, extract_out_ldr, blur_out_ldr);
+	int ldr_probe = static_cast<int>(pixel_get(pixels, probe_x, height / 2)[0]);
+	int reference_probe = static_cast<int>(pixel_get(reference, probe_x, height / 2)[0]);
+	RecordProperty("bloom_reference_probe", reference_probe);
+	RecordProperty("bloom_16f_probe", hdr_probe);
+	RecordProperty("bloom_8bit_probe", ldr_probe);
+	//参考帧测点应仍是清屏色（无泛光；清屏色本机约 88）
+	EXPECT_LE(reference_probe, 95) << "参考帧测点不是暗区（用例前提不成立）：" << reference_probe;
+	//16F 链路的泛光应扩散到边界外并明显提亮
+	EXPECT_GT(hdr_probe, reference_probe + 10) << "16F 泛光未扩散到边界外暗区：参考 " << reference_probe
+		<< " / 16F " << hdr_probe;
+	//同一条链下 16F 的泛光强度应显著高于 8 位（写入截断导致 4.0 → 1.0）
+	EXPECT_GE(hdr_probe, ldr_probe + 15) << "16F 泛光闭环未强于 8 位：16F " << hdr_probe
+		<< " / 8 位 " << ldr_probe;
+	renderer.resource().pipeline_bind_set(0);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(blur_ldr);
+	renderer.resource().pipeline_unload(blur_hdr);
+	renderer.resource().pipeline_unload(extract_ldr);
+	renderer.resource().pipeline_unload(extract_hdr);
+	renderer.resource().pipeline_unload(overlay);
+	renderer.resource().pipeline_unload(scene_ldr_pipeline);
+	renderer.resource().pipeline_unload(scene_hdr_pipeline);
+	renderer.resource().render_target_destroy(blur_out_ldr);
+	renderer.resource().render_target_destroy(extract_out_ldr);
+	renderer.resource().render_target_destroy(blur_out_hdr);
+	renderer.resource().render_target_destroy(extract_out_hdr);
+	renderer.resource().render_target_destroy(scene_ldr);
+	renderer.resource().render_target_destroy(scene_hdr);
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

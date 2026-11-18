@@ -764,3 +764,52 @@ TEST_F(Renderer_Scene_Test, HDR双轨区域色调映射)
 	EXPECT_LT(dual_right_blue, dual_left_blue) << "双轨两侧曲线未区分";
 }
 
+//HDR 双轨分轨位置可配（第 774 轮）：split 0.9 使右半也落入 AgX 区域
+TEST_F(Renderer_Scene_Test, HDR双轨分轨位置可配)
+{
+	std::vector<uint8_t> red_texels(2 * 2 * 4, 0);
+	for (std::size_t index = 0; index < red_texels.size(); index += 4)
+	{
+		red_texels[index + 0] = 255;
+		red_texels[index + 3] = 255;
+	}
+	//按 split 出一帧，返回右半中心像素的蓝通道（0 = ACES 纯色、> 50 = AgX 已去饱和）
+	auto right_blue_by = [&](float split) -> int
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_tone_operator = 5;
+		config.hdr_dual_tone_split = split;
+		EXPECT_TRUE(renderer.init(config));
+		uint64_t texture = 0;
+		EXPECT_TRUE(renderer.resource().texture_load(texture, red_texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
+		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		const float direction[3] = { 0.0f, 0.0f, -1.0f };
+		const float color[3] = { 1.0f, 1.0f, 1.0f };
+		renderer.scene().light_set(direction, color, 1.0f, 0.0f);
+		engine::Mesh_Handle quad = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+		std::array<float, 16> right_matrix = quad_offset_matrix(1.1f);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, right_matrix.data()));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		std::array<uint8_t, 4> pixel = pixel_get(pixels, WINDOW_WIDTH * 3 / 4, WINDOW_HEIGHT / 2);
+		renderer.resource().mesh_unload(quad);
+		renderer.resource().texture_unload(texture);
+		return static_cast<int>(pixel[0]);
+	};
+	int default_blue = right_blue_by(0.5f);
+	int shifted_blue = right_blue_by(0.9f);
+	RecordProperty("dual_split_default_blue", default_blue);
+	RecordProperty("dual_split_shifted_blue", shifted_blue);
+	//默认分轨：右半走 ACES，保持纯色
+	EXPECT_LE(default_blue, 30) << "默认分轨右半未走 ACES：" << default_blue;
+	//分轨移到 0.9：右半落入 AgX 区域，非红通道被抬起
+	EXPECT_GE(shifted_blue, 50) << "分轨 0.9 未使右半走 AgX：" << shifted_blue;
+	EXPECT_GT(shifted_blue, default_blue) << "分轨位置未生效";
+}
+
+

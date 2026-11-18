@@ -1854,6 +1854,75 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光参数在尺寸重建后保持)
 }
 
 /*
+HDR 半分辨率泛光随尺寸重建（方向九第 772 轮）
+口径：765 的半分辨率开关与 764 的尺寸重建组合 —— 改尺寸后提取 / 模糊两个 1/2 边长目标同样按新尺寸重建，
+叠加级保持全尺寸。断言：两尺寸下链路级数 4、边界外侧亮度与半分辨率特征一致（两点同值且 ≥150 / ≥120）。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光随尺寸重建)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	config.hdr_targets = true;
+	config.hdr_auto_bloom = true;
+	config.hdr_bloom_half_res = true;
+	ASSERT_TRUE(renderer.init(config));
+	renderer.resource().texture_bind_set(0);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	//边界外侧两点（首个 < 220 的像素与其后一个）
+	auto halo_pair = [](const std::vector<uint8_t>& image, uint32_t width, uint32_t height,
+		int& inner_out, int& outer_out)
+	{
+		for (uint32_t x = width / 2; x < width; ++x)
+		{
+			if (pixel_get(image, x, height / 2, width)[0] < 220)
+			{
+				inner_out = static_cast<int>(pixel_get(image, x, height / 2, width)[0]);
+				outer_out = x + 1 < width
+					? static_cast<int>(pixel_get(image, x + 1, height / 2, width)[0]) : inner_out;
+				return;
+			}
+		}
+		inner_out = -1;
+		outer_out = -1;
+	};
+	//默认尺寸
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> before(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(before.data(), static_cast<uint32_t>(before.size())));
+	int before_inner = 0;
+	int before_outer = 0;
+	halo_pair(before, WINDOW_WIDTH, WINDOW_HEIGHT, before_inner, before_outer);
+	uint32_t before_stages = renderer.frame_stats_get().post_stages;
+	//改尺寸
+	ASSERT_TRUE(renderer.device().window_size_set(96, 54));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> after(pixel_bytes(96, 54));
+	uint32_t read_width = 0;
+	uint32_t read_height = 0;
+	ASSERT_TRUE(renderer.frame_render(after.data(), static_cast<uint32_t>(after.size()), &read_width, &read_height));
+	int after_inner = 0;
+	int after_outer = 0;
+	halo_pair(after, 96, 54, after_inner, after_outer);
+	uint32_t after_stages = renderer.frame_stats_get().post_stages;
+	RecordProperty("half_resize_before_halo", before_inner * 1000 + before_outer);
+	RecordProperty("half_resize_after_halo", after_inner * 1000 + after_outer);
+	RecordProperty("half_resize_before_stages", static_cast<int>(before_stages));
+	RecordProperty("half_resize_after_stages", static_cast<int>(after_stages));
+	//两尺寸均走四级链
+	EXPECT_EQ(before_stages, 4u);
+	EXPECT_EQ(after_stages, 4u) << "改尺寸后半分辨率未走四级链";
+	//两尺寸下都有泛光（半分辨率特征：两点接近）
+	EXPECT_GE(before_inner, 150) << "默认尺寸半分辨率无泛光：" << before_inner;
+	EXPECT_GE(before_outer, 120) << "默认尺寸半分辨率扩散不足：" << before_outer;
+	EXPECT_GE(after_inner, 150) << "改尺寸后半分辨率无泛光：" << after_inner;
+	EXPECT_GE(after_outer, 120) << "改尺寸后半分辨率扩散不足：" << after_outer;
+	renderer.resource().mesh_unload(handle);
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

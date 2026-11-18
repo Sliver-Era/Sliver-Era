@@ -1354,6 +1354,98 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光参数化)
 }
 
 /*
+HDR 默认路径 · 自动泛光随尺寸重建（方向九第 764 轮）
+口径：窗口尺寸变化后，HDR 场景目标与三个泛光中间目标都须按新尺寸重建，
+且泛光在重建帧与后续帧都仍生效（亮度沿边缘向外扩散两个像素）。
+判读方式：以「核心亮区边界」（首个亮度 < 240 的像素）为基准测其后两个像素；
+无泛光时边界外立刻落入清屏色（≈99），有泛光时依次约为 213 / 167。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR自动泛光随尺寸重建)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	config.hdr_targets = true;
+	config.hdr_auto_bloom = true;
+	ASSERT_TRUE(renderer.init(config));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	renderer.resource().texture_bind_set(0);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	//核心亮区边界：自中心沿 +X 找到首个亮度 < 240 的像素（列宽可不同）
+	auto core_edge_x = [](const std::vector<uint8_t>& image, uint32_t width, uint32_t height) -> uint32_t
+	{
+		for (uint32_t x = width / 2; x < width; ++x)
+		{
+			if (pixel_get(image, x, height / 2, width)[0] < 240)
+				return x;
+		}
+		return width;
+	};
+	//第一帧（夹具默认尺寸）
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> first(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(first.data(), static_cast<uint32_t>(first.size())));
+	//同尺寸第二帧：验证自动链在多帧下的还原 / 重填
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> second(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(second.data(), static_cast<uint32_t>(second.size())));
+	uint32_t base_edge = core_edge_x(second, WINDOW_WIDTH, WINDOW_HEIGHT);
+	ASSERT_LT(base_edge + 1, WINDOW_WIDTH) << "默认尺寸下未找到核心亮区边界";
+	int base_halo_inner = static_cast<int>(pixel_get(second, base_edge, WINDOW_HEIGHT / 2)[0]);
+	int base_halo_outer = static_cast<int>(pixel_get(second, base_edge + 1, WINDOW_HEIGHT / 2)[0]);
+	RecordProperty("bloom_resize_base_edge", static_cast<int>(base_edge));
+	RecordProperty("bloom_resize_base_halo_inner", base_halo_inner);
+	RecordProperty("bloom_resize_base_halo_outer", base_halo_outer);
+	EXPECT_GE(base_halo_inner, 150) << "同尺寸第二帧边界外侧无泛光：" << base_halo_inner;
+	EXPECT_GE(base_halo_outer, 120) << "同尺寸第二帧泛光扩散不足：" << base_halo_outer;
+	//改尺寸：下一帧按新尺寸重建交换链与全部 HDR 目标
+	ASSERT_TRUE(renderer.device().window_size_set(96, 54));
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	const uint32_t new_width = 96;
+	const uint32_t new_height = 54;
+	std::vector<uint8_t> resized(pixel_bytes(new_width, new_height));
+	uint32_t read_width = 0;
+	uint32_t read_height = 0;
+	ASSERT_TRUE(renderer.frame_render(resized.data(), static_cast<uint32_t>(resized.size()), &read_width, &read_height));
+	EXPECT_EQ(read_width, new_width);
+	EXPECT_EQ(read_height, new_height);
+	//重建帧：交换链与全部 HDR 目标按新尺寸重建并仍走后处理链（4 级：提取 / 模糊 / 叠加 / 色调映射）
+	EXPECT_EQ(renderer.device().extent_width(), new_width);
+	EXPECT_EQ(renderer.device().extent_height(), new_height);
+	EXPECT_EQ(renderer.frame_stats_get().post_stages, 4u) << "尺寸变化后未走四级自动泛光链";
+	uint32_t edge_x = core_edge_x(resized, new_width, new_height);
+	ASSERT_LT(edge_x + 1, new_width) << "新尺寸下未找到核心亮区边界";
+	int halo_inner = static_cast<int>(pixel_get(resized, edge_x, new_height / 2, new_width)[0]);
+	int halo_outer = static_cast<int>(pixel_get(resized, edge_x + 1, new_height / 2, new_width)[0]);
+	RecordProperty("bloom_resize_edge_x", static_cast<int>(edge_x));
+	RecordProperty("bloom_resize_halo_inner", halo_inner);
+	RecordProperty("bloom_resize_halo_outer", halo_outer);
+	EXPECT_GE(halo_inner, 150) << "尺寸变化后边界外侧无泛光：" << halo_inner;
+	EXPECT_GE(halo_outer, 120) << "尺寸变化后泛光扩散不足：" << halo_outer;
+	//新尺寸第二帧：泛光链在重建后持续生效（排除过渡帧偶然）
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> resized_second(pixel_bytes(new_width, new_height));
+	uint32_t second_width = 0;
+	uint32_t second_height = 0;
+	ASSERT_TRUE(renderer.frame_render(resized_second.data(), static_cast<uint32_t>(resized_second.size()),
+		&second_width, &second_height));
+	uint32_t second_edge = core_edge_x(resized_second, new_width, new_height);
+	ASSERT_LT(second_edge + 1, new_width) << "新尺寸第二帧未找到核心亮区边界";
+	int second_halo_inner = static_cast<int>(pixel_get(resized_second, second_edge, new_height / 2, new_width)[0]);
+	int second_halo_outer = static_cast<int>(pixel_get(resized_second, second_edge + 1, new_height / 2, new_width)[0]);
+	RecordProperty("bloom_resize_second_edge", static_cast<int>(second_edge));
+	RecordProperty("bloom_resize_second_halo_inner", second_halo_inner);
+	RecordProperty("bloom_resize_second_halo_outer", second_halo_outer);
+	EXPECT_EQ(renderer.frame_stats_get().post_stages, 4u) << "新尺寸第二帧未走四级自动泛光链";
+	EXPECT_GE(second_halo_inner, 150) << "新尺寸第二帧边界外侧无泛光：" << second_halo_inner;
+	EXPECT_GE(second_halo_outer, 120) << "新尺寸第二帧泛光扩散不足：" << second_halo_outer;
+	renderer.resource().mesh_unload(handle);
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

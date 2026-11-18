@@ -1923,6 +1923,35 @@ TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光随尺寸重建)
 }
 
 /*
+HDR 算子查询与越界回落（方向九第 776 轮）
+口径：device().hdr_tone_operator() 返回生效值；配置越界（6）回落 0；算子 5 原样返回。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR算子查询与越界回落)
+{
+	//按配置算子建渲染器并回读生效值
+	auto operator_by = [](uint32_t configured) -> uint32_t
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_tone_operator = configured;
+		EXPECT_TRUE(renderer.init(config));
+		return renderer.device().hdr_tone_operator();
+	};
+	uint32_t dual = operator_by(5);
+	uint32_t overflow = operator_by(6);
+	uint32_t ac_s = operator_by(0);
+	RecordProperty("tone_query_dual", static_cast<int>(dual));
+	RecordProperty("tone_query_overflow", static_cast<int>(overflow));
+	//算子 5 原样返回
+	EXPECT_EQ(dual, 5u) << "双轨算子未如实回读";
+	//越界回落 ACES
+	EXPECT_EQ(overflow, 0u) << "越界算子未回落 0";
+	EXPECT_EQ(ac_s, 0u);
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

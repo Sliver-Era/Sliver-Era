@@ -1595,6 +1595,78 @@ TEST_F(Renderer_Post_Chain_Test, HDR默认路径MSAA组合)
 }
 
 /*
+HDR 组合矩阵（方向九第 767 轮）
+口径：把「自动泛光 × 半分辨率 × MSAA」六种组合各出一帧，验证
+1) 链路级数符合该配置（泛光 → 4 级、否则单级）；
+2) 主体（四边形中心）亮度在全部组合间一致（±6）：泛光只动边缘、MSAA 只动轮廓、半分辨率只改中间层分辨率；
+3) 全部组合都能正常出帧。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR泛光组合矩阵)
+{
+	struct Combo
+	{
+		uint32_t samples;
+		bool bloom;
+		bool half_res;
+	};
+	const Combo combos[] = {
+		{ 1, false, false }, { 4, false, false },
+		{ 1, true, false }, { 4, true, false },
+		{ 1, true, true }, { 4, true, true },
+	};
+	//能力探测（不支持 4x 时只跑单采样组合）
+	uint32_t max_samples = 1;
+	{
+		engine::Renderer probe;
+		ASSERT_TRUE(probe.init(hidden_config()));
+		max_samples = probe.device().msaa_max_samples();
+	}
+	int reference_center = -1;
+	for (const Combo& combo : combos)
+	{
+		//跳过本机不支持的采样数
+		if (combo.samples > max_samples)
+			continue;
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_auto_bloom = combo.bloom;
+		config.hdr_bloom_half_res = combo.half_res;
+		config.msaa_samples = combo.samples;
+		ASSERT_TRUE(renderer.init(config)) << "组合初始化失败（采样 " << combo.samples << "）";
+		renderer.resource().texture_bind_set(0);
+		ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())))
+			<< "组合出帧失败（采样 " << combo.samples << "）";
+		engine::Frame_Stats stats = renderer.frame_stats_get();
+		int center = static_cast<int>(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+		RecordProperty("matrix_" + std::to_string(combo.samples) + "_" + (combo.bloom ? "bloom" : "plain")
+			+ (combo.half_res ? "_half" : "") + "_center", center);
+		RecordProperty("matrix_" + std::to_string(combo.samples) + "_" + (combo.bloom ? "bloom" : "plain")
+			+ (combo.half_res ? "_half" : "") + "_stages", static_cast<int>(stats.post_stages));
+		//链路级数：泛光 4 级、否则单级
+		EXPECT_EQ(stats.post_stages, combo.bloom ? 4u : 1u)
+			<< "组合级数不符（采样 " << combo.samples << "，泛光 " << combo.bloom << "）";
+		//采样数由目标如实上报
+		EXPECT_EQ(stats.msaa_samples, combo.samples)
+			<< "组合采样数未生效（期望 " << combo.samples << "）";
+		//主体亮度基线
+		if (reference_center < 0)
+			reference_center = center;
+		else
+			EXPECT_LE(std::abs(center - reference_center), 6) << "组合改变了主体亮度："
+				<< center << " vs " << reference_center;
+		renderer.resource().mesh_unload(handle);
+	}
+	ASSERT_GE(reference_center, 0);
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

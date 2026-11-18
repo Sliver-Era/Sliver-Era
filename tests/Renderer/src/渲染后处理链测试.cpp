@@ -1701,3 +1701,51 @@ TEST_F(Renderer_Post_Chain_Test, 后处理链上UI不被处理)
 	renderer.resource().pipeline_unload(gray);
 	renderer.resource().render_target_destroy(scene_target);
 }
+
+/*
+HDR 默认路径 · UI 显示域混合（方向九第 758 轮）
+口径：hdr_targets 开启时场景经 16F ＋ 色调映射后才呈现到交换链；UI 必须在末级之后绘制，
+故 UI 清屏色不应被色调映射改变 —— 开启与关闭两帧的 UI 像素应逐通道一致。
+若 UI 被画进 16F 目标（经 ACES 压缩），三通道会出现明显偏移。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR默认路径UI不被色调映射)
+{
+	//UI 固定色（线性 RGBA）
+	Ui_Clear_Data ui_data{ { 0.55f, 0.30f, 0.12f, 1.0f } };
+	//按配置出一帧「UI 铺满整帧」，取中心像素
+	auto frame_ui = [&](bool hdr, std::array<uint8_t, 4>& out)
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = hdr;
+		ASSERT_TRUE(renderer.init(config));
+		if (!renderer.compute().readback_supported())
+			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+		renderer.resource().texture_bind_set(0);
+		engine::Mesh_Handle handle = 0;
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		engine::Ui_Channel_Context* channel = renderer.ui().ui_channel();
+		ASSERT_NE(channel, nullptr);
+		channel->draw_callback_set(ui_clear_frame, &ui_data);
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		out = pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+		channel->draw_callback_clear();
+		renderer.resource().mesh_unload(handle);
+	};
+	std::array<uint8_t, 4> ldr_ui{};
+	std::array<uint8_t, 4> hdr_ui{};
+	frame_ui(false, ldr_ui);
+	frame_ui(true, hdr_ui);
+	RecordProperty("hdr_ui_ldr", pixel_text(ldr_ui));
+	RecordProperty("hdr_ui_16f", pixel_text(hdr_ui));
+	//UI 在末级之后绘制：两帧 UI 像素应一致（±2 取整）
+	for (std::size_t index = 0; index < 3; ++index)
+	{
+		int difference = std::abs(static_cast<int>(ldr_ui[index]) - static_cast<int>(hdr_ui[index]));
+		EXPECT_LE(difference, 2) << "HDR 路径下 UI 被色调映射改变（通道 " << index << " 差 " << difference
+			<< "）：关闭 " << pixel_text(ldr_ui) << " / 开启 " << pixel_text(hdr_ui);
+	}
+}

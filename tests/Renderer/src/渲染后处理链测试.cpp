@@ -1790,6 +1790,70 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光关闭无残留)
 }
 
 /*
+HDR 泛光参数在尺寸重建后保持（方向九第 771 轮）
+口径：764 验证了「尺寸变化后泛光仍生效」，本轮补「参数不被重建冲掉」：
+两种阈值（默认 0.6 生效 / 5.0 关闭）各跑「出帧 → 改尺寸 → 再出帧」，
+断言两尺寸下的边界外侧亮度都与该阈值对应的预期一致（0.6 → ≥150；5.0 → ≤120）。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR泛光参数在尺寸重建后保持)
+{
+	//按阈值出一轮「改尺寸前后」两帧，返回两次边界外侧亮度
+	auto probe_by = [](float threshold, int& before_out, int& after_out) -> bool
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_auto_bloom = true;
+		config.hdr_bloom_threshold = threshold;
+		if (!renderer.init(config))
+			return false;
+		renderer.resource().texture_bind_set(0);
+		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		//边界外侧亮度：首个 < 220 的像素（主体 232），取其值
+		auto halo_of = [](const std::vector<uint8_t>& image, uint32_t width, uint32_t height) -> int
+		{
+			for (uint32_t x = width / 2; x < width; ++x)
+				if (pixel_get(image, x, height / 2, width)[0] < 220)
+					return static_cast<int>(pixel_get(image, x, height / 2, width)[0]);
+			return -1;
+		};
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> before(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(before.data(), static_cast<uint32_t>(before.size())));
+		before_out = halo_of(before, WINDOW_WIDTH, WINDOW_HEIGHT);
+		//改尺寸后第二帧
+		EXPECT_TRUE(renderer.device().window_size_set(96, 54));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> after(pixel_bytes(96, 54));
+		EXPECT_TRUE(renderer.frame_render(after.data(), static_cast<uint32_t>(after.size())));
+		after_out = halo_of(after, 96, 54);
+		renderer.resource().mesh_unload(handle);
+		return true;
+	};
+	int default_before = 0;
+	int default_after = 0;
+	int high_before = 0;
+	int high_after = 0;
+	ASSERT_TRUE(probe_by(0.6f, default_before, default_after));
+	ASSERT_TRUE(probe_by(5.0f, high_before, high_after));
+	RecordProperty("param_resize_default_before", default_before);
+	RecordProperty("param_resize_default_after", default_after);
+	RecordProperty("param_resize_high_before", high_before);
+	RecordProperty("param_resize_high_after", high_after);
+	//默认阈值：两尺寸下都有泛光
+	EXPECT_GE(default_before, 150) << "默认阈值在默认尺寸下未生效：" << default_before;
+	EXPECT_GE(default_after, 150) << "默认阈值在改尺寸后丢失：" << default_after;
+	//高阈值：两尺寸下都无泛光（边界即清屏色）
+	ASSERT_GE(high_before, 0);
+	ASSERT_GE(high_after, 0);
+	EXPECT_LE(high_before, 120) << "高阈值在默认尺寸下未关闭泛光：" << high_before;
+	EXPECT_LE(high_after, 120) << "高阈值在改尺寸后失效：" << high_after;
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

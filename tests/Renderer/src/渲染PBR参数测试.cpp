@@ -685,3 +685,82 @@ TEST_F(Renderer_Scene_Test, HDR双轨同帧色彩保真)
 	EXPECT_LT(agx_span, aces_span - 30) << "AgX 未对卡通纯色去饱和：ACES " << aces_span
 		<< " / AgX " << agx_span;
 }
+
+/*
+HDR 双轨区域色调映射（方向九第 773 轮）
+口径：hdr_tone_operator = 5 时，左半屏走 AgX（写实侧）、右半屏走逐通道 ACES（二次元侧），
+中间 0.1 宽度过渡。两枚纯红四边形分别落在左右半屏，断言：
+1) 左半红块的非红通道被 AgX 抬起；2) 右半红块保持纯色；3) 算子 0（ACES）两侧都保持纯色（对照）。
+读取通道：交换链为 BGRA，index 0 = 蓝、index 2 = 红。
+*/
+TEST_F(Renderer_Scene_Test, HDR双轨区域色调映射)
+{
+	//纯红纹理（RGBA8，2×2；index 0 = R）
+	std::vector<uint8_t> red_texels(2 * 2 * 4, 0);
+	for (std::size_t index = 0; index < red_texels.size(); index += 4)
+	{
+		red_texels[index + 0] = 255;
+		red_texels[index + 3] = 255;
+	}
+	//按算子出一帧，返回左右半屏的（红, 蓝）读数
+	auto halves_by = [&](uint32_t tone_operator, int& left_red, int& left_blue,
+		int& right_red, int& right_blue)
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_tone_operator = tone_operator;
+		EXPECT_TRUE(renderer.init(config));
+		uint64_t texture = 0;
+		EXPECT_TRUE(renderer.resource().texture_load(texture, red_texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
+		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		const float direction[3] = { 0.0f, 0.0f, -1.0f };
+		const float color[3] = { 1.0f, 1.0f, 1.0f };
+		renderer.scene().light_set(direction, color, 1.0f, 0.0f);
+		engine::Mesh_Handle quad = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+		//左 / 右各一枚四边形（与 762 同几何）
+		std::array<float, 16> left_matrix = quad_offset_matrix(-1.1f);
+		std::array<float, 16> right_matrix = quad_offset_matrix(1.1f);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, left_matrix.data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, right_matrix.data()));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		std::array<uint8_t, 4> left_pixel = pixel_get(pixels, WINDOW_WIDTH / 4, WINDOW_HEIGHT / 2);
+		std::array<uint8_t, 4> right_pixel = pixel_get(pixels, WINDOW_WIDTH * 3 / 4, WINDOW_HEIGHT / 2);
+		left_red = static_cast<int>(left_pixel[2]);
+		left_blue = static_cast<int>(left_pixel[0]);
+		right_red = static_cast<int>(right_pixel[2]);
+		right_blue = static_cast<int>(right_pixel[0]);
+		renderer.resource().mesh_unload(quad);
+		renderer.resource().texture_unload(texture);
+	};
+	int aces_left_red = 0;
+	int aces_left_blue = 0;
+	int aces_right_red = 0;
+	int aces_right_blue = 0;
+	int dual_left_red = 0;
+	int dual_left_blue = 0;
+	int dual_right_red = 0;
+	int dual_right_blue = 0;
+	halves_by(0, aces_left_red, aces_left_blue, aces_right_red, aces_right_blue);
+	halves_by(5, dual_left_red, dual_left_blue, dual_right_red, dual_right_blue);
+	RecordProperty("dual_region_aces_left_blue", aces_left_blue);
+	RecordProperty("dual_region_aces_right_blue", aces_right_blue);
+	RecordProperty("dual_region_dual_left_blue", dual_left_blue);
+	RecordProperty("dual_region_dual_right_blue", dual_right_blue);
+	RecordProperty("dual_region_dual_left_red", dual_left_red);
+	RecordProperty("dual_region_dual_right_red", dual_right_red);
+	//对照：算子 0 两侧都保持纯红（非红通道低）
+	EXPECT_LE(aces_left_blue, 30) << "ACES 左半非红通道异常：" << aces_left_blue;
+	EXPECT_LE(aces_right_blue, 30) << "ACES 右半非红通道异常：" << aces_right_blue;
+	//双轨：左半 AgX 抬起非红通道，右半 ACES 保持纯色
+	EXPECT_GE(dual_left_red, 150) << "双轨左半亮度异常：" << dual_left_red;
+	EXPECT_GE(dual_right_red, 150) << "双轨右半亮度异常：" << dual_right_red;
+	EXPECT_GE(dual_left_blue, 50) << "双轨左半未走 AgX（非红通道未抬起）：" << dual_left_blue;
+	EXPECT_LE(dual_right_blue, 30) << "双轨右半未走逐通道 ACES：" << dual_right_blue;
+	EXPECT_LT(dual_right_blue, dual_left_blue) << "双轨两侧曲线未区分";
+}
+

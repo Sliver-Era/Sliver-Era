@@ -1667,6 +1667,59 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光组合矩阵)
 }
 
 /*
+HDR 泛光不损失高光 · 算子矩阵（方向九第 768 轮）
+口径：泛光合成去掉上钳后（767），开泛光不应让主体变暗 —— 对每个色调算子各出一对帧（关 / 开泛光），
+断言「开泛光中心 ≥ 关泛光中心 − 2」，并核对链路级数（1 / 4）。
+覆盖算子：0 ACES、1 胶片、2 指数、3 扩展 Reinhard、4 AgX。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR泛光不损失高光算子矩阵)
+{
+	//按（算子, 是否泛光）出一帧，返回中心亮度与链路级数
+	auto frame_by = [](uint32_t tone_operator, bool bloom, int& center_out, uint32_t& stages_out) -> bool
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_tone_operator = tone_operator;
+		config.hdr_auto_bloom = bloom;
+		if (!renderer.init(config))
+			return false;
+		renderer.resource().texture_bind_set(0);
+		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		if (!renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())))
+			return false;
+		center_out = static_cast<int>(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+		stages_out = renderer.frame_stats_get().post_stages;
+		renderer.resource().mesh_unload(handle);
+		return true;
+	};
+	for (uint32_t tone_operator = 0; tone_operator <= 4; ++tone_operator)
+	{
+		int plain_center = 0;
+		int bloom_center = 0;
+		uint32_t plain_stages = 0;
+		uint32_t bloom_stages = 0;
+		ASSERT_TRUE(frame_by(tone_operator, false, plain_center, plain_stages))
+			<< "算子 " << tone_operator << " 关泛光出帧失败";
+		ASSERT_TRUE(frame_by(tone_operator, true, bloom_center, bloom_stages))
+			<< "算子 " << tone_operator << " 开泛光出帧失败";
+		RecordProperty("highlight_op" + std::to_string(tone_operator) + "_plain", plain_center);
+		RecordProperty("highlight_op" + std::to_string(tone_operator) + "_bloom", bloom_center);
+		//链路级数
+		EXPECT_EQ(plain_stages, 1u) << "算子 " << tone_operator << " 关泛光未走单级路径";
+		EXPECT_EQ(bloom_stages, 4u) << "算子 " << tone_operator << " 开泛光未走四级链";
+		//开泛光不得压低主体高光
+		EXPECT_GE(bloom_center, plain_center - 2) << "算子 " << tone_operator
+			<< " 开泛光后主体变暗：" << bloom_center << " vs " << plain_center;
+	}
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

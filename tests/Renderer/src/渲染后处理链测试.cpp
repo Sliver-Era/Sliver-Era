@@ -1357,8 +1357,8 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光参数化)
 HDR 默认路径 · 自动泛光随尺寸重建（方向九第 764 轮）
 口径：窗口尺寸变化后，HDR 场景目标与三个泛光中间目标都须按新尺寸重建，
 且泛光在重建帧与后续帧都仍生效（亮度沿边缘向外扩散两个像素）。
-判读方式：以「核心亮区边界」（首个亮度 < 240 的像素）为基准测其后两个像素；
-无泛光时边界外立刻落入清屏色（≈99），有泛光时依次约为 213 / 167。
+判读方式：主体亮度约 232，故以「首个亮度 < 220 的像素」定位亮区边界（即首个光晕像素），
+再测其后一个像素；无泛光时边界处直接落入清屏色（≈99），有泛光时依次约为 213 / 167。
 */
 TEST_F(Renderer_Post_Chain_Test, HDR自动泛光随尺寸重建)
 {
@@ -1374,12 +1374,12 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光随尺寸重建)
 	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
-	//核心亮区边界：自中心沿 +X 找到首个亮度 < 240 的像素（列宽可不同）
+	//核心亮区边界：自中心沿 +X 找到首个亮度 < 220 的像素（列宽可不同；主体约 232）
 	auto core_edge_x = [](const std::vector<uint8_t>& image, uint32_t width, uint32_t height) -> uint32_t
 	{
 		for (uint32_t x = width / 2; x < width; ++x)
 		{
-			if (pixel_get(image, x, height / 2, width)[0] < 240)
+			if (pixel_get(image, x, height / 2, width)[0] < 220)
 				return x;
 		}
 		return width;
@@ -1443,6 +1443,90 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光随尺寸重建)
 	EXPECT_GE(second_halo_inner, 150) << "新尺寸第二帧边界外侧无泛光：" << second_halo_inner;
 	EXPECT_GE(second_halo_outer, 120) << "新尺寸第二帧泛光扩散不足：" << second_halo_outer;
 	renderer.resource().mesh_unload(handle);
+}
+
+/*
+HDR 默认路径 · 半分辨率自动泛光（方向九第 765 轮）
+口径：hdr_bloom_half_res 开启后「亮部提取 / 模糊」两个中间目标取 1/2 边长，「泛光叠加」仍按场景尺寸输出。
+断言：1) 半分辨率下仍走四级链且边界外有泛光；2) 画面与全分辨率不同（证明开关生效）；
+      3) 中心亮度与全分辨率接近（泛光只影响边缘扩散，不改写主体亮度）。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光)
+{
+	//按半分辨率开关出一帧，返回像素与链级数
+	auto frame_by = [](bool half_res, std::vector<uint8_t>& pixels) -> int
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_auto_bloom = true;
+		config.hdr_bloom_half_res = half_res;
+		EXPECT_TRUE(renderer.init(config));
+		renderer.resource().texture_bind_set(0);
+		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		pixels.assign(pixel_bytes(), 0);
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		int stages = static_cast<int>(renderer.frame_stats_get().post_stages);
+		renderer.resource().mesh_unload(handle);
+		return stages;
+	};
+	std::vector<uint8_t> full;
+	std::vector<uint8_t> half;
+	int full_stages = frame_by(false, full);
+	int half_stages = frame_by(true, half);
+	EXPECT_EQ(full_stages, 4);
+	EXPECT_EQ(half_stages, 4) << "半分辨率下未走四级自动泛光链";
+	//核心亮区边界（首个 < 220 的像素，主体约 232）与其后一个像素
+	auto halo_by = [](const std::vector<uint8_t>& image, uint32_t& edge_out, int& inner_out, int& outer_out)
+	{
+		edge_out = WINDOW_WIDTH;
+		for (uint32_t x = WINDOW_WIDTH / 2; x < WINDOW_WIDTH; ++x)
+		{
+			if (pixel_get(image, x, WINDOW_HEIGHT / 2)[0] < 220)
+			{
+				edge_out = x;
+				break;
+			}
+		}
+		if (edge_out + 1 >= WINDOW_WIDTH)
+		{
+			inner_out = 0;
+			outer_out = 0;
+			return;
+		}
+		inner_out = static_cast<int>(pixel_get(image, edge_out, WINDOW_HEIGHT / 2)[0]);
+		outer_out = static_cast<int>(pixel_get(image, edge_out + 1, WINDOW_HEIGHT / 2)[0]);
+	};
+	uint32_t full_edge = 0;
+	uint32_t half_edge = 0;
+	int full_inner = 0;
+	int full_outer = 0;
+	int half_inner = 0;
+	int half_outer = 0;
+	halo_by(full, full_edge, full_inner, full_outer);
+	halo_by(half, half_edge, half_inner, half_outer);
+	int full_center = static_cast<int>(pixel_get(full, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	int half_center = static_cast<int>(pixel_get(half, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	RecordProperty("half_bloom_full_edge", static_cast<int>(full_edge));
+	RecordProperty("half_bloom_half_edge", static_cast<int>(half_edge));
+	RecordProperty("half_bloom_full_halo", full_inner * 1000 + full_outer);
+	RecordProperty("half_bloom_half_halo", half_inner * 1000 + half_outer);
+	RecordProperty("half_bloom_center_diff", std::abs(full_center - half_center));
+	RecordProperty("half_bloom_changed_pixels", static_cast<int>(byjy_render_test::changed_pixels(full, half, 3)));
+	ASSERT_LT(full_edge + 1, WINDOW_WIDTH) << "全分辨率下未找到核心亮区边界";
+	ASSERT_LT(half_edge + 1, WINDOW_WIDTH) << "半分辨率下未找到核心亮区边界";
+	//半分辨率下泛光仍生效
+	EXPECT_GE(half_inner, 150) << "半分辨率边界外侧无泛光：" << half_inner;
+	EXPECT_GE(half_outer, 120) << "半分辨率泛光扩散不足：" << half_outer;
+	//开关生效：两帧存在可观测差异
+	EXPECT_GT(byjy_render_test::changed_pixels(full, half, 3), 0u) << "半分辨率开关未改变画面";
+	//主体亮度不被改写（泛光只作用于边缘扩散）
+	EXPECT_LE(std::abs(full_center - half_center), 12) << "半分辨率改变了主体亮度："
+		<< full_center << " / " << half_center;
 }
 
 /*

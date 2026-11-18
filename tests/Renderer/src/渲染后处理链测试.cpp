@@ -1192,6 +1192,62 @@ TEST_F(Renderer_Post_Chain_Test, HDR默认路径色调算子)
 }
 
 /*
+HDR 默认路径 · AgX 彩色高光去饱和（方向九第 760 轮）
+口径：AgX 与逐通道算子的关键差别是彩色高光经输入矩阵去饱和。
+场景为纯红四边形 + 曝光 +2（线性 4.0 红）：ACES 逐通道仍保持纯红（G ≈ 0），
+AgX 的 G / B 会出现明显抬升（去饱和），同时 R 仍为亮部。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR默认路径AgX去饱和)
+{
+	//纯红纹理（RGBA8，16×16）
+	std::vector<uint8_t> red_pixels(16 * 16 * 4, 0);
+	for (std::size_t index = 0; index < red_pixels.size(); index += 4)
+	{
+		red_pixels[index] = 255;
+		red_pixels[index + 3] = 255;
+	}
+	//按算子出一帧，返回中心像素
+	auto center_by = [&](uint32_t tone_operator)
+	{
+		std::array<uint8_t, 4> center{};
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_tone_operator = tone_operator;
+		EXPECT_TRUE(renderer.init(config));
+		renderer.resource().texture_bind_set(0);
+		uint64_t red_texture = 0;
+		EXPECT_TRUE(renderer.resource().texture_load(red_texture, red_pixels.data(), 16, 16));
+		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		renderer.resource().texture_bind_set(red_texture);
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		center = pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(red_texture);
+		return center;
+	};
+	std::array<uint8_t, 4> aces = center_by(0);
+	std::array<uint8_t, 4> agx = center_by(4);
+	RecordProperty("agx_aces_center", pixel_text(aces));
+	RecordProperty("agx_agx_center", pixel_text(agx));
+	//交换链为 B8G8R8A8：红色落在 index 2，非红通道为 index 0 / 1
+	//ACES：纯红高光（非红通道近零）
+	EXPECT_GE(aces[2], 200) << "ACES 红色高光异常：" << pixel_text(aces);
+	EXPECT_LE(aces[0], 5) << "ACES 出现去饱和（通道 0 过高）：" << pixel_text(aces);
+	EXPECT_LE(aces[1], 5) << "ACES 出现去饱和（通道 1 过高）：" << pixel_text(aces);
+	//AgX：去饱和（非红通道明显抬升），红通道仍为亮部
+	EXPECT_GE(agx[0], 60) << "AgX 未对彩色高光去饱和（通道 0 过低）：" << pixel_text(agx);
+	EXPECT_GE(agx[1], 60) << "AgX 未对彩色高光去饱和（通道 1 过低）：" << pixel_text(agx);
+	EXPECT_GE(agx[2], 200) << "AgX 红色高光过暗：" << pixel_text(agx);
+	EXPECT_GT(agx[1], aces[1] + 30) << "AgX 与 ACES 的通道差异不足：" << agx[1] << " / " << aces[1];
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

@@ -720,6 +720,103 @@ TEST_F(Renderer_Post_Chain_Test, HDR简化算子保留高光)
 }
 
 /*
+HDR 泛光提取保留高光（方向九第 753 轮）
+口径：亮部提取只做 source × 软膝权重，本身不钳制；但输出若落在 8 位中间目标，>1 会被写入处截断。
+本用例同一条「亮部提取 → 色调映射」链，仅中间目标格式不同：
+16F 中间目标可读到 >1 的提取强度，8 位中间目标恒 ≤1。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR泛光提取保留高光)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	ASSERT_TRUE(renderer.init(config));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	renderer.resource().texture_bind_set(0);
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	//曝光 +2（×4）：白四边形输出 4.0
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	const uint32_t width = renderer.device().extent_width();
+	const uint32_t height = renderer.device().extent_height();
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t ldr_format = static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	//场景目标：16F 与 8 位各一
+	uint64_t scene_hdr = 0;
+	uint64_t scene_ldr = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_hdr, width, height, hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().render_target_create(scene_ldr, width, height));
+	//场景管线变体（16F / 8 位）
+	uint64_t scene_hdr_pipeline = 0;
+	uint64_t scene_ldr_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_hdr_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_ldr_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, ldr_format));
+	//中间目标与亮部提取管线变体
+	uint64_t mid_hdr = 0;
+	uint64_t mid_ldr = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(mid_hdr, width, height, hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().render_target_create_format(mid_ldr, width, height, ldr_format, depth_format, 1));
+	uint64_t extract_hdr = 0;
+	uint64_t extract_ldr = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(extract_hdr, "后处理.vert.spv", "亮部提取.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, hdr_format));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(extract_ldr, "后处理.vert.spv", "亮部提取.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, ldr_format));
+	//末级：色调映射（写交换链）
+	uint64_t tone = post_pipeline_register(renderer, "色调映射.frag.spv");
+	ASSERT_NE(tone, 0u);
+	//按「亮部提取 ＋ 中间目标 ＋ 色调映射」出一帧
+	std::vector<uint8_t> pixels(pixel_bytes());
+	auto frame_by = [&](uint64_t scene_target, uint64_t scene_pipeline, uint64_t extract_stage, uint64_t intermediate)
+	{
+		renderer.device().render_target_present_set(scene_target);
+		renderer.resource().pipeline_bind_set(scene_pipeline);
+		uint64_t stages[2] = { extract_stage, tone };
+		EXPECT_TRUE(renderer.device().post_chain_set(stages, 2));
+		uint64_t chain_targets[2] = { scene_target, intermediate };
+		EXPECT_TRUE(renderer.device().render_target_present_chain_set(chain_targets, 2));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	};
+	//浮点读回中间目标中心像素
+	auto mid_center = [&](uint64_t intermediate)
+	{
+		std::vector<float> values(static_cast<std::size_t>(width) * height * 4);
+		uint32_t read_width = 0;
+		uint32_t read_height = 0;
+		EXPECT_TRUE(renderer.resource().render_target_readback_float(intermediate, values.data(),
+			static_cast<uint32_t>(values.size()), &read_width, &read_height));
+		const std::size_t center = (static_cast<std::size_t>(read_height / 2) * read_width + read_width / 2) * 4;
+		return values[center];
+	};
+	frame_by(scene_hdr, scene_hdr_pipeline, extract_hdr, mid_hdr);
+	float hdr_center = mid_center(mid_hdr);
+	frame_by(scene_ldr, scene_ldr_pipeline, extract_ldr, mid_ldr);
+	float ldr_center = mid_center(mid_ldr);
+	EXPECT_GT(hdr_center, 1.5f) << "16F 中间目标未保留泛光提取强度（实测 " << hdr_center << "）";
+	EXPECT_NEAR(hdr_center, 4.0f, 0.6f) << "泛光提取权重口径异常（应 ≈ source × 1.0）";
+	EXPECT_LE(ldr_center, 1.0f) << "8 位中间目标出现 >1（实测 " << ldr_center << "）";
+	EXPECT_GE(ldr_center, 0.9f) << "8 位中间目标基线异常（实测 " << ldr_center << "）";
+	RecordProperty("bloom_hdr_center", hdr_center);
+	RecordProperty("bloom_ldr_center", ldr_center);
+	renderer.resource().pipeline_bind_set(0);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(extract_ldr);
+	renderer.resource().pipeline_unload(extract_hdr);
+	renderer.resource().pipeline_unload(tone);
+	renderer.resource().pipeline_unload(scene_ldr_pipeline);
+	renderer.resource().pipeline_unload(scene_hdr_pipeline);
+	renderer.resource().render_target_destroy(mid_ldr);
+	renderer.resource().render_target_destroy(mid_hdr);
+	renderer.resource().render_target_destroy(scene_ldr);
+	renderer.resource().render_target_destroy(scene_hdr);
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

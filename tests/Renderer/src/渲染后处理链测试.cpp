@@ -1530,6 +1530,71 @@ TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光)
 }
 
 /*
+HDR 默认路径 · MSAA 组合（方向九第 766 轮）
+口径：hdr_targets 开启时内部 16F 场景目标须跟随设备 MSAA 采样数建立多重采样附件，
+场景 pass 结束时解析到单采样颜色，色调映射级照常采样该单采样结果。
+断言：1) 帧统计报告的采样数为 4；2) 与单采样帧相比曲面边缘存在可观测差异（AA 生效）；
+      3) 两级链路仍成立（HDR 默认路径只有一级色调映射）。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR默认路径MSAA组合)
+{
+	//按采样数出一帧（球面轮廓提供曲面边缘）
+	auto frame_by = [](uint32_t samples, std::vector<uint8_t>& pixels, uint32_t& reported_samples,
+		uint32_t& reported_stages) -> bool
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.msaa_samples = samples;
+		if (!renderer.init(config))
+			return false;
+		renderer.resource().texture_bind_set(0);
+		EXPECT_TRUE(renderer.scene().exposure_set(1.0f));
+		const float direction[3] = { 0.0f, 0.0f, -1.0f };
+		const float color[3] = { 1.0f, 1.0f, 1.0f };
+		renderer.scene().light_set(direction, color, 1.0f, 0.3f);
+		engine::Mesh_Handle sphere = 0;
+		EXPECT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 32, 16));
+		EXPECT_TRUE(renderer.resource().mesh_draw(sphere, nullptr));
+		pixels.assign(pixel_bytes(), 0);
+		bool rendered = renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size()));
+		reported_samples = renderer.frame_stats_get().msaa_samples;
+		reported_stages = renderer.frame_stats_get().post_stages;
+		renderer.resource().mesh_unload(sphere);
+		return rendered;
+	};
+	//能力探测（不支持 4x 则跳过）
+	{
+		engine::Renderer probe;
+		ASSERT_TRUE(probe.init(hidden_config()));
+		if (probe.device().msaa_max_samples() < 4)
+			GTEST_SKIP() << "本机 MSAA 上限不足 4";
+	}
+	std::vector<uint8_t> single;
+	std::vector<uint8_t> multi;
+	uint32_t single_samples = 0;
+	uint32_t single_stages = 0;
+	uint32_t multi_samples = 0;
+	uint32_t multi_stages = 0;
+	ASSERT_TRUE(frame_by(1, single, single_samples, single_stages));
+	ASSERT_TRUE(frame_by(4, multi, multi_samples, multi_stages));
+	uint32_t changed = byjy_render_test::changed_pixels(single, multi, 2);
+	RecordProperty("hdr_msaa_single_samples", static_cast<int>(single_samples));
+	RecordProperty("hdr_msaa_multi_samples", static_cast<int>(multi_samples));
+	RecordProperty("hdr_msaa_stages", static_cast<int>(multi_stages));
+	RecordProperty("hdr_msaa_changed_pixels", static_cast<int>(changed));
+	//HDR 场景目标跟随设备采样数
+	EXPECT_EQ(single_samples, 1u);
+	EXPECT_EQ(multi_samples, 4u) << "HDR 场景目标未跟随 MSAA 采样数";
+	//HDR 默认路径为单级色调映射
+	EXPECT_EQ(single_stages, 1u);
+	EXPECT_EQ(multi_stages, 1u);
+	//曲面边缘应因 MSAA 产生差异（球体轮廓像素数远大于 0）
+	EXPECT_GT(changed, 0u) << "MSAA 未改变曲面边缘";
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

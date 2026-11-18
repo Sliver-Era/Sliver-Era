@@ -1301,6 +1301,59 @@ TEST_F(Renderer_Post_Chain_Test, HDR默认路径自动泛光)
 }
 
 /*
+HDR 默认路径 · 自动泛光参数化（方向九第 763 轮）
+口径：hdr_bloom_threshold / knee / radius / intensity 由配置下发到自动泛光链。
+阈值 5.0（高于 16F 高光 4.0）应使提取权重为 0、测点回到无泛光水平；
+强度传 0（非法）应回落 1.0，画面与默认参数一致。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR自动泛光参数化)
+{
+	//按（阈值, 强度）出一帧，返回中心与边界外测点
+	auto probes_by = [&](float threshold, float intensity, int& center_out, int& probe_out)
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_auto_bloom = true;
+		config.hdr_bloom_threshold = threshold;
+		config.hdr_bloom_intensity = intensity;
+		EXPECT_TRUE(renderer.init(config));
+		renderer.resource().texture_bind_set(0);
+		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		center_out = static_cast<int>(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+		//边界沿用第 761 轮实测位置（同一几何）
+		probe_out = static_cast<int>(pixel_get(pixels, 44, WINDOW_HEIGHT / 2)[0]);
+		renderer.resource().mesh_unload(handle);
+	};
+	int default_center = 0;
+	int default_probe = 0;
+	int high_center = 0;
+	int high_probe = 0;
+	int fallback_center = 0;
+	int fallback_probe = 0;
+	probes_by(0.6f, 1.0f, default_center, default_probe);
+	probes_by(5.0f, 1.0f, high_center, high_probe);
+	probes_by(0.6f, 0.0f, fallback_center, fallback_probe);
+	RecordProperty("bloom_param_default_probe", default_probe);
+	RecordProperty("bloom_param_high_threshold_probe", high_probe);
+	RecordProperty("bloom_param_fallback_probe", fallback_probe);
+	//默认参数：边界外应有泛光
+	EXPECT_GE(default_probe, 150) << "默认参数下自动泛光未生效：" << default_probe;
+	//阈值高于高光：泛光消失（回到无泛光水平）
+	EXPECT_LE(high_probe, default_probe - 50) << "阈值 5.0 未能关闭泛光：" << high_probe
+		<< " / " << default_probe;
+	//非法强度回落 1.0：与默认一致（±3）
+	EXPECT_LE(std::abs(fallback_probe - default_probe), 3) << "非法强度未回落默认："
+		<< fallback_probe << " / " << default_probe;
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

@@ -803,6 +803,21 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光提取保留高光)
 	EXPECT_GE(ldr_center, 0.9f) << "8 位中间目标基线异常（实测 " << ldr_center << "）";
 	RecordProperty("bloom_hdr_center", hdr_center);
 	RecordProperty("bloom_ldr_center", ldr_center);
+	/*
+	第二阶段：阈值抬到 1.5（高于 8 位可表示范围）
+	8 位场景最亮只有 1.0 < 阈值 − 软膝 → 提取权重为 0（泛光完全消失）；
+	16F 场景为 4.0 ≥ 阈值 ＋ 软膝 → 权重仍为 1，泛光保留。
+	这是「HDR 下可做真正的高光阈值」的直接证据。
+	*/
+	renderer.device().bloom_param_set(1.5f, 0.1f, 1.0f);
+	frame_by(scene_hdr, scene_hdr_pipeline, extract_hdr, mid_hdr);
+	float hdr_high = mid_center(mid_hdr);
+	frame_by(scene_ldr, scene_ldr_pipeline, extract_ldr, mid_ldr);
+	float ldr_high = mid_center(mid_ldr);
+	EXPECT_GT(hdr_high, 1.5f) << "阈值 1.5 时 16F 高光应仍被提取（实测 " << hdr_high << "）";
+	EXPECT_LT(ldr_high, 0.05f) << "阈值 1.5 时 8 位场景不应有可提取亮部（实测 " << ldr_high << "）";
+	RecordProperty("bloom_hdr_high_threshold", hdr_high);
+	RecordProperty("bloom_ldr_high_threshold", ldr_high);
 	renderer.resource().pipeline_bind_set(0);
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().pipeline_unload(extract_ldr);

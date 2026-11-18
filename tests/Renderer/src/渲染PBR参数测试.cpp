@@ -598,3 +598,90 @@ TEST_F(Renderer_Scene_Test, PBR写实与二次元双轨同帧)
 	renderer.resource().mesh_unload(sphere);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+HDR 默认路径下的双轨色彩（方向九第 762 轮）
+左侧写实、右侧二次元，纹理为纯蓝；比较 ACES 与 AgX 对卡通纯色的处理。
+AgX 的输入矩阵会把彩色高光去饱和（二次元纯色块变灰），ACES 逐通道则保持纯色。
+统计右半区域的最大通道差（饱和度粗量）作为判据。
+*/
+TEST_F(Renderer_Scene_Test, HDR双轨同帧色彩保真)
+{
+	//纯蓝纹理（RGBA8，2×2）
+	std::vector<uint8_t> blue_texels(2 * 2 * 4, 0);
+	for (std::size_t index = 0; index < blue_texels.size(); index += 4)
+	{
+		blue_texels[index + 2] = 255;
+		blue_texels[index + 3] = 255;
+	}
+	//按算子出一帧，返回右半区域的最大通道差
+	auto right_span_by = [&](uint32_t tone_operator)
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.hdr_targets = true;
+		config.hdr_tone_operator = tone_operator;
+		EXPECT_TRUE(renderer.init(config));
+		uint64_t texture = 0;
+		EXPECT_TRUE(renderer.resource().texture_load(texture, blue_texels.data(), 2, 2));
+		renderer.resource().texture_bind_set(texture);
+		engine::Mesh_Handle sphere = 0;
+		EXPECT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 24, 12));
+		const float direction[3] = { 0.4f, -0.25f, -0.9f };
+		const float color[3] = { 1.0f, 1.0f, 1.0f };
+		renderer.scene().light_set(direction, color, 1.0f, 0.15f);
+		renderer.scene().specular_set(0.2f, 32.0f);
+		renderer.scene().pbr_enable_set(true);
+		renderer.scene().pbr_roughness_absolute_set(true);
+		renderer.scene().pbr_roughness_set(0.5f);
+		engine::Material_Data realistic;
+		realistic.texture = texture;
+		realistic.pbr_override = true;
+		realistic.pbr_roughness = 0.4f;
+		realistic.pbr_metallic = 0.0f;
+		engine::Material_Handle realistic_handle = 0;
+		EXPECT_TRUE(renderer.resource().material_load(realistic_handle, realistic));
+		engine::Material_Data anime = realistic;
+		anime.toon_override = true;
+		anime.toon_steps = 1.0f;
+		anime.toon_rim = 0.6f;
+		engine::Material_Handle anime_handle = 0;
+		EXPECT_TRUE(renderer.resource().material_load(anime_handle, anime));
+		//左写实 / 右卡通
+		std::array<float, 16> left_matrix = quad_offset_matrix(-1.1f);
+		std::array<float, 16> right_matrix = quad_offset_matrix(1.1f);
+		renderer.resource().material_bind_set(realistic_handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(sphere, left_matrix.data()));
+		renderer.resource().material_bind_set(anime_handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(sphere, right_matrix.data()));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		//扫描右半区域的最大通道差
+		int max_span = 0;
+		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
+		{
+			for (uint32_t x = WINDOW_WIDTH / 2; x < WINDOW_WIDTH; ++x)
+			{
+				std::array<uint8_t, 4> pixel = pixel_get(pixels, x, y);
+				int high = static_cast<int>(*std::max_element(pixel.begin(), pixel.begin() + 3));
+				int low = static_cast<int>(*std::min_element(pixel.begin(), pixel.begin() + 3));
+				if (high - low > max_span)
+					max_span = high - low;
+			}
+		}
+		renderer.resource().material_unload(anime_handle);
+		renderer.resource().material_unload(realistic_handle);
+		renderer.resource().mesh_unload(sphere);
+		renderer.resource().texture_unload(texture);
+		return max_span;
+	};
+	int aces_span = right_span_by(0);
+	int agx_span = right_span_by(4);
+	RecordProperty("dual_hdr_aces_span", aces_span);
+	RecordProperty("dual_hdr_agx_span", agx_span);
+	//ACES：纯蓝卡通块保持高饱和
+	EXPECT_GE(aces_span, 120) << "ACES 下卡通纯色饱和度过低：" << aces_span;
+	//AgX：彩色高光去饱和，通道差明显收窄
+	EXPECT_LT(agx_span, aces_span - 30) << "AgX 未对卡通纯色去饱和：ACES " << aces_span
+		<< " / AgX " << agx_span;
+}

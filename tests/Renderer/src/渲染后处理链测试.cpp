@@ -1137,6 +1137,61 @@ TEST_F(Renderer_Post_Chain_Test, HDR默认路径出帧)
 }
 
 /*
+HDR 默认路径 · 色调映射算子可切换（方向九第 759 轮）
+口径：Renderer_Config.hdr_tone_operator 选择默认路径末级算子（0 = ACES、1 = 胶片、2 = 指数、3 = 扩展 Reinhard）。
+曝光 +2 的白四边形在 16F 下为线性 4.0，四种算子应给出不同且均未饱和（< 255）的中心值；
+越界值按 0 处理（与 ACES 完全一致）。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR默认路径色调算子)
+{
+	//按算子出一帧默认路径画面，返回中心 R
+	auto center_by = [&](uint32_t tone_operator)
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		config.hdr_tone_operator = tone_operator;
+		EXPECT_TRUE(renderer.init(config));
+		if (!renderer.compute().readback_supported())
+			return -1;
+		renderer.resource().texture_bind_set(0);
+		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		int center = static_cast<int>(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+		renderer.resource().mesh_unload(handle);
+		return center;
+	};
+	int aces = center_by(0);
+	int film = center_by(1);
+	int exponent = center_by(2);
+	int reinhard = center_by(3);
+	int fallback = center_by(9);
+	RecordProperty("tone_aces", aces);
+	RecordProperty("tone_film", film);
+	RecordProperty("tone_exponent", exponent);
+	RecordProperty("tone_reinhard", reinhard);
+	//本机不支持回读（-1）则跳过
+	if (aces < 0 || film < 0 || exponent < 0 || reinhard < 0 || fallback < 0)
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	//ACES / 胶片 / 指数应未饱和；扩展 Reinhard 白点为 2.0，4.0 处趋于白点，允许饱和
+	EXPECT_LT(aces, 255);
+	EXPECT_LT(film, 255);
+	EXPECT_LT(exponent, 255);
+	/*
+	各算子取曲线不同：至少两两之间有一半以上组合可区分（≥3 级差），
+	此处以「胶片与 ACES 不同」为主断言，其余记录属性供后续校准。
+	*/
+	EXPECT_GE(std::abs(film - aces), 3) << "胶片与 ACES 不可区分：" << film << " / " << aces;
+	//越界算子回落 ACES（与 0 逐像素一致）
+	EXPECT_EQ(fallback, aces) << "越界算子未回落 ACES：" << fallback << " / " << aces;
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

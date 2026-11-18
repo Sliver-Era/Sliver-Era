@@ -1069,6 +1069,74 @@ TEST_F(Renderer_Post_Chain_Test, HDR目标开关生效)
 }
 
 /*
+HDR 默认路径（方向九第 757 轮）
+口径：hdr_targets 开启且未显式指定呈现 / 渲染目标时，场景写入内部 16F 场景目标，
+再由内置色调映射级呈现到交换链；关闭时保持既有直通路径。
+曝光 +2 使白四边形在 16F 下为线性 4.0，经色调映射压缩后中心低于直通的饱和值。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR默认路径出帧)
+{
+	//中心 R 采样（默认路径直接回读交换链）
+	auto center_of = [](engine::Renderer& renderer, const std::vector<uint8_t>& pixels)
+	{
+		(void)renderer;
+		return static_cast<int>(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
+	};
+	//关闭（默认）：既有直通路径
+	int ldr_center = 0;
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		ASSERT_TRUE(renderer.init(config));
+		if (!renderer.compute().readback_supported())
+			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+		EXPECT_FALSE(renderer.device().hdr_targets());
+		renderer.resource().texture_bind_set(0);
+		ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		EXPECT_EQ(renderer.frame_count(), 1u);
+		ldr_center = center_of(renderer, pixels);
+		renderer.resource().mesh_unload(handle);
+	}
+	//开启：内部 16F 场景目标 ＋ 内置色调映射
+	int hdr_center = 0;
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config();
+		config.vsync = false;
+		config.hdr_targets = true;
+		ASSERT_TRUE(renderer.init(config));
+		if (!renderer.compute().readback_supported())
+			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+		EXPECT_TRUE(renderer.device().hdr_targets());
+		renderer.resource().texture_bind_set(0);
+		ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+		engine::Mesh_Handle handle = 0;
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		//未显式设置任何目标：默认路径自行接管
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		EXPECT_EQ(renderer.frame_count(), 1u);
+		hdr_center = center_of(renderer, pixels);
+		renderer.resource().mesh_unload(handle);
+	}
+	RecordProperty("hdr_default_ldr_center", ldr_center);
+	RecordProperty("hdr_default_16f_center", hdr_center);
+	//关闭时直通饱和（白 1.0 → 255）
+	EXPECT_GE(ldr_center, 250) << "关闭开关时默认路径应为直通饱和白：" << ldr_center;
+	//开启时经 16F 与色调映射：中心被压缩但仍为亮部（且严格低于直通饱和值）
+	EXPECT_LE(hdr_center, ldr_center - 2) << "开启开关后未经过色调映射（中心仍为直通饱和）："
+		<< hdr_center << " / " << ldr_center;
+	EXPECT_GE(hdr_center, 200) << "开启开关后画面异常（中心过暗）：" << hdr_center;
+}
+
+/*
 HDR 浮点读回（方向九第 752 轮）
 口径：16F 场景目标（曝光 +2）经浮点读回可读到 >1 的原始线性值；
 8 位目标读回按 /255 归一，恒 ≤1。

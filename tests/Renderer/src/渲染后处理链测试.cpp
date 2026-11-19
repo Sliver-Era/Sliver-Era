@@ -1247,6 +1247,91 @@ TEST_F(Renderer_Post_Chain_Test, HDR默认路径AgX去饱和)
 	EXPECT_GT(agx[1], aces[1] + 30) << "AgX 与 ACES 的通道差异不足：" << agx[1] << " / " << aces[1];
 }
 
+/*
+8 位路径段 4 · 编号附件驱动逐材质色调（第 812 轮）
+口径：`post_tone_id_target_set(目标)` 后，材质色调映射级从编号附件读 1..5 选曲线；
+      撤回（0）时 binding 10 写 1×1 零图，回落全局算子。AgX 材质在两种状态下的画面必须可区分。
+*/
+TEST_F(Renderer_Post_Chain_Test, 编号附件驱动逐材质色调)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	const uint32_t width = renderer.device().extent_width();
+	const uint32_t height = renderer.device().extent_height();
+	//带编号附件的 8 位场景目标
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, width, height,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+	//末级：材质色调映射（全局回落 = 默认算子 0 = ACES）
+	uint64_t tone = post_pipeline_register(renderer, "材质色调映射.frag.spv");
+	ASSERT_NE(tone, 0u);
+	ASSERT_TRUE(renderer.device().post_chain_set(&tone, 1));
+	//纯红纹理（AgX 会明显去饱和，ACES 保持纯色）
+	std::vector<uint8_t> red_texels(4 * 4 * 4);
+	for (std::size_t index = 0; index < red_texels.size(); index += 4)
+	{
+		red_texels[index] = 255;
+		red_texels[index + 1] = 0;
+		red_texels[index + 2] = 0;
+		red_texels[index + 3] = 255;
+	}
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, red_texels.data(), 4, 4));
+	renderer.resource().texture_bind_set(texture);
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	//AgX 材质（算子 4）
+	engine::Material_Data data;
+	data.texture = texture;
+	data.pbr_override = true;
+	data.pbr_roughness = 0.4f;
+	data.pbr_metallic = 0.0f;
+	data.tone_operator = 4;
+	engine::Material_Handle material = 0;
+	ASSERT_TRUE(renderer.resource().material_load(material, data));
+	renderer.resource().material_bind_set(material);
+	//同帧后处理呈现 ＋ 编号通道 ＋ 高曝光（让红色进入压缩区）
+	renderer.device().render_target_present_set(target);
+	renderer.device().tone_id_pass_set(true);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	//帧 A：编号来源 = 目标 → 末级读编号选 AgX
+	renderer.device().post_tone_id_target_set(target);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> id_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(id_pixels.data(), static_cast<uint32_t>(id_pixels.size())));
+	//编号附件实际写入（中心应为 AgX 的 5）
+	std::vector<uint8_t> ids(static_cast<std::size_t>(width) * height);
+	uint32_t id_width = 0;
+	uint32_t id_height = 0;
+	ASSERT_TRUE(renderer.resource().render_target_readback_tone_id(target, ids.data(),
+		static_cast<uint32_t>(ids.size()), &id_width, &id_height));
+	EXPECT_EQ(ids[static_cast<std::size_t>(height / 2) * width + width / 2], 5u) << "链路径编号通道未写入";
+	//帧 B：撤回编号来源 → binding 10 为零图，回落全局 ACES
+	renderer.device().post_tone_id_target_set(0);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> global_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(global_pixels.data(), static_cast<uint32_t>(global_pixels.size())));
+	std::array<uint8_t, 4> id_center = pixel_get(id_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	std::array<uint8_t, 4> global_center = pixel_get(global_pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	RecordProperty("tone_id_center", pixel_text(id_center));
+	RecordProperty("tone_global_center", pixel_text(global_center));
+	//交换链为 B8G8R8A8：红色落在 index 2；AgX 会把非红通道抬起
+	EXPECT_GT(static_cast<int>(id_center[0]), static_cast<int>(global_center[0]) + 20)
+		<< "编号附件未驱动 AgX 去饱和：" << pixel_text(id_center) << " / " << pixel_text(global_center);
+	EXPECT_GT(changed_pixels(id_pixels, global_pixels, 8), 0u) << "编号解码未改变画面";
+	//清理
+	renderer.device().post_tone_id_target_set(0);
+	renderer.device().render_target_present_set(0);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(handle);
+	renderer.resource().pipeline_unload(tone);
+	renderer.resource().render_target_destroy(target);
+	renderer.resource().texture_unload(texture);
+}
+
 namespace
 {
 	//显式泛光链装配件（第 778 轮）：16F 场景目标 ＋ 场景管线 ＋ 泛光预设 ＋ 末级色调映射管线

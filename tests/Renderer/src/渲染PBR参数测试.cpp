@@ -1171,5 +1171,70 @@ TEST_F(Renderer_Scene_Test, PBR逐材质色调算子透明材质安全)
 	renderer.resource().mesh_unload(quad);
 	renderer.resource().texture_unload(texture);
 }
+/*
+逐材质色调算子 · 关闭 HDR 时忽略覆盖（第 794 轮）
+口径：编号借用 16F 场景 alpha 传递，8 位呈现路径承载不了编号；故 `hdr_targets = false` 时
+「声明 AgX 的不透明材质」与「同材质继承全局」必须逐字节一致（能力关闭即回到引入前画面）。
+*/
+TEST_F(Renderer_Scene_Test, PBR逐材质色调算子关闭HDR时忽略覆盖)
+{
+	std::vector<uint8_t> texels(2 * 2 * 4, 255);
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	//8 位默认路径（不启用 HDR 场景目标）
+	config.hdr_targets = false;
+	ASSERT_TRUE(renderer.init(config));
+	BYJY_REQUIRE_READBACK(renderer);
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	const float direction[3] = { 0.4f, -0.25f, -0.9f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.15f);
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	engine::Material_Data base;
+	base.texture = texture;
+	engine::Material_Handle inherit_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(inherit_handle, base));
+	engine::Material_Data agx_data = base;
+	agx_data.tone_operator = 4;
+	engine::Material_Handle agx_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(agx_handle, agx_data));
+	//各出一帧（同一几何与材质，仅色调声明不同）
+	auto frame_by = [&](engine::Material_Handle handle)
+	{
+		renderer.resource().material_bind_set(handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		return pixels;
+	};
+	std::vector<uint8_t> inherited = frame_by(inherit_handle);
+	std::vector<uint8_t> declared = frame_by(agx_handle);
+	/*
+	8 位路径下编号会被量化（(id+1)×0.0005 → 0），仍写进未呈现的 alpha 通道，
+	故只比较可见的 RGB 三通道：覆盖在关闭 HDR 时不得改变任何可见像素。
+	*/
+	ASSERT_EQ(inherited.size(), declared.size());
+	int rgb_difference = 0;
+	for (std::size_t index = 0; index + 3 < inherited.size(); index += 4)
+	{
+		for (std::size_t channel = 0; channel < 3; ++channel)
+		{
+			int difference = std::abs(static_cast<int>(inherited[index + channel])
+				- static_cast<int>(declared[index + channel]));
+			rgb_difference = (std::max)(rgb_difference, difference);
+		}
+	}
+	EXPECT_EQ(rgb_difference, 0) << "关闭 HDR 时逐材质色调覆盖改变了可见画面（最大 RGB 差 "
+		<< rgb_difference << "）";
+	renderer.resource().material_unload(agx_handle);
+	renderer.resource().material_unload(inherit_handle);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
+}
 
 

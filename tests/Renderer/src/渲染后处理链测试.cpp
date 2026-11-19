@@ -1381,6 +1381,50 @@ TEST_F(Renderer_Post_Chain_Test, HDR显式泛光预设)
 }
 
 /*
+泛光预设释放时摘除引用（第 787 轮）
+口径：预设的目标仍挂在目标组里时释放，必须先把目标组清空再归还资源，
+否则下一帧会引用已销毁目标。断言：链计数从 4 降到 1（仅末级保留），且释放后仍能正常出帧。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR泛光预设释放摘引用)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	ASSERT_TRUE(renderer.init(config));
+	//场景目标 ＋ 场景管线 ＋ 末级色调
+	const uint32_t width = renderer.device().extent_width();
+	const uint32_t height = renderer.device().extent_height();
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	uint64_t scene_target = 0;
+	uint64_t scene_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_target, width, height,
+		hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	uint64_t tone_pipeline = post_pipeline_register(renderer, "色调映射.frag.spv");
+	ASSERT_NE(tone_pipeline, 0u);
+	engine::Bloom_Preset preset;
+	engine::Bloom_Preset_Desc desc;
+	ASSERT_TRUE(renderer.device().post_bloom_preset_build(preset, desc));
+	uint64_t stages[4] = { preset.pipelines[0], preset.pipelines[1], preset.pipelines[2], tone_pipeline };
+	ASSERT_TRUE(renderer.device().post_chain_set(stages, 4));
+	uint64_t targets[4] = { scene_target, preset.targets[0], preset.targets[1], preset.targets[2] };
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(targets, 4));
+	EXPECT_EQ(renderer.device().post_chain_count(), 4u);
+	//释放预设：目标组应被清空、三条管线摘除，只剩末级
+	renderer.device().post_bloom_preset_release(preset);
+	EXPECT_EQ(renderer.device().post_chain_count(), 1u) << "释放后链中仍残留预设管线";
+	std::vector<uint8_t> pixels(pixel_bytes());
+	EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())))
+		<< "释放预设后出帧失败（可能引用了已销毁目标）";
+	renderer.resource().pipeline_unload(tone_pipeline);
+	renderer.resource().pipeline_unload(scene_pipeline);
+	renderer.resource().render_target_destroy(scene_target);
+}
+
+
+/*
 泛光预设显式尺寸（第 783 轮）
 口径：build 的 width / height 非 0 时按该尺寸建立三个中间目标，0 时取当前客户区；
 半分辨率描述下提取 / 模糊取 1/2 边长、叠加级仍取全尺寸。

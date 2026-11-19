@@ -1004,4 +1004,58 @@ TEST_F(Renderer_Scene_Test, PBR逐材质色调算子同帧)
 	renderer.resource().texture_unload(texture);
 }
 
+/*
+逐材质色调算子 · 透明材质安全（第 780 轮）
+口径：算子编号借用场景 alpha 传递，只对不透明材质生效；半透明材质即使声明 tone_operator 也不得改写 alpha，
+故「半透明材质 ＋ tone 4」与「同材质继承全局」必须逐字节一致（否则混合结果会被破坏）。
+*/
+TEST_F(Renderer_Scene_Test, PBR逐材质色调算子透明材质安全)
+{
+	//半透明白纹理（alpha 128）：让混合结果对 alpha 敏感
+	std::vector<uint8_t> texels(2 * 2 * 4, 255);
+	for (std::size_t index = 0; index < texels.size(); index += 4)
+		texels[index + 3] = 128;
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	config.hdr_targets = true;
+	ASSERT_TRUE(renderer.init(config));
+	BYJY_REQUIRE_READBACK(renderer);
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	const float direction[3] = { 0.4f, -0.25f, -0.9f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.15f);
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	//同一半透明材质：继承全局 / 声明 AgX
+	engine::Material_Data base;
+	base.texture = texture;
+	base.blend = engine::Blend_Mode::Alpha;
+	engine::Material_Handle inherit_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(inherit_handle, base));
+	engine::Material_Data agx_data = base;
+	agx_data.tone_operator = 4;
+	engine::Material_Handle agx_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(agx_handle, agx_data));
+	//各出一帧（同一几何与材质，仅色调声明不同）
+	auto frame_by = [&](engine::Material_Handle handle)
+	{
+		renderer.resource().material_bind_set(handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		return pixels;
+	};
+	std::vector<uint8_t> inherited = frame_by(inherit_handle);
+	std::vector<uint8_t> declared = frame_by(agx_handle);
+	EXPECT_EQ(inherited, declared) << "半透明材质改写了 alpha（混合结果被破坏）";
+	renderer.resource().material_unload(agx_handle);
+	renderer.resource().material_unload(inherit_handle);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
+}
+
 

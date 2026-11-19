@@ -1005,6 +1005,120 @@ TEST_F(Renderer_Scene_Test, PBR逐材质色调算子同帧)
 }
 
 /*
+逐材质特性隔离（第 785 轮 · 整改验收补全）
+口径：左右两枚球，全局特性全关；每次只让左球材质开启「各向异性 / 布料 sheen / 皮肤 SSS」之一，
+断言只有左半画面变化、右半逐像素不变 —— 证明 bit2 / bit3 / bit4 的材质门控互相隔离且不污染其他物体。
+*/
+TEST_F(Renderer_Scene_Test, PBR特性逐材质隔离)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_gray();
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 24, 12));
+	//斜射主光：球面明暗交界与轮廓都可见（sheen / SSS / 各向异性均可观测）
+	const float direction[3] = { 0.4f, -0.25f, -0.9f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.15f);
+	renderer.scene().specular_set(0.6f, 48.0f);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_absolute_set(true);
+	renderer.scene().pbr_roughness_set(0.35f);
+	renderer.scene().pbr_metallic_set(0.6f);
+	//全局特性全关，强度先给足（仅材质开启时才生效）
+	renderer.scene().pbr_aniso_set(false);
+	renderer.scene().pbr_aniso_strength_set(0.8f);
+	renderer.scene().pbr_sheen_set(false);
+	renderer.scene().pbr_sheen_strength_set(0.8f);
+	renderer.scene().pbr_skin_sss_set(false);
+	renderer.scene().pbr_skin_wrap_set(0.8f);
+	//基础材质与三种特性材质
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.35f;
+	base.pbr_metallic = 0.6f;
+	engine::Material_Handle base_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(base_handle, base));
+	engine::Material_Data aniso = base;
+	aniso.pbr_features_override = true;
+	aniso.pbr_features = 1u << 2;
+	engine::Material_Handle aniso_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(aniso_handle, aniso));
+	engine::Material_Data sheen = base;
+	sheen.pbr_features_override = true;
+	sheen.pbr_features = 1u << 4;
+	engine::Material_Handle sheen_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(sheen_handle, sheen));
+	engine::Material_Data sss = base;
+	sss.pbr_features_override = true;
+	sss.pbr_features = 1u << 3;
+	engine::Material_Handle sss_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(sss_handle, sss));
+	//左 / 右两枚球：左球换材质、右球恒为基础材质（右半画面作为隔离对照）
+	auto draw_frame = [&](engine::Material_Handle left, engine::Material_Handle right)
+	{
+		std::array<float, 16> left_matrix = quad_offset_matrix(-1.1f);
+		std::array<float, 16> right_matrix = quad_offset_matrix(1.1f);
+		renderer.resource().material_bind_set(left);
+		EXPECT_TRUE(renderer.resource().mesh_draw(sphere, left_matrix.data()));
+		renderer.resource().material_bind_set(right);
+		EXPECT_TRUE(renderer.resource().mesh_draw(sphere, right_matrix.data()));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		return pixels;
+	};
+	//半屏变化像素数（0 = 左半、1 = 右半）
+	auto half_changed = [](const std::vector<uint8_t>& a, const std::vector<uint8_t>& b, uint32_t half) -> uint32_t
+	{
+		uint32_t begin = half == 0 ? 0 : WINDOW_WIDTH / 2;
+		uint32_t end = half == 0 ? WINDOW_WIDTH / 2 : WINDOW_WIDTH;
+		uint32_t count = 0;
+		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
+		{
+			for (uint32_t x = begin; x < end; ++x)
+			{
+				std::array<uint8_t, 4> pa = pixel_get(a, x, y);
+				std::array<uint8_t, 4> pb = pixel_get(b, x, y);
+				int diff = std::abs(static_cast<int>(pa[0]) - static_cast<int>(pb[0]))
+					+ std::abs(static_cast<int>(pa[1]) - static_cast<int>(pb[1]))
+					+ std::abs(static_cast<int>(pa[2]) - static_cast<int>(pb[2]));
+				if (diff >= 4)
+					++count;
+			}
+		}
+		return count;
+	};
+	//基线：两枚都用基础材质
+	std::vector<uint8_t> baseline = draw_frame(base_handle, base_handle);
+	//逐项只在左球启用，右球保持基础材质（右半必须逐像素不变）
+	auto check_one = [&](engine::Material_Handle feature_handle, const char* label)
+	{
+		std::vector<uint8_t> frame = draw_frame(feature_handle, base_handle);
+		uint32_t left_changed = half_changed(baseline, frame, 0);
+		uint32_t right_changed = half_changed(baseline, frame, 1);
+		EXPECT_GT(left_changed, 0u) << label << " 未改变左侧画面";
+		EXPECT_EQ(right_changed, 0u) << label << " 串扰到右侧球";
+		return left_changed;
+	};
+	uint32_t aniso_changed = check_one(aniso_handle, "各向异性");
+	uint32_t sheen_changed = check_one(sheen_handle, "布料 sheen");
+	uint32_t sss_changed = check_one(sss_handle, "皮肤 SSS");
+	RecordProperty("two_left_aniso", static_cast<int>(aniso_changed));
+	RecordProperty("two_left_sheen", static_cast<int>(sheen_changed));
+	RecordProperty("two_left_sss", static_cast<int>(sss_changed));
+	renderer.resource().material_unload(sss_handle);
+	renderer.resource().material_unload(sheen_handle);
+	renderer.resource().material_unload(aniso_handle);
+	renderer.resource().material_unload(base_handle);
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().texture_unload(texture);
+}
+/*
 逐材质色调算子 · 透明材质安全（第 780 轮）
 口径：算子编号借用场景 alpha 传递，只对不透明材质生效；半透明材质即使声明 tone_operator 也不得改写 alpha，
 故「半透明材质 ＋ tone 4」与「同材质继承全局」必须逐字节一致（否则混合结果会被破坏）。

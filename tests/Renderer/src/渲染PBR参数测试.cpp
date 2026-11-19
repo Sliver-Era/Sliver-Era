@@ -641,13 +641,13 @@ TEST_F(Renderer_Scene_Test, PBR特性逐物体分层)
 	//布料 sheen 材质（bit4 仅在右侧物体生效）
 	engine::Material_Data cloth = plain;
 	cloth.pbr_features_override = true;
-	cloth.pbr_features = 1u << 4;
+	cloth.pbr_features = engine::PBR_FEATURE_SHEEN;
 	engine::Material_Handle cloth_handle = 0;
 	ASSERT_TRUE(renderer.resource().material_load(cloth_handle, cloth));
 	//光泽度映射材质（bit5 ＋ gloss 1.0 → 本材质粗糙度压到下限）
 	engine::Material_Data glossy = plain;
 	glossy.pbr_features_override = true;
-	glossy.pbr_features = 1u << 5;
+	glossy.pbr_features = engine::PBR_FEATURE_GLOSS_MAPPING;
 	glossy.pbr_gloss = 1.0f;
 	engine::Material_Handle glossy_handle = 0;
 	ASSERT_TRUE(renderer.resource().material_load(glossy_handle, glossy));
@@ -1046,17 +1046,17 @@ TEST_F(Renderer_Scene_Test, PBR特性逐材质隔离)
 	ASSERT_TRUE(renderer.resource().material_load(base_handle, base));
 	engine::Material_Data aniso = base;
 	aniso.pbr_features_override = true;
-	aniso.pbr_features = 1u << 2;
+	aniso.pbr_features = engine::PBR_FEATURE_ANISO;
 	engine::Material_Handle aniso_handle = 0;
 	ASSERT_TRUE(renderer.resource().material_load(aniso_handle, aniso));
 	engine::Material_Data sheen = base;
 	sheen.pbr_features_override = true;
-	sheen.pbr_features = 1u << 4;
+	sheen.pbr_features = engine::PBR_FEATURE_SHEEN;
 	engine::Material_Handle sheen_handle = 0;
 	ASSERT_TRUE(renderer.resource().material_load(sheen_handle, sheen));
 	engine::Material_Data sss = base;
 	sss.pbr_features_override = true;
-	sss.pbr_features = 1u << 3;
+	sss.pbr_features = engine::PBR_FEATURE_SKIN_SSS;
 	engine::Material_Handle sss_handle = 0;
 	ASSERT_TRUE(renderer.resource().material_load(sss_handle, sss));
 	//左 / 右两枚球：左球换材质、右球恒为基础材质（右半画面作为隔离对照）

@@ -342,7 +342,7 @@ namespace
 		data.pbr_metallic = 0.2f;
 		data.pbr_features_override = override_features;
 		//bit0 多散射 / bit1 Fresnel-roughness / bit2 各向异性 / bit3 皮肤 SSS / bit4 sheen
-		data.pbr_features = override_features ? 0x1Fu : 0u;
+		data.pbr_features = override_features ? (engine::PBR_FEATURE_ALL & ~engine::PBR_FEATURE_GLOSS_MAPPING) : 0u;
 		engine::Material_Handle material = 0;
 		if (!renderer.resource().material_load(material, data))
 			return -1.0;

@@ -1620,6 +1620,115 @@ TEST_F(Renderer_Post_Chain_Test, HDR显式泛光预设半分辨率)
 }
 
 /*
+显式后处理链 · 逐材质色调（第 781 轮）
+口径：调用方自行装配链并使用 `材质色调映射.frag` 时，逐材质覆盖仍优先于该级的回落算子。
+左材质 AgX、右材质 ACES，纯蓝：左半去饱和、右半保纯色。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR显式链逐材质色调)
+{
+	//纯蓝纹理（index 0 = 蓝）
+	std::vector<uint8_t> texels(2 * 2 * 4, 0);
+	for (std::size_t index = 0; index < texels.size(); index += 4)
+	{
+		texels[index + 0] = 255;
+		texels[index + 3] = 255;
+	}
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	ASSERT_TRUE(renderer.init(config));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	renderer.resource().texture_bind_set(0);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.0f);
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	//16F 场景目标 ＋ 16F 场景管线 ＋ 通用色调末级
+	const uint32_t width = renderer.device().extent_width();
+	const uint32_t height = renderer.device().extent_height();
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	uint64_t scene_target = 0;
+	uint64_t scene_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_target, width, height,
+		hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	uint64_t tone_pipeline = post_pipeline_register(renderer, "材质色调映射.frag.spv");
+	ASSERT_NE(tone_pipeline, 0u);
+	ASSERT_TRUE(renderer.device().post_chain_set(&tone_pipeline, 1));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(&scene_target, 1));
+	//该级回落算子取 ACES（未覆盖像素用）
+	renderer.device().post_stage_tone_operator_set(0, 0);
+	//两种材质：AgX（4）/ ACES（0）
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.4f;
+	base.pbr_metallic = 0.0f;
+	engine::Material_Data agx_data = base;
+	agx_data.tone_operator = 4;
+	engine::Material_Data aces_data = base;
+	aces_data.tone_operator = 0;
+	engine::Material_Handle agx_handle = 0;
+	engine::Material_Handle aces_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(agx_handle, agx_data));
+	ASSERT_TRUE(renderer.resource().material_load(aces_handle, aces_data));
+	//左 AgX / 右 ACES
+	std::array<float, 16> left_matrix = {};
+	left_matrix[0] = 1.0f; left_matrix[5] = 1.0f; left_matrix[10] = 1.0f; left_matrix[12] = -1.1f; left_matrix[15] = 1.0f;
+	std::array<float, 16> right_matrix = {};
+	right_matrix[0] = 1.0f; right_matrix[5] = 1.0f; right_matrix[10] = 1.0f; right_matrix[12] = 1.1f; right_matrix[15] = 1.0f;
+	renderer.resource().pipeline_bind_set(scene_pipeline);
+	renderer.resource().material_bind_set(agx_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, left_matrix.data()));
+	renderer.resource().material_bind_set(aces_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, right_matrix.data()));
+	std::vector<uint8_t> pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	ASSERT_EQ(renderer.frame_stats_get().post_stages, 1u) << "显式单级色调链未生效";
+	//半屏最大通道差（饱和度粗量）
+	auto half_span = [](const std::vector<uint8_t>& image, uint32_t half) -> int
+	{
+		int span = 0;
+		uint32_t begin = half == 0 ? 0 : WINDOW_WIDTH / 2;
+		uint32_t end = half == 0 ? WINDOW_WIDTH / 2 : WINDOW_WIDTH;
+		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
+		{
+			for (uint32_t x = begin; x < end; ++x)
+			{
+				std::array<uint8_t, 4> pixel = pixel_get(image, x, y);
+				int high = static_cast<int>(*std::max_element(pixel.begin(), pixel.begin() + 3));
+				int low = static_cast<int>(*std::min_element(pixel.begin(), pixel.begin() + 3));
+				if (high - low > span)
+					span = high - low;
+			}
+		}
+		return span;
+	};
+	int left_span = half_span(pixels, 0);
+	int right_span = half_span(pixels, 1);
+	RecordProperty("chain_tone_left_agx_span", left_span);
+	RecordProperty("chain_tone_right_aces_span", right_span);
+	EXPECT_GE(right_span, 120) << "显式链右侧 ACES 未保持纯色：" << right_span;
+	EXPECT_LT(left_span, right_span - 30) << "显式链左侧 AgX 未去饱和：AgX " << left_span
+		<< " / ACES " << right_span;
+	renderer.resource().material_unload(aces_handle);
+	renderer.resource().material_unload(agx_handle);
+	renderer.resource().texture_unload(texture);
+	renderer.resource().pipeline_unload(scene_pipeline);
+	renderer.resource().pipeline_unload(tone_pipeline);
+	renderer.resource().render_target_destroy(scene_target);
+	renderer.resource().mesh_unload(quad);
+}
+
+
+/*
 HDR 默认路径 · MSAA 组合（方向九第 766 轮）
 口径：hdr_targets 开启时内部 16F 场景目标须跟随设备 MSAA 采样数建立多重采样附件，
 场景 pass 结束时解析到单采样颜色，色调映射级照常采样该单采样结果。

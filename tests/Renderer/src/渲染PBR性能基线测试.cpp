@@ -301,3 +301,78 @@ TEST_F(Renderer_Scene_Test, PBR强光照压力场景)
 	renderer.resource().mesh_unload(mesh);
 	renderer.resource().texture_unload(texture);
 }
+
+namespace
+{
+	//逐材质特性开销：1000 实例，材质覆盖标志关闭 / 开启（掩码全 6 位）各测一次
+	double run_material_feature_case(uint32_t instances, bool override_features)
+	{
+		engine::Renderer renderer;
+		engine::Renderer_Config config = hidden_config(640, 360);
+		config.instance_capacity = instances < 256 ? 256 : instances + 16;
+		config.vsync = false;
+		config.validation = false;
+		if (!renderer.init(config))
+			return -1.0;
+		engine::Mesh_Handle mesh = 0;
+		uint64_t texture = 0;
+		std::vector<uint8_t> texels = solid_gray();
+		if (!renderer.resource().texture_load(texture, texels.data(), 2, 2))
+			return -1.0;
+		renderer.resource().texture_bind_set(texture);
+		if (!renderer.resource().mesh_load(mesh, cube_data(0.5f)))
+			return -1.0;
+		const float direction[3] = { 0.0f, 0.0f, -1.0f };
+		const float color[3] = { 1.0f, 1.0f, 1.0f };
+		renderer.scene().light_set(direction, color, 1.0f, 0.5f);
+		renderer.scene().specular_set(1.0f, 64.0f);
+		renderer.scene().pbr_enable_set(true);
+		renderer.scene().pbr_roughness_absolute_set(true);
+		renderer.scene().pbr_roughness_set(0.5f);
+		renderer.scene().pbr_metallic_set(0.2f);
+		//全局特性全关：本用例只测「逐材质掩码」这一条新路径
+		renderer.scene().pbr_multiscatter_set(false);
+		renderer.scene().pbr_aniso_set(false);
+		renderer.scene().pbr_skin_sss_set(false);
+		renderer.scene().pbr_sheen_set(false);
+		engine::Material_Data data;
+		data.texture = texture;
+		data.pbr_override = true;
+		data.pbr_roughness = 0.4f;
+		data.pbr_metallic = 0.2f;
+		data.pbr_features_override = override_features;
+		//bit0 多散射 / bit1 Fresnel-roughness / bit2 各向异性 / bit3 皮肤 SSS / bit4 sheen
+		data.pbr_features = override_features ? 0x1Fu : 0u;
+		engine::Material_Handle material = 0;
+		if (!renderer.resource().material_load(material, data))
+			return -1.0;
+		renderer.resource().material_bind_set(material);
+		if (!renderer.resource().mesh_draw_instanced(mesh, nullptr, instances))
+			return -1.0;
+		double ms = median_frame_ms(renderer, 20);
+		renderer.resource().material_unload(material);
+		renderer.resource().mesh_unload(mesh);
+		renderer.resource().texture_unload(texture);
+		return ms;
+	}
+}
+
+/*
+逐材质 PBR 特性开销（第 782 轮 · 通用引擎化整改的性能守卫）
+口径：1000 实例、全局特性全关；对比「材质不覆盖」与「材质掩码全开（bit0..4）」的 CPU 帧中位耗时。
+只记录数值并做健全性断言（逐材质路径不得出现数量级劣化），阈值以 Release 基线为准。
+*/
+TEST_F(Renderer_Scene_Test, PBR逐材质特性开销)
+{
+	double plain = run_material_feature_case(1000, false);
+	double overridden = run_material_feature_case(1000, true);
+	ASSERT_GT(plain, 0.0) << "逐材质特性基线未出帧";
+	ASSERT_GT(overridden, 0.0) << "逐材质特性场景未出帧";
+	RecordProperty("mat_feature_plain_ms", plain);
+	RecordProperty("mat_feature_override_ms", overridden);
+	std::printf("[逐材质特性782] 1000 实例 | CPU 基线 %.4f ms / 覆盖全特性 %.4f ms\n", plain, overridden);
+	//逐材质路径只多一次位掩码判定，不应出现数量级劣化（取 2 倍宽上限）
+	EXPECT_LT(overridden, plain * 2.0 + 0.5) << "逐材质特性路径出现明显劣化：基线 " << plain
+		<< " / 覆盖 " << overridden;
+}
+

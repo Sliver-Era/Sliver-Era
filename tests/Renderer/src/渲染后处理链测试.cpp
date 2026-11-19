@@ -1625,6 +1625,28 @@ TEST_F(Renderer_Post_Chain_Test, HDR锐化中间级保留逐材质色调)
 }
 
 /*
+回落算子查询（第 805 轮）
+口径：`post_stage_tone_operator_get` 返回该级生效值 —— 专设优先、未专设回落全局默认、级序越界按 0。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR回落算子查询)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	//登记单级链（反色即可，只为让级序有效）
+	uint64_t invert = post_pipeline_register(renderer, "反色.frag.spv");
+	ASSERT_NE(invert, 0u);
+	ASSERT_TRUE(renderer.device().post_chain_set(&invert, 1));
+	//未专设 → 回落全局默认（hidden_config 下为 0）
+	EXPECT_EQ(renderer.device().post_stage_tone_operator_get(0), 0u);
+	//专设 3 后再查
+	renderer.device().post_stage_tone_operator_set(0, 3);
+	EXPECT_EQ(renderer.device().post_stage_tone_operator_get(0), 3u);
+	//级序越界 → 0
+	EXPECT_EQ(renderer.device().post_stage_tone_operator_get(3), 0u);
+	renderer.device().post_chain_set(nullptr, 0);
+	renderer.resource().pipeline_unload(invert);
+}
+/*
 双轨分轨不再污染全局回落槽（第 800 轮）
 口径：796 之前，HDR 默认路径在每帧调用 bloom_param_set 写分轨，会把全局回落槽的 x/y 改成 0.5/0.1；
 用例：先在默认路径出一帧（算子 5，触发原改写），再切到「显式四级泛光链且不设逐级参数」；

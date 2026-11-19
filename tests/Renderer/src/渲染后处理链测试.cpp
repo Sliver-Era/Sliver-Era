@@ -1595,6 +1595,36 @@ TEST_F(Renderer_Post_Chain_Test, HDR多采样中间级保留逐材质色调)
 }
 
 /*
+单源调色中间级 · 伽马校正（第 799 轮）
+口径：伽马取全局强度默认 1.0（恒等），只验证 alpha 透传；不改变两个半屏的饱和度结构。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR伽马中间级保留逐材质色调)
+{
+	Intermediate_Tone_Spans spans = run_intermediate_tone_case("伽马校正.frag.spv", false);
+	ASSERT_EQ(spans.stages, 2u) << "两级链未生效";
+	RecordProperty("gamma_tone_left_span", spans.left_span);
+	RecordProperty("gamma_tone_right_span", spans.right_span);
+	EXPECT_GE(spans.right_span, 120) << "右侧 ACES 未保持纯色：" << spans.right_span;
+	EXPECT_LT(spans.left_span, spans.right_span - 30) << "伽马中间级丢失逐材质色调编号：AgX "
+		<< spans.left_span << " / ACES " << spans.right_span;
+}
+
+/*
+邻域采样中间级 · 锐化（第 799 轮）
+口径：锐化只改亮度对比、不改色相，故左右半的 AgX / ACES 分裂应保持；验证 alpha 按中心像素透传。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR锐化中间级保留逐材质色调)
+{
+	Intermediate_Tone_Spans spans = run_intermediate_tone_case("锐化.frag.spv", false);
+	ASSERT_EQ(spans.stages, 2u) << "两级链未生效";
+	RecordProperty("sharpen_tone_left_span", spans.left_span);
+	RecordProperty("sharpen_tone_right_span", spans.right_span);
+	EXPECT_GE(spans.right_span, 120) << "右侧 ACES 未保持纯色：" << spans.right_span;
+	EXPECT_LT(spans.left_span, spans.right_span - 30) << "锐化中间级丢失逐材质色调编号：AgX "
+		<< spans.left_span << " / ACES " << spans.right_span;
+}
+
+/*
 泛光链保留逐材质色调（第 788 轮）
 口径：泛光叠加级此前恒写 alpha 1，会把场景 alpha 携带的逐材质算子编号冲掉，末级只能回落全局；
 修复后叠加级透传场景 alpha。用例：显式泛光链 ＋ 通用色调末级，左 AgX / 右 ACES 纯蓝，

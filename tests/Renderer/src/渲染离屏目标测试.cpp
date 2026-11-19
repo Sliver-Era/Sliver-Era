@@ -674,3 +674,97 @@ TEST_F(Renderer_Offscreen_Test, 管线第二颜色附件登记)
 	renderer.resource().pipeline_unload(handle);
 	EXPECT_FALSE(renderer.resource().pipeline_valid(handle));
 }
+
+/*
+逐材质色调编号预通道（第 808 轮 · 8 位路径方案 B）
+口径：开启 tone_id_pass 后，帧链路在场景 pass 之后以同一深度图重绘不透明项，
+      只有最终可见片元写入编号（算子 + 1，0 = 无覆盖）；
+      被遮挡物体不得改写近处编号，可见远处区域仍保留自身编号。
+*/
+TEST_F(Renderer_Offscreen_Test, 逐材质色调编号预通道)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	//单采样目标 ＋ R8_UINT 编号附件
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	//两种材质：AgX（4）与 ACES（0）
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.4f;
+	base.pbr_metallic = 0.0f;
+	engine::Material_Data agx_data = base;
+	agx_data.tone_operator = 4;
+	engine::Material_Handle agx_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(agx_handle, agx_data));
+	engine::Material_Data aces_data = base;
+	aces_data.tone_operator = 0;
+	engine::Material_Handle aces_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(aces_handle, aces_data));
+	//开启编号通道
+	renderer.device().tone_id_pass_set(true);
+	ASSERT_TRUE(renderer.device().tone_id_pass());
+	//构造缩放 ＋ z 平移的模型矩阵（列主序；默认相机在 +Z 3 单位处）
+	auto make_matrix = [](float scale, float z)
+	{
+		return std::array<float, 16>{
+			scale, 0.0f, 0.0f, 0.0f,
+			0.0f, scale, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, z, 1.0f,
+		};
+	};
+	//按给定绘制顺序渲染一帧并读回编号附件
+	auto tone_ids_by = [&](engine::Material_Handle first_material, float first_scale, float first_z,
+		engine::Material_Handle second_material, float second_scale, float second_z)
+	{
+		renderer.resource().material_bind_set(first_material);
+		std::array<float, 16> first_matrix = make_matrix(first_scale, first_z);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, first_matrix.data()));
+		renderer.resource().material_bind_set(second_material);
+		std::array<float, 16> second_matrix = make_matrix(second_scale, second_z);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, second_matrix.data()));
+		renderer.device().render_target_set(target);
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		std::vector<uint8_t> ids(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT);
+		uint32_t width = 0;
+		uint32_t height = 0;
+		EXPECT_TRUE(renderer.resource().render_target_readback_tone_id(target, ids.data(),
+			static_cast<uint32_t>(ids.size()), &width, &height));
+		EXPECT_EQ(width, WINDOW_WIDTH);
+		EXPECT_EQ(height, WINDOW_HEIGHT);
+		return ids;
+	};
+	//编号采样（逐像素单字节）
+	auto sample = [](const std::vector<uint8_t>& ids, uint32_t x, uint32_t y)
+	{
+		return ids[static_cast<std::size_t>(y) * WINDOW_WIDTH + x];
+	};
+	//远平面（AgX，铺满屏幕）先画、近平面（ACES，覆盖中央）后画：中心应为近处编号
+	std::vector<uint8_t> near_last = tone_ids_by(agx_handle, 4.0f, -1.0f, aces_handle, 0.6f, 1.0f);
+	EXPECT_EQ(sample(near_last, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2), 1u) << "近处物体未写入 ACES 编号";
+	EXPECT_EQ(sample(near_last, 2, 2), 5u) << "远处可见区域未写入 AgX 编号";
+	//绘制顺序反转：远处 AgX 不得覆盖近处 ACES（深度 LESS_OR_EQUAL 只标记可见片元）
+	std::vector<uint8_t> far_last = tone_ids_by(aces_handle, 0.6f, 1.0f, agx_handle, 4.0f, -1.0f);
+	EXPECT_EQ(sample(far_last, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2), 1u) << "被遮挡物体改写了近处编号";
+	EXPECT_EQ(sample(far_last, 2, 2), 5u) << "远处可见区域编号缺失";
+	//清理
+	renderer.device().render_target_set(0);
+	renderer.resource().material_unload(aces_handle);
+	renderer.resource().material_unload(agx_handle);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().render_target_destroy(target);
+	renderer.resource().texture_unload(texture);
+}

@@ -1625,6 +1625,83 @@ TEST_F(Renderer_Post_Chain_Test, HDR锐化中间级保留逐材质色调)
 }
 
 /*
+双轨分轨不再污染全局回落槽（第 800 轮）
+口径：796 之前，HDR 默认路径在每帧调用 bloom_param_set 写分轨，会把全局回落槽的 x/y 改成 0.5/0.1；
+用例：先在默认路径出一帧（算子 5，触发原改写），再切到「显式四级泛光链且不设逐级参数」；
+      全局阈值 5.0 是切链前设定的，预期仍然生效（边界外无泛光）；若被改写则边界外被泛光提亮。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR双轨不污染全局回落参数)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	config.hdr_targets = true;
+	config.hdr_tone_operator = 5;
+	ASSERT_TRUE(renderer.init(config));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	renderer.resource().texture_bind_set(0);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	//全局回落：阈值 5.0（几乎无泛光）
+	renderer.device().bloom_param_set(5.0f, 0.1f, 1.0f);
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
+	std::vector<uint8_t> warmup(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(warmup.data(), static_cast<uint32_t>(warmup.size())));
+	//切到显式四级链（不设逐级参数，靠全局回落）
+	const uint32_t width = renderer.device().extent_width();
+	const uint32_t height = renderer.device().extent_height();
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	uint64_t scene_target = 0;
+	uint64_t scene_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_target, width, height,
+		hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	uint64_t tone_pipeline = post_pipeline_register(renderer, "材质色调映射.frag.spv");
+	ASSERT_NE(tone_pipeline, 0u);
+	engine::Bloom_Preset preset;
+	engine::Bloom_Preset_Desc desc;
+	ASSERT_TRUE(renderer.device().post_bloom_preset_build(preset, desc));
+	uint64_t stages[4] = { preset.pipelines[0], preset.pipelines[1], preset.pipelines[2], tone_pipeline };
+	uint64_t targets[4] = { scene_target, preset.targets[0], preset.targets[1], preset.targets[2] };
+	ASSERT_TRUE(renderer.device().post_chain_set(stages, 4));
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(targets, 4));
+	renderer.resource().pipeline_bind_set(scene_pipeline);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
+	std::vector<uint8_t> pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	ASSERT_EQ(renderer.frame_stats_get().post_stages, 4u) << "四级链未生效";
+	//从中心沿 +X 找亮暗边界，再取边界外两像素作为测点
+	uint32_t edge_x = WINDOW_WIDTH;
+	for (uint32_t x = WINDOW_WIDTH / 2; x < WINDOW_WIDTH; ++x)
+	{
+		if (pixel_get(pixels, x, WINDOW_HEIGHT / 2)[0] < 100)
+		{
+			edge_x = x;
+			break;
+		}
+	}
+	ASSERT_LT(edge_x, WINDOW_WIDTH) << "未找到亮暗边界（四边形可能铺满视口）";
+	uint32_t probe_x = edge_x + 2;
+	if (probe_x >= WINDOW_WIDTH)
+		probe_x = WINDOW_WIDTH - 1;
+	int probe = static_cast<int>(pixel_get(pixels, probe_x, WINDOW_HEIGHT / 2)[0]);
+	RecordProperty("dual_global_probe", probe);
+	//阈值 5.0 仍生效 → 边界外应保持暗（无明显泛光扩散）
+	EXPECT_LT(probe, 140) << "全局阈值被双轨分轨覆盖（边界外测点 " << probe << "）";
+	renderer.device().post_chain_set(nullptr, 0);
+	renderer.device().render_target_present_chain_set(nullptr, 0);
+	renderer.device().post_bloom_preset_release(preset);
+	renderer.resource().pipeline_unload(tone_pipeline);
+	renderer.resource().pipeline_unload(scene_pipeline);
+	renderer.resource().render_target_destroy(scene_target);
+	renderer.resource().mesh_unload(quad);
+}
+
+/*
 泛光链保留逐材质色调（第 788 轮）
 口径：泛光叠加级此前恒写 alpha 1，会把场景 alpha 携带的逐材质算子编号冲掉，末级只能回落全局；
 修复后叠加级透传场景 alpha。用例：显式泛光链 ＋ 通用色调末级，左 AgX / 右 ACES 纯蓝，

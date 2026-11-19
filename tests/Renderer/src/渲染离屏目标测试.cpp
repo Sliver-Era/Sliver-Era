@@ -885,3 +885,70 @@ TEST_F(Renderer_Offscreen_Test, 逐材质色调编号中间算子)
 	renderer.resource().render_target_destroy(target);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+编号通道 · 开销基线（第 813 轮）
+口径：同一场景在中性目标上开 / 关编号通道各跑 20 帧，记录平均帧耗时；
+      断言两态画面逐字节一致（通道只写编号附件，不改颜色），耗时差异仅作基线记录。
+*/
+TEST_F(Renderer_Offscreen_Test, 编号通道开销基线)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.4f;
+	base.pbr_metallic = 0.0f;
+	base.tone_operator = 4;
+	engine::Material_Handle material = 0;
+	ASSERT_TRUE(renderer.resource().material_load(material, base));
+	renderer.resource().material_bind_set(material);
+	renderer.device().render_target_set(target);
+	std::vector<uint8_t> pixels(pixel_bytes());
+	//按指定状态跑 20 帧并返回平均帧耗时（毫秒）与末帧像素
+	auto run_frames = [&](bool enabled, std::vector<uint8_t>& last_pixels)
+	{
+		renderer.device().tone_id_pass_set(enabled);
+		double total_ms = 0.0;
+		const uint32_t iterations = 20;
+		for (uint32_t frame = 0; frame < iterations; ++frame)
+		{
+			EXPECT_TRUE(renderer.resource().mesh_draw(quad, nullptr));
+			EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+			total_ms += renderer.frame_stats_get().frame_ms;
+		}
+		last_pixels = pixels;
+		return total_ms / iterations;
+	};
+	std::vector<uint8_t> off_pixels;
+	std::vector<uint8_t> on_pixels;
+	//先跑关闭态（含预热），再跑开启态
+	double off_ms = run_frames(false, off_pixels);
+	double on_ms = run_frames(true, on_pixels);
+	RecordProperty("id_pass_off_ms", off_ms);
+	RecordProperty("id_pass_on_ms", on_ms);
+	EXPECT_EQ(off_pixels, on_pixels) << "编号通道改变了中性目标的颜色输出";
+	EXPECT_GT(off_ms, 0.0);
+	EXPECT_GT(on_ms, 0.0);
+	//非常宽松的上界：仅防「数量级异常」，不用于性能门禁
+	EXPECT_LT(on_ms, off_ms * 4.0 + 10.0) << "编号通道开销异常（" << off_ms << " → " << on_ms << " ms）";
+	//清理
+	renderer.device().render_target_set(0);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().render_target_destroy(target);
+	renderer.resource().texture_unload(texture);
+}

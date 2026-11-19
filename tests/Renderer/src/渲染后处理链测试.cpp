@@ -1580,6 +1580,21 @@ TEST_F(Renderer_Post_Chain_Test, HDR单源调色中间级保留逐材质色调)
 }
 
 /*
+多采样中间级保留逐材质色调（第 792 轮）
+口径：模糊级对 rgb 做加权平均，alpha 不参与加权、按中心像素透传；否则编号被平均后误解码。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR多采样中间级保留逐材质色调)
+{
+	Intermediate_Tone_Spans spans = run_intermediate_tone_case("模糊.frag.spv", false);
+	ASSERT_EQ(spans.stages, 2u) << "两级链未生效";
+	RecordProperty("blur_tone_left_span", spans.left_span);
+	RecordProperty("blur_tone_right_span", spans.right_span);
+	EXPECT_GE(spans.right_span, 120) << "右侧 ACES 未保持纯色：" << spans.right_span;
+	EXPECT_LT(spans.left_span, spans.right_span - 30) << "模糊中间级丢失逐材质色调编号：AgX "
+		<< spans.left_span << " / ACES " << spans.right_span;
+}
+
+/*
 泛光链保留逐材质色调（第 788 轮）
 口径：泛光叠加级此前恒写 alpha 1，会把场景 alpha 携带的逐材质算子编号冲掉，末级只能回落全局；
 修复后叠加级透传场景 alpha。用例：显式泛光链 ＋ 通用色调末级，左 AgX / 右 ACES 纯蓝，

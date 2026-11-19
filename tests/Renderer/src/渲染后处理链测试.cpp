@@ -1381,6 +1381,119 @@ TEST_F(Renderer_Post_Chain_Test, HDR显式泛光预设)
 }
 
 /*
+后处理中间级保留逐材质色调（第 789 轮）
+口径：分级调色此前恒写 alpha 1，放在泛光 / 场景与末级色调之间会冲掉逐材质编号；
+修复后透传 source.a。用例：两级链「分级调色（恒等参数）→ 通用色调」，左 AgX / 右 ACES 纯蓝仍分裂。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR中间级保留逐材质色调)
+{
+	std::vector<uint8_t> texels(2 * 2 * 4, 0);
+	for (std::size_t index = 0; index < texels.size(); index += 4)
+	{
+		texels[index + 0] = 255;
+		texels[index + 3] = 255;
+	}
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	ASSERT_TRUE(renderer.init(config));
+	renderer.resource().texture_bind_set(0);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.0f);
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	const uint32_t width = renderer.device().extent_width();
+	const uint32_t height = renderer.device().extent_height();
+	const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+	const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+	uint64_t scene_target = 0;
+	uint64_t mid_target = 0;
+	uint64_t scene_pipeline = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_target, width, height,
+		hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().render_target_create_format(mid_target, width, height,
+		hdr_format, depth_format, 1));
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	uint64_t grade_pipeline = post_pipeline_register(renderer, "分级调色.frag.spv");
+	uint64_t tone_pipeline = post_pipeline_register(renderer, "材质色调映射.frag.spv");
+	ASSERT_NE(grade_pipeline, 0u);
+	ASSERT_NE(tone_pipeline, 0u);
+	uint64_t stages[2] = { grade_pipeline, tone_pipeline };
+	ASSERT_TRUE(renderer.device().post_chain_set(stages, 2));
+	uint64_t targets[2] = { scene_target, mid_target };
+	ASSERT_TRUE(renderer.device().render_target_present_chain_set(targets, 2));
+	//分级调色用恒等参数（lift 0 / gamma 1 / gain 1 / saturation 1），末级回落 ACES
+	renderer.device().post_stage_param4_set(0, 0.0f, 1.0f, 1.0f, 1.0f);
+	renderer.device().post_stage_tone_operator_set(1, 0);
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.4f;
+	base.pbr_metallic = 0.0f;
+	engine::Material_Data agx_data = base;
+	agx_data.tone_operator = 4;
+	engine::Material_Data aces_data = base;
+	aces_data.tone_operator = 0;
+	engine::Material_Handle agx_handle = 0;
+	engine::Material_Handle aces_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(agx_handle, agx_data));
+	ASSERT_TRUE(renderer.resource().material_load(aces_handle, aces_data));
+	std::array<float, 16> left_matrix = {};
+	left_matrix[0] = 1.0f; left_matrix[5] = 1.0f; left_matrix[10] = 1.0f; left_matrix[12] = -1.1f; left_matrix[15] = 1.0f;
+	std::array<float, 16> right_matrix = {};
+	right_matrix[0] = 1.0f; right_matrix[5] = 1.0f; right_matrix[10] = 1.0f; right_matrix[12] = 1.1f; right_matrix[15] = 1.0f;
+	renderer.resource().pipeline_bind_set(scene_pipeline);
+	renderer.resource().material_bind_set(agx_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, left_matrix.data()));
+	renderer.resource().material_bind_set(aces_handle);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, right_matrix.data()));
+	std::vector<uint8_t> pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	ASSERT_EQ(renderer.frame_stats_get().post_stages, 2u) << "两级链未生效";
+	auto half_span = [](const std::vector<uint8_t>& image, uint32_t half) -> int
+	{
+		int span = 0;
+		uint32_t begin = half == 0 ? 0 : WINDOW_WIDTH / 2;
+		uint32_t end = half == 0 ? WINDOW_WIDTH / 2 : WINDOW_WIDTH;
+		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
+		{
+			for (uint32_t x = begin; x < end; ++x)
+			{
+				std::array<uint8_t, 4> pixel = pixel_get(image, x, y);
+				int high = static_cast<int>(*std::max_element(pixel.begin(), pixel.begin() + 3));
+				int low = static_cast<int>(*std::min_element(pixel.begin(), pixel.begin() + 3));
+				if (high - low > span)
+					span = high - low;
+			}
+		}
+		return span;
+	};
+	int left_span = half_span(pixels, 0);
+	int right_span = half_span(pixels, 1);
+	RecordProperty("grade_tone_left_span", left_span);
+	RecordProperty("grade_tone_right_span", right_span);
+	EXPECT_GE(right_span, 120) << "右侧 ACES 未保持纯色：" << right_span;
+	EXPECT_LT(left_span, right_span - 30) << "中间级丢失逐材质色调编号：AgX " << left_span
+		<< " / ACES " << right_span;
+	renderer.device().post_chain_set(nullptr, 0);
+	renderer.device().render_target_present_chain_set(nullptr, 0);
+	renderer.resource().material_unload(aces_handle);
+	renderer.resource().material_unload(agx_handle);
+	renderer.resource().texture_unload(texture);
+	renderer.resource().pipeline_unload(tone_pipeline);
+	renderer.resource().pipeline_unload(grade_pipeline);
+	renderer.resource().pipeline_unload(scene_pipeline);
+	renderer.resource().render_target_destroy(mid_target);
+	renderer.resource().render_target_destroy(scene_target);
+	renderer.resource().mesh_unload(quad);
+}
+
+/*
 泛光链保留逐材质色调（第 788 轮）
 口径：泛光叠加级此前恒写 alpha 1，会把场景 alpha 携带的逐材质算子编号冲掉，末级只能回落全局；
 修复后叠加级透传场景 alpha。用例：显式泛光链 ＋ 通用色调末级，左 AgX / 右 ACES 纯蓝，

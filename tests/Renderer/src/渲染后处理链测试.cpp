@@ -1381,6 +1381,58 @@ TEST_F(Renderer_Post_Chain_Test, HDR显式泛光预设)
 }
 
 /*
+泛光预设显式尺寸（第 783 轮）
+口径：build 的 width / height 非 0 时按该尺寸建立三个中间目标，0 时取当前客户区；
+半分辨率描述下提取 / 模糊取 1/2 边长、叠加级仍取全尺寸。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR泛光预设显式尺寸)
+{
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	ASSERT_TRUE(renderer.init(config));
+	engine::Bloom_Preset preset;
+	engine::Bloom_Preset_Desc desc;
+	auto target_size = [&](uint64_t handle, uint32_t& width_out, uint32_t& height_out)
+	{
+		engine::Render_Target_Native_Info info{};
+		ASSERT_TRUE(renderer.resource().render_target_native_get(handle, info));
+		width_out = info.width;
+		height_out = info.height;
+	};
+	//全分辨率显式 32×18
+	ASSERT_TRUE(renderer.device().post_bloom_preset_build(preset, desc, 32, 18));
+	for (std::size_t index = 0; index < 3; ++index)
+	{
+		uint32_t width = 0;
+		uint32_t height = 0;
+		target_size(preset.targets[index], width, height);
+		EXPECT_EQ(width, 32u) << "第 " << index << " 个目标宽度不符";
+		EXPECT_EQ(height, 18u) << "第 " << index << " 个目标高度不符";
+	}
+	//半分辨率：提取 / 模糊 16×9，叠加 32×18
+	renderer.device().post_bloom_preset_release(preset);
+	engine::Bloom_Preset_Desc half_desc;
+	half_desc.half_res = true;
+	ASSERT_TRUE(renderer.device().post_bloom_preset_build(preset, half_desc, 32, 18));
+	uint32_t width = 0;
+	uint32_t height = 0;
+	target_size(preset.targets[0], width, height);
+	EXPECT_EQ(width, 16u) << "半分辨率提取目标宽度不符";
+	EXPECT_EQ(height, 9u) << "半分辨率提取目标高度不符";
+	target_size(preset.targets[2], width, height);
+	EXPECT_EQ(width, 32u) << "叠加级应保持全尺寸宽度";
+	EXPECT_EQ(height, 18u) << "叠加级应保持全尺寸高度";
+	//显式尺寸为 0：取当前客户区
+	renderer.device().post_bloom_preset_release(preset);
+	ASSERT_TRUE(renderer.device().post_bloom_preset_build(preset, desc));
+	target_size(preset.targets[0], width, height);
+	EXPECT_EQ(width, renderer.device().extent_width()) << "默认尺寸未取客户区宽度";
+	EXPECT_EQ(height, renderer.device().extent_height()) << "默认尺寸未取客户区高度";
+	renderer.device().post_bloom_preset_release(preset);
+}
+
+/*
 HDR 显式泛光预设参数化（第 778 轮；取代方向九第 763 轮的自动泛光参数化）
 口径：阈值 / 半径 / 强度随 Bloom_Preset_Desc 下发。阈值 5.0（高于 16F 高光 4.0）应使提取权重为 0、
 测点回到无泛光水平；强度传 0（非法）应回落 1.0，画面与默认参数一致。

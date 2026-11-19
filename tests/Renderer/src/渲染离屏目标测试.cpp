@@ -952,3 +952,64 @@ TEST_F(Renderer_Offscreen_Test, 编号通道开销基线)
 	renderer.resource().render_target_destroy(target);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+编号通道 · alpha 裁剪材质不写编号（第 814 轮）
+口径：编号通道不采样反照率、无法复现 discard，故裁剪材质整体跳过；
+      同一目标上「裁剪材质」编号应全 0，普通材质编号正常写入。
+*/
+TEST_F(Renderer_Offscreen_Test, 编号通道跳过alpha裁剪材质)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	renderer.device().tone_id_pass_set(true);
+	renderer.device().render_target_set(target);
+	std::vector<uint8_t> ids(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT);
+	uint32_t width = 0;
+	uint32_t height = 0;
+	//按给定材质渲染一帧并读回编号中心值
+	auto center_id_by = [&](engine::Material_Data data)
+	{
+		engine::Material_Handle material = 0;
+		EXPECT_TRUE(renderer.resource().material_load(material, data));
+		renderer.resource().material_bind_set(material);
+		std::array<float, 16> full = full_screen_matrix();
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, full.data()));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		std::fill(ids.begin(), ids.end(), 255);
+		EXPECT_TRUE(renderer.resource().render_target_readback_tone_id(target, ids.data(),
+			static_cast<uint32_t>(ids.size()), &width, &height));
+		renderer.resource().material_unload(material);
+		return ids[static_cast<std::size_t>(WINDOW_HEIGHT / 2) * WINDOW_WIDTH + WINDOW_WIDTH / 2];
+	};
+	//基础材质（AgX 算子 4、无裁剪）
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.4f;
+	base.pbr_metallic = 0.0f;
+	base.tone_operator = 4;
+	EXPECT_EQ(center_id_by(base), 5u) << "非裁剪材质编号缺失";
+	//裁剪材质（同算子，但声明 alpha 裁剪）
+	engine::Material_Data clipped = base;
+	clipped.alpha_cutoff = 0.5f;
+	EXPECT_EQ(center_id_by(clipped), 0u) << "裁剪材质不应写编号";
+	//清理
+	renderer.device().render_target_set(0);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().render_target_destroy(target);
+	renderer.resource().texture_unload(texture);
+}

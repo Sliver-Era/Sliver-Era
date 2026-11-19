@@ -655,3 +655,22 @@ TEST_F(Renderer_Offscreen_Test, 色调编号附件不影响既有渲染)
 	EXPECT_TRUE(pixel_is_green(pixel_get(chained, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)))
 		<< "带编号附件目标中心非纯绿：" << pixel_text(pixel_get(chained, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2));
 }
+
+/*
+管线第二颜色附件登记（第 804 轮 · 8 位 MRT 段 2）
+口径：`pipeline_load_ex` 可声明第二颜色附件格式（R8_UNORM），登记成功且可卸载；
+      未声明时行为与既有管线一致（默认 0，既有用例覆盖）。
+*/
+TEST_F(Renderer_Offscreen_Test, 管线第二颜色附件登记)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	uint64_t handle = 0;
+	ASSERT_TRUE(renderer.resource().pipeline_load_ex(handle, "后处理.vert.spv", "反色.frag.spv",
+		engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, 0,
+		static_cast<uint32_t>(VK_FORMAT_R8_UNORM)));
+	ASSERT_NE(handle, 0u);
+	EXPECT_TRUE(renderer.resource().pipeline_valid(handle));
+	renderer.resource().pipeline_unload(handle);
+	EXPECT_FALSE(renderer.resource().pipeline_valid(handle));
+}

@@ -7,6 +7,8 @@
 纯绿（0 与 1 两种端点）在 UNORM 与 sRGB 附件下编码一致，故判定不随附件传输函数变化。
 */
 #include <gtest/gtest.h>
+//Vulkan 格式常量（第 801 轮：色调编号附件用例；测试层经渲染层外部库目录取得头文件）
+#include <vulkan/vulkan.h>
 
 
 //获取渲染器门面（含混合档枚举）与网格数据
@@ -559,4 +561,47 @@ TEST_F(Renderer_Offscreen_Test, 深度子区域读回)
 
 	renderer.resource().mesh_unload(handle);
 	renderer.resource().render_target_destroy(target);
+}
+
+/*
+色调编号附件 · 资源层（第 801 轮 · 8 位路径 MRT 段 1）
+口径：单采样目标可带一个 R8_UINT 编号附件，句柄可查询、销毁后不再可用；
+      多重采样目标不创建该附件（告警后按未启用处理），目标本身仍创建成功。
+      本段只验证资源，不接入渲染路径，故既有画面逐字节不变。
+*/
+TEST_F(Renderer_Offscreen_Test, 色调编号附件资源层)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	//单采样 ＋ R8_UINT 编号附件
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+	ASSERT_NE(target, 0u);
+	uint64_t id_image = 0;
+	uint64_t id_view = 0;
+	uint32_t id_format = 0;
+	ASSERT_TRUE(renderer.resource().render_target_tone_id_get(target, id_image, id_view, id_format));
+	EXPECT_NE(id_image, 0u);
+	EXPECT_NE(id_view, 0u);
+	EXPECT_EQ(id_format, static_cast<uint32_t>(VK_FORMAT_R8_UINT));
+	//销毁后查询应失败
+	renderer.resource().render_target_destroy(target);
+	EXPECT_FALSE(renderer.resource().render_target_tone_id_get(target, id_image, id_view, id_format));
+	//多重采样目标不创建编号附件，但目标创建成功
+	uint64_t msaa_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(msaa_target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 4));
+	ASSERT_NE(msaa_target, 0u);
+	EXPECT_FALSE(renderer.resource().render_target_tone_id_get(msaa_target, id_image, id_view, id_format));
+	//未指定格式时与既有接口一致（无编号附件）
+	uint64_t plain_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format(plain_target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 1));
+	ASSERT_NE(plain_target, 0u);
+	EXPECT_FALSE(renderer.resource().render_target_tone_id_get(plain_target, id_image, id_view, id_format));
+	renderer.resource().render_target_destroy(plain_target);
+	renderer.resource().render_target_destroy(msaa_target);
 }

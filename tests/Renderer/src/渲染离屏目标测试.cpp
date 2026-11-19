@@ -605,3 +605,53 @@ TEST_F(Renderer_Offscreen_Test, 色调编号附件资源层)
 	renderer.resource().render_target_destroy(plain_target);
 	renderer.resource().render_target_destroy(msaa_target);
 }
+
+/*
+色调编号附件 · 不改变既有渲染 / 回读（第 802 轮）
+口径：段 1 只提供资源，未接入管线与帧链路，故「带编号附件」与「不带」的目标在同一场景下回读应逐字节一致。
+*/
+TEST_F(Renderer_Offscreen_Test, 色调编号附件不影响既有渲染)
+{
+	//按同一场景渲染一帧并回读目标内容
+	auto render_frame = [](bool with_tone_id)
+	{
+		std::vector<uint8_t> pixels;
+		engine::Renderer renderer;
+		EXPECT_TRUE(renderer.init(hidden_config()));
+		if (!renderer.compute().readback_supported())
+			return pixels;
+		uint64_t target = 0;
+		const uint32_t color_format = static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM);
+		const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+		if (with_tone_id)
+			EXPECT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+				color_format, depth_format, static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+		else
+			EXPECT_TRUE(renderer.resource().render_target_create_format(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+				color_format, depth_format, 1));
+		uint64_t texture = 0;
+		std::vector<uint8_t> texels = solid_green(2, 2);
+		EXPECT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		engine::Mesh_Handle handle = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		renderer.device().render_target_set(target);
+		renderer.resource().texture_bind_set(texture);
+		std::array<float, 16> full = full_screen_matrix();
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
+		pixels.resize(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
+		renderer.resource().render_target_destroy(target);
+		return pixels;
+	};
+	std::vector<uint8_t> reference = render_frame(false);
+	if (reference.empty())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	std::vector<uint8_t> chained = render_frame(true);
+	ASSERT_EQ(reference.size(), chained.size());
+	EXPECT_EQ(reference, chained) << "编号附件改变了既有渲染 / 回读结果";
+	//顺带确认对照帧确实是纯绿（渲染确实发生）
+	EXPECT_TRUE(pixel_is_green(pixel_get(chained, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)))
+		<< "带编号附件目标中心非纯绿：" << pixel_text(pixel_get(chained, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2));
+}

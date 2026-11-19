@@ -768,3 +768,48 @@ TEST_F(Renderer_Offscreen_Test, 逐材质色调编号预通道)
 	renderer.resource().render_target_destroy(target);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+编号通道 · 目标无编号附件时零影响（第 809 轮）
+口径：`tone_id_pass` 开启但目标未建立编号附件（或编号管线未登记）时，帧链路不得产生额外命令，
+      画面与通道关闭时逐字节一致 —— 通道的启用与否不能隐式改变既有渲染结果。
+*/
+TEST_F(Renderer_Offscreen_Test, 编号通道无附件时零影响)
+{
+	//按指定开关渲染一帧并回读目标内容（目标不带编号附件）
+	auto render_frame = [](bool tone_pass)
+	{
+		std::vector<uint8_t> pixels;
+		engine::Renderer renderer;
+		EXPECT_TRUE(renderer.init(hidden_config()));
+		if (!renderer.compute().readback_supported())
+			return pixels;
+		//普通目标（无编号附件）
+		uint64_t target = 0;
+		EXPECT_TRUE(renderer.resource().render_target_create_format(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+			static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 1));
+		uint64_t texture = 0;
+		std::vector<uint8_t> texels = solid_green(2, 2);
+		EXPECT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+		engine::Mesh_Handle handle = 0;
+		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		//按开关切换编号通道（目标无编号附件 → 应在录制期跳过）
+		renderer.device().tone_id_pass_set(tone_pass);
+		renderer.device().render_target_set(target);
+		renderer.resource().texture_bind_set(texture);
+		std::array<float, 16> full = full_screen_matrix();
+		EXPECT_TRUE(renderer.resource().mesh_draw(handle, full.data()));
+		pixels.resize(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		renderer.resource().mesh_unload(handle);
+		renderer.resource().texture_unload(texture);
+		renderer.resource().render_target_destroy(target);
+		return pixels;
+	};
+	std::vector<uint8_t> reference = render_frame(false);
+	if (reference.empty())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	std::vector<uint8_t> enabled = render_frame(true);
+	ASSERT_EQ(reference.size(), enabled.size());
+	EXPECT_EQ(reference, enabled) << "目标无编号附件时开关改变了既有渲染结果";
+}

@@ -1247,36 +1247,115 @@ TEST_F(Renderer_Post_Chain_Test, HDR默认路径AgX去饱和)
 	EXPECT_GT(agx[1], aces[1] + 30) << "AgX 与 ACES 的通道差异不足：" << agx[1] << " / " << aces[1];
 }
 
-/*
-HDR 默认路径 · 自动泛光（方向九第 761 轮）
-口径：hdr_auto_bloom 开启且走 HDR 默认路径时，自动挂「亮部提取 → 模糊(半径 4) → 泛光叠加 → 色调映射」。
-曝光 +2 的白四边形在边界外形成泛光扩散：开启帧的边界外测点应明显亮于关闭帧。
-测点不硬编码：用关闭帧从中心沿 +X 扫描出亮暗边界，再测边界外 2 像素。
-*/
-TEST_F(Renderer_Post_Chain_Test, HDR默认路径自动泛光)
+namespace
 {
-	//按配置出一帧，返回像素与帧结果
-	auto frame_by = [&](bool auto_bloom, std::vector<uint8_t>& pixels)
+	//显式泛光链装配件（第 778 轮）：16F 场景目标 ＋ 场景管线 ＋ 泛光预设 ＋ 末级色调映射管线
+	struct Explicit_Bloom_Chain
+	{
+		uint64_t scene_target = 0;
+		uint64_t scene_pipeline = 0;
+		uint64_t tone_pipeline = 0;
+		engine::Bloom_Preset preset;
+	};
+
+	//按描述建立一套显式泛光链（场景目标与场景管线恒为 16F；调用方负责最后释放）
+	//samples = 场景目标采样数；tone_operator 决定末级色调映射片元（0 ACES / 1 胶片 / 2 指数 / 3 扩展 Reinhard / 4 AgX）
+	bool explicit_bloom_chain_build(engine::Renderer& renderer, Explicit_Bloom_Chain& chain,
+		const engine::Bloom_Preset_Desc& desc, uint32_t samples = 1, uint32_t tone_operator = 0)
+	{
+		const uint32_t width = renderer.device().extent_width();
+		const uint32_t height = renderer.device().extent_height();
+		const uint32_t hdr_format = static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT);
+		const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
+		if (!renderer.resource().render_target_create_format(chain.scene_target, width, height,
+			hdr_format, depth_format, samples))
+			return false;
+		if (!renderer.resource().pipeline_load_ex(chain.scene_pipeline, "场景.vert.spv", "场景.frag.spv",
+			engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, samples, hdr_format))
+			return false;
+		//末级色调映射片元（与默认路径的算子选择口径一致）
+		const char* tone_fragments[5] = { "色调映射.frag.spv", "胶片色调映射.frag.spv", "指数色调映射.frag.spv",
+			"Reinhard扩展色调映射.frag.spv", "AgX色调映射.frag.spv" };
+		const char* tone_fragment = tone_operator < 5 ? tone_fragments[tone_operator] : tone_fragments[0];
+		if (!renderer.resource().pipeline_load(chain.tone_pipeline, "后处理.vert.spv", tone_fragment))
+			return false;
+		if (!renderer.device().post_bloom_preset_build(chain.preset, desc))
+			return false;
+		//订阅四级链（提取 → 模糊 → 叠加 → 色调映射）与「场景 ＋ 三个中间目标」
+		uint64_t stages[4] = { chain.preset.pipelines[0], chain.preset.pipelines[1], chain.preset.pipelines[2],
+			chain.tone_pipeline };
+		if (!renderer.device().post_chain_set(stages, 4))
+			return false;
+		uint64_t targets[4] = { chain.scene_target, chain.preset.targets[0], chain.preset.targets[1],
+			chain.preset.targets[2] };
+		if (!renderer.device().render_target_present_chain_set(targets, 4))
+			return false;
+		return renderer.device().post_bloom_preset_params(chain.preset, desc);
+	}
+
+	//释放显式泛光链（先摘链、再释放资源）
+	void explicit_bloom_chain_destroy(engine::Renderer& renderer, Explicit_Bloom_Chain& chain)
+	{
+		renderer.device().post_chain_set(nullptr, 0);
+		renderer.device().render_target_present_chain_set(nullptr, 0);
+		renderer.device().post_bloom_preset_release(chain.preset);
+		if (chain.tone_pipeline != 0)
+			renderer.resource().pipeline_unload(chain.tone_pipeline);
+		if (chain.scene_pipeline != 0)
+			renderer.resource().pipeline_unload(chain.scene_pipeline);
+		if (chain.scene_target != 0)
+			renderer.resource().render_target_destroy(chain.scene_target);
+		chain.tone_pipeline = 0;
+		chain.scene_pipeline = 0;
+		chain.scene_target = 0;
+	}
+}
+
+/*
+HDR 显式泛光预设（第 778 轮 · 通用引擎化整改；取代方向九第 761 轮的自动泛光）
+口径：引擎不再在背后建泛光资源；调用方用 post_bloom_preset_build 建三目标三管线并自行订阅链。
+断言：1) 未装配泛光时 HDR 默认路径只有一级色调映射（链为空）；2) 显式装配后四级链成立且边界外被提亮。
+*/
+TEST_F(Renderer_Post_Chain_Test, HDR显式泛光预设)
+{
+	//基线：只走 HDR 默认路径（不装配泛光）
+	std::vector<uint8_t> without(pixel_bytes());
 	{
 		engine::Renderer renderer;
 		engine::Renderer_Config config = hidden_config();
 		config.vsync = false;
 		config.hdr_targets = true;
-		config.hdr_auto_bloom = auto_bloom;
-		EXPECT_TRUE(renderer.init(config));
+		ASSERT_TRUE(renderer.init(config));
+		if (!renderer.compute().readback_supported())
+			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
 		renderer.resource().texture_bind_set(0);
-		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
 		engine::Mesh_Handle handle = 0;
-		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
-		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
-		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.frame_render(without.data(), static_cast<uint32_t>(without.size())));
+		EXPECT_EQ(renderer.device().post_chain_count(), 0u) << "未装配泛光时链应恒为空";
+		EXPECT_EQ(renderer.frame_stats_get().post_stages, 1u) << "未装配泛光时应只有一级色调映射";
 		renderer.resource().mesh_unload(handle);
-	};
-	std::vector<uint8_t> without(pixel_bytes());
+	}
+	//显式装配泛光链
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	ASSERT_TRUE(renderer.init(config));
+	renderer.resource().texture_bind_set(0);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	Explicit_Bloom_Chain chain;
+	engine::Bloom_Preset_Desc desc;
+	ASSERT_TRUE(explicit_bloom_chain_build(renderer, chain, desc));
+	renderer.resource().pipeline_bind_set(chain.scene_pipeline);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> with(pixel_bytes());
-	frame_by(false, without);
-	frame_by(true, with);
-	//从中心沿 +X 扫描第一个暗像素（关闭泛光帧，边界确定）
+	ASSERT_TRUE(renderer.frame_render(with.data(), static_cast<uint32_t>(with.size())));
+	EXPECT_EQ(renderer.frame_stats_get().post_stages, 4u) << "显式泛光链应为四级";
+	//从中心沿 +X 扫描第一个暗像素（无泛光帧，边界确定）
 	uint32_t edge_x = WINDOW_WIDTH;
 	for (uint32_t x = WINDOW_WIDTH / 2; x < WINDOW_WIDTH; ++x)
 	{
@@ -1292,43 +1371,46 @@ TEST_F(Renderer_Post_Chain_Test, HDR默认路径自动泛光)
 		probe_x = WINDOW_WIDTH - 1;
 	int plain_probe = static_cast<int>(pixel_get(without, probe_x, WINDOW_HEIGHT / 2)[0]);
 	int bloom_probe = static_cast<int>(pixel_get(with, probe_x, WINDOW_HEIGHT / 2)[0]);
-	RecordProperty("bloom_auto_edge_x", static_cast<int>(edge_x));
-	RecordProperty("bloom_auto_plain_probe", plain_probe);
-	RecordProperty("bloom_auto_bloom_probe", bloom_probe);
-	//自动泛光应把边界外暗区提亮
-	EXPECT_GE(bloom_probe, plain_probe + 10) << "自动泛光未扩散到边界外：关闭 " << plain_probe
+	RecordProperty("bloom_explicit_edge_x", static_cast<int>(edge_x));
+	RecordProperty("bloom_explicit_plain_probe", plain_probe);
+	RecordProperty("bloom_explicit_bloom_probe", bloom_probe);
+	EXPECT_GE(bloom_probe, plain_probe + 10) << "显式泛光未扩散到边界外：关闭 " << plain_probe
 		<< " / 开启 " << bloom_probe;
+	explicit_bloom_chain_destroy(renderer, chain);
+	renderer.resource().mesh_unload(handle);
 }
 
 /*
-HDR 默认路径 · 自动泛光参数化（方向九第 763 轮）
-口径：hdr_bloom_threshold / knee / radius / intensity 由配置下发到自动泛光链。
-阈值 5.0（高于 16F 高光 4.0）应使提取权重为 0、测点回到无泛光水平；
-强度传 0（非法）应回落 1.0，画面与默认参数一致。
+HDR 显式泛光预设参数化（第 778 轮；取代方向九第 763 轮的自动泛光参数化）
+口径：阈值 / 半径 / 强度随 Bloom_Preset_Desc 下发。阈值 5.0（高于 16F 高光 4.0）应使提取权重为 0、
+测点回到无泛光水平；强度传 0（非法）应回落 1.0，画面与默认参数一致。
 */
-TEST_F(Renderer_Post_Chain_Test, HDR自动泛光参数化)
+TEST_F(Renderer_Post_Chain_Test, HDR显式泛光预设参数化)
 {
 	//按（阈值, 强度）出一帧，返回中心与边界外测点
-	auto probes_by = [&](float threshold, float intensity, int& center_out, int& probe_out)
+	auto probes_by = [](float threshold, float intensity, int& center_out, int& probe_out)
 	{
 		engine::Renderer renderer;
 		engine::Renderer_Config config = hidden_config();
 		config.vsync = false;
-		config.hdr_targets = true;
-		config.hdr_auto_bloom = true;
-		config.hdr_bloom_threshold = threshold;
-		config.hdr_bloom_intensity = intensity;
-		EXPECT_TRUE(renderer.init(config));
+		ASSERT_TRUE(renderer.init(config));
 		renderer.resource().texture_bind_set(0);
-		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
+		ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
 		engine::Mesh_Handle handle = 0;
-		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
-		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		Explicit_Bloom_Chain chain;
+		engine::Bloom_Preset_Desc desc;
+		desc.threshold = threshold;
+		desc.intensity = intensity;
+		ASSERT_TRUE(explicit_bloom_chain_build(renderer, chain, desc));
+		renderer.resource().pipeline_bind_set(chain.scene_pipeline);
+		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
-		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		center_out = static_cast<int>(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
 		//边界沿用第 761 轮实测位置（同一几何）
 		probe_out = static_cast<int>(pixel_get(pixels, 44, WINDOW_HEIGHT / 2)[0]);
+		explicit_bloom_chain_destroy(renderer, chain);
 		renderer.resource().mesh_unload(handle);
 	};
 	int default_center = 0;
@@ -1344,7 +1426,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光参数化)
 	RecordProperty("bloom_param_high_threshold_probe", high_probe);
 	RecordProperty("bloom_param_fallback_probe", fallback_probe);
 	//默认参数：边界外应有泛光
-	EXPECT_GE(default_probe, 150) << "默认参数下自动泛光未生效：" << default_probe;
+	EXPECT_GE(default_probe, 150) << "默认参数下显式泛光未生效：" << default_probe;
 	//阈值高于高光：泛光消失（回到无泛光水平）
 	EXPECT_LE(high_probe, default_probe - 50) << "阈值 5.0 未能关闭泛光：" << high_probe
 		<< " / " << default_probe;
@@ -1354,19 +1436,17 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光参数化)
 }
 
 /*
-HDR 默认路径 · 自动泛光随尺寸重建（方向九第 764 轮）
-口径：窗口尺寸变化后，HDR 场景目标与三个泛光中间目标都须按新尺寸重建，
-且泛光在重建帧与后续帧都仍生效（亮度沿边缘向外扩散两个像素）。
+HDR 显式泛光预设随尺寸重建（第 778 轮；取代方向九第 764 轮的自动随尺寸重建）
+口径：预设持有的中间目标是显式资源，尺寸变化由调用方释放并按新尺寸重建，
+引擎不再在帧内自动重建；重建后泛光仍生效（亮度沿边缘向外扩散）。
 判读方式：主体亮度约 232，故以「首个亮度 < 220 的像素」定位亮区边界（即首个光晕像素），
 再测其后一个像素；无泛光时边界处直接落入清屏色（≈99），有泛光时依次约为 213 / 167。
 */
-TEST_F(Renderer_Post_Chain_Test, HDR自动泛光随尺寸重建)
+TEST_F(Renderer_Post_Chain_Test, HDR显式泛光预设随尺寸重建)
 {
 	engine::Renderer renderer;
 	engine::Renderer_Config config = hidden_config();
 	config.vsync = false;
-	config.hdr_targets = true;
-	config.hdr_auto_bloom = true;
 	ASSERT_TRUE(renderer.init(config));
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
@@ -1384,11 +1464,14 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光随尺寸重建)
 		}
 		return width;
 	};
-	//第一帧（夹具默认尺寸）
+	//默认尺寸下装配并出两帧
+	Explicit_Bloom_Chain chain;
+	engine::Bloom_Preset_Desc desc;
+	ASSERT_TRUE(explicit_bloom_chain_build(renderer, chain, desc));
+	renderer.resource().pipeline_bind_set(chain.scene_pipeline);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> first(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(first.data(), static_cast<uint32_t>(first.size())));
-	//同尺寸第二帧：验证自动链在多帧下的还原 / 重填
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> second(pixel_bytes());
 	ASSERT_TRUE(renderer.frame_render(second.data(), static_cast<uint32_t>(second.size())));
@@ -1401,21 +1484,24 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光随尺寸重建)
 	RecordProperty("bloom_resize_base_halo_outer", base_halo_outer);
 	EXPECT_GE(base_halo_inner, 150) << "同尺寸第二帧边界外侧无泛光：" << base_halo_inner;
 	EXPECT_GE(base_halo_outer, 120) << "同尺寸第二帧泛光扩散不足：" << base_halo_outer;
-	//改尺寸：下一帧按新尺寸重建交换链与全部 HDR 目标
+	//改尺寸：调用方先释放旧链，再让交换链按新尺寸重建，然后按新尺寸重建预设
 	ASSERT_TRUE(renderer.device().window_size_set(96, 54));
-	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	explicit_bloom_chain_destroy(renderer, chain);
+	ASSERT_TRUE(renderer.frame_render());
 	const uint32_t new_width = 96;
 	const uint32_t new_height = 54;
+	ASSERT_EQ(renderer.device().extent_width(), new_width);
+	ASSERT_EQ(renderer.device().extent_height(), new_height);
+	ASSERT_TRUE(explicit_bloom_chain_build(renderer, chain, desc));
+	renderer.resource().pipeline_bind_set(chain.scene_pipeline);
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> resized(pixel_bytes(new_width, new_height));
 	uint32_t read_width = 0;
 	uint32_t read_height = 0;
 	ASSERT_TRUE(renderer.frame_render(resized.data(), static_cast<uint32_t>(resized.size()), &read_width, &read_height));
 	EXPECT_EQ(read_width, new_width);
 	EXPECT_EQ(read_height, new_height);
-	//重建帧：交换链与全部 HDR 目标按新尺寸重建并仍走后处理链（4 级：提取 / 模糊 / 叠加 / 色调映射）
-	EXPECT_EQ(renderer.device().extent_width(), new_width);
-	EXPECT_EQ(renderer.device().extent_height(), new_height);
-	EXPECT_EQ(renderer.frame_stats_get().post_stages, 4u) << "尺寸变化后未走四级自动泛光链";
+	EXPECT_EQ(renderer.frame_stats_get().post_stages, 4u) << "尺寸变化后未走四级显式泛光链";
 	uint32_t edge_x = core_edge_x(resized, new_width, new_height);
 	ASSERT_LT(edge_x + 1, new_width) << "新尺寸下未找到核心亮区边界";
 	int halo_inner = static_cast<int>(pixel_get(resized, edge_x, new_height / 2, new_width)[0]);
@@ -1425,7 +1511,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光随尺寸重建)
 	RecordProperty("bloom_resize_halo_outer", halo_outer);
 	EXPECT_GE(halo_inner, 150) << "尺寸变化后边界外侧无泛光：" << halo_inner;
 	EXPECT_GE(halo_outer, 120) << "尺寸变化后泛光扩散不足：" << halo_outer;
-	//新尺寸第二帧：泛光链在重建后持续生效（排除过渡帧偶然）
+	//新尺寸第二帧：泛光链持续生效（排除过渡帧偶然）
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> resized_second(pixel_bytes(new_width, new_height));
 	uint32_t second_width = 0;
@@ -1439,19 +1525,20 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光随尺寸重建)
 	RecordProperty("bloom_resize_second_edge", static_cast<int>(second_edge));
 	RecordProperty("bloom_resize_second_halo_inner", second_halo_inner);
 	RecordProperty("bloom_resize_second_halo_outer", second_halo_outer);
-	EXPECT_EQ(renderer.frame_stats_get().post_stages, 4u) << "新尺寸第二帧未走四级自动泛光链";
+	EXPECT_EQ(renderer.frame_stats_get().post_stages, 4u) << "新尺寸第二帧未走四级显式泛光链";
 	EXPECT_GE(second_halo_inner, 150) << "新尺寸第二帧边界外侧无泛光：" << second_halo_inner;
 	EXPECT_GE(second_halo_outer, 120) << "新尺寸第二帧泛光扩散不足：" << second_halo_outer;
+	explicit_bloom_chain_destroy(renderer, chain);
 	renderer.resource().mesh_unload(handle);
 }
 
 /*
-HDR 默认路径 · 半分辨率自动泛光（方向九第 765 轮）
-口径：hdr_bloom_half_res 开启后「亮部提取 / 模糊」两个中间目标取 1/2 边长，「泛光叠加」仍按场景尺寸输出。
+HDR 显式泛光预设 · 半分辨率（第 778 轮；取代方向九第 765 轮的自动泛光半分辨率）
+口径：Bloom_Preset_Desc.half_res 开启后「亮部提取 / 模糊」两个中间目标取 1/2 边长，「泛光叠加」仍按场景尺寸输出。
 断言：1) 半分辨率下仍走四级链且边界外有泛光；2) 画面与全分辨率不同（证明开关生效）；
       3) 中心亮度与全分辨率接近（泛光只影响边缘扩散，不改写主体亮度）。
 */
-TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光)
+TEST_F(Renderer_Post_Chain_Test, HDR显式泛光预设半分辨率)
 {
 	//按半分辨率开关出一帧，返回像素与链级数
 	auto frame_by = [](bool half_res, std::vector<uint8_t>& pixels) -> int
@@ -1459,18 +1546,21 @@ TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光)
 		engine::Renderer renderer;
 		engine::Renderer_Config config = hidden_config();
 		config.vsync = false;
-		config.hdr_targets = true;
-		config.hdr_auto_bloom = true;
-		config.hdr_bloom_half_res = half_res;
 		EXPECT_TRUE(renderer.init(config));
 		renderer.resource().texture_bind_set(0);
 		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
 		engine::Mesh_Handle handle = 0;
 		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		Explicit_Bloom_Chain chain;
+		engine::Bloom_Preset_Desc desc;
+		desc.half_res = half_res;
+		EXPECT_TRUE(explicit_bloom_chain_build(renderer, chain, desc));
+		renderer.resource().pipeline_bind_set(chain.scene_pipeline);
 		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		pixels.assign(pixel_bytes(), 0);
 		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 		int stages = static_cast<int>(renderer.frame_stats_get().post_stages);
+		explicit_bloom_chain_destroy(renderer, chain);
 		renderer.resource().mesh_unload(handle);
 		return stages;
 	};
@@ -1479,7 +1569,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光)
 	int full_stages = frame_by(false, full);
 	int half_stages = frame_by(true, half);
 	EXPECT_EQ(full_stages, 4);
-	EXPECT_EQ(half_stages, 4) << "半分辨率下未走四级自动泛光链";
+	EXPECT_EQ(half_stages, 4) << "半分辨率下未走四级显式泛光链";
 	//核心亮区边界（首个 < 220 的像素，主体约 232）与其后一个像素
 	auto halo_by = [](const std::vector<uint8_t>& image, uint32_t& edge_out, int& inner_out, int& outer_out)
 	{
@@ -1595,8 +1685,8 @@ TEST_F(Renderer_Post_Chain_Test, HDR默认路径MSAA组合)
 }
 
 /*
-HDR 组合矩阵（方向九第 767 轮）
-口径：把「自动泛光 × 半分辨率 × MSAA」六种组合各出一帧，验证
+HDR 组合矩阵（方向九第 767 轮；第 778 轮改为显式装配）
+口径：把「显式泛光 × 半分辨率 × MSAA」六种组合各出一帧，验证
 1) 链路级数符合该配置（泛光 → 4 级、否则单级）；
 2) 主体（四边形中心）亮度在全部组合间一致（±6）：泛光只动边缘、MSAA 只动轮廓、半分辨率只改中间层分辨率；
 3) 全部组合都能正常出帧。
@@ -1630,15 +1720,23 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光组合矩阵)
 		engine::Renderer renderer;
 		engine::Renderer_Config config = hidden_config();
 		config.vsync = false;
-		config.hdr_targets = true;
-		config.hdr_auto_bloom = combo.bloom;
-		config.hdr_bloom_half_res = combo.half_res;
 		config.msaa_samples = combo.samples;
+		//无泛光组合走 HDR 默认路径（单级色调映射）；泛光组合由调用方显式装配
+		config.hdr_targets = !combo.bloom;
 		ASSERT_TRUE(renderer.init(config)) << "组合初始化失败（采样 " << combo.samples << "）";
 		renderer.resource().texture_bind_set(0);
 		ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
 		engine::Mesh_Handle handle = 0;
 		ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		Explicit_Bloom_Chain chain;
+		if (combo.bloom)
+		{
+			engine::Bloom_Preset_Desc desc;
+			desc.half_res = combo.half_res;
+			ASSERT_TRUE(explicit_bloom_chain_build(renderer, chain, desc, combo.samples))
+				<< "组合泛光预设建立失败（采样 " << combo.samples << "）";
+			renderer.resource().pipeline_bind_set(chain.scene_pipeline);
+		}
 		ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())))
@@ -1661,6 +1759,8 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光组合矩阵)
 		else
 			EXPECT_LE(std::abs(center - reference_center), 6) << "组合改变了主体亮度："
 				<< center << " vs " << reference_center;
+		if (combo.bloom)
+			explicit_bloom_chain_destroy(renderer, chain);
 		renderer.resource().mesh_unload(handle);
 	}
 	ASSERT_GE(reference_center, 0);
@@ -1680,21 +1780,31 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光不损失高光算子矩阵)
 		engine::Renderer renderer;
 		engine::Renderer_Config config = hidden_config();
 		config.vsync = false;
-		config.hdr_targets = true;
 		config.hdr_tone_operator = tone_operator;
-		config.hdr_auto_bloom = bloom;
+		//无泛光：HDR 默认路径（内置算子选择）；泛光：调用方显式装配同算子末级
+		config.hdr_targets = !bloom;
 		if (!renderer.init(config))
 			return false;
 		renderer.resource().texture_bind_set(0);
 		EXPECT_TRUE(renderer.scene().exposure_set(2.0f));
 		engine::Mesh_Handle handle = 0;
 		EXPECT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+		Explicit_Bloom_Chain chain;
+		if (bloom)
+		{
+			engine::Bloom_Preset_Desc desc;
+			if (!explicit_bloom_chain_build(renderer, chain, desc, 1, tone_operator))
+				return false;
+			renderer.resource().pipeline_bind_set(chain.scene_pipeline);
+		}
 		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		std::vector<uint8_t> pixels(pixel_bytes());
 		if (!renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())))
 			return false;
 		center_out = static_cast<int>(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)[0]);
 		stages_out = renderer.frame_stats_get().post_stages;
+		if (bloom)
+			explicit_bloom_chain_destroy(renderer, chain);
 		renderer.resource().mesh_unload(handle);
 		return true;
 	};
@@ -1720,18 +1830,16 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光不损失高光算子矩阵)
 }
 
 /*
-HDR 自动泛光不覆盖用户配置（方向九第 770 轮）
-口径（761 的介入条件）：用户已设后处理链时，自动泛光不得改写链与额外目标。
-断言：1) 用户两级链保持 2 级（渲染时因缺额外目标回落单级，但链本身不被覆盖）；
-      2) 自动泛光关闭时不残留链与额外目标（多帧稳定为单级）。
+HDR 不隐式介入用户链（第 778 轮；取代方向九第 770 轮的「自动泛光不覆盖用户链」）
+口径：引擎不再自动填充后处理链。用户设两级链（拷贝 / 色调映射）但不设额外目标时，
+本帧按既有规则回落单级，链本身保持 2 级且多帧不被任何隐式逻辑改写。
 */
-TEST_F(Renderer_Post_Chain_Test, HDR自动泛光不覆盖用户链)
+TEST_F(Renderer_Post_Chain_Test, HDR不隐式介入用户链)
 {
 	engine::Renderer renderer;
 	engine::Renderer_Config config = hidden_config();
 	config.vsync = false;
 	config.hdr_targets = true;
-	config.hdr_auto_bloom = true;
 	ASSERT_TRUE(renderer.init(config));
 	//用户自设两级链（拷贝 / 色调映射）；不设额外目标，渲染时按既有规则回落单级
 	uint64_t copy_stage = post_pipeline_register(renderer, "后处理.frag.spv");
@@ -1751,9 +1859,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光不覆盖用户链)
 	uint32_t stages_after = renderer.frame_stats_get().post_stages;
 	RecordProperty("user_chain_count", static_cast<int>(chain_after));
 	RecordProperty("user_chain_stages", static_cast<int>(stages_after));
-	//链本身不被自动泛光改写
-	EXPECT_EQ(chain_after, 2u) << "自动泛光覆盖了用户后处理链";
-	//缺额外目标 → 本帧按既有规则回落单级
+	EXPECT_EQ(chain_after, 2u) << "引擎隐式改写了用户后处理链";
 	EXPECT_EQ(stages_after, 1u) << "用户两级链（无额外目标）未按规则回落单级";
 	//第二帧仍保持用户链
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
@@ -1764,14 +1870,13 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光不覆盖用户链)
 	renderer.resource().mesh_unload(handle);
 }
 
-//HDR 自动泛光关闭：不残留链与额外目标（多帧稳定为单级路径）
-TEST_F(Renderer_Post_Chain_Test, HDR自动泛光关闭无残留)
+//HDR 默认路径不残留链：未显式装配时链恒为空、多帧稳定为单级路径
+TEST_F(Renderer_Post_Chain_Test, HDR默认路径无残留链)
 {
 	engine::Renderer renderer;
 	engine::Renderer_Config config = hidden_config();
 	config.vsync = false;
 	config.hdr_targets = true;
-	config.hdr_auto_bloom = false;
 	ASSERT_TRUE(renderer.init(config));
 	renderer.resource().texture_bind_set(0);
 	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
@@ -1790,12 +1895,12 @@ TEST_F(Renderer_Post_Chain_Test, HDR自动泛光关闭无残留)
 }
 
 /*
-HDR 泛光参数在尺寸重建后保持（方向九第 771 轮）
-口径：764 验证了「尺寸变化后泛光仍生效」，本轮补「参数不被重建冲掉」：
-两种阈值（默认 0.6 生效 / 5.0 关闭）各跑「出帧 → 改尺寸 → 再出帧」，
+HDR 显式泛光参数在尺寸重建后保持（第 778 轮；取代方向九第 771 轮）
+口径：尺寸变化由调用方释放并按新尺寸重建预设，重建时重新下发同一描述。
+两种阈值（默认 0.6 生效 / 5.0 关闭）各跑「出帧 → 改尺寸 → 重建 → 再出帧」，
 断言两尺寸下的边界外侧亮度都与该阈值对应的预期一致（0.6 → ≥150；5.0 → ≤120）。
 */
-TEST_F(Renderer_Post_Chain_Test, HDR泛光参数在尺寸重建后保持)
+TEST_F(Renderer_Post_Chain_Test, HDR显式泛光参数在尺寸重建后保持)
 {
 	//按阈值出一轮「改尺寸前后」两帧，返回两次边界外侧亮度
 	auto probe_by = [](float threshold, int& before_out, int& after_out) -> bool
@@ -1803,9 +1908,6 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光参数在尺寸重建后保持)
 		engine::Renderer renderer;
 		engine::Renderer_Config config = hidden_config();
 		config.vsync = false;
-		config.hdr_targets = true;
-		config.hdr_auto_bloom = true;
-		config.hdr_bloom_threshold = threshold;
 		if (!renderer.init(config))
 			return false;
 		renderer.resource().texture_bind_set(0);
@@ -1820,16 +1922,28 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光参数在尺寸重建后保持)
 					return static_cast<int>(pixel_get(image, x, height / 2, width)[0]);
 			return -1;
 		};
+		engine::Bloom_Preset_Desc desc;
+		desc.threshold = threshold;
+		Explicit_Bloom_Chain chain;
+		if (!explicit_bloom_chain_build(renderer, chain, desc))
+			return false;
+		renderer.resource().pipeline_bind_set(chain.scene_pipeline);
 		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		std::vector<uint8_t> before(pixel_bytes());
 		EXPECT_TRUE(renderer.frame_render(before.data(), static_cast<uint32_t>(before.size())));
 		before_out = halo_of(before, WINDOW_WIDTH, WINDOW_HEIGHT);
-		//改尺寸后第二帧
+		//改尺寸：先释放旧链 → 触发交换链重建 → 按新尺寸重建预设（同描述重新下发参数）
 		EXPECT_TRUE(renderer.device().window_size_set(96, 54));
+		explicit_bloom_chain_destroy(renderer, chain);
+		EXPECT_TRUE(renderer.frame_render());
+		if (!explicit_bloom_chain_build(renderer, chain, desc))
+			return false;
+		renderer.resource().pipeline_bind_set(chain.scene_pipeline);
 		EXPECT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 		std::vector<uint8_t> after(pixel_bytes(96, 54));
 		EXPECT_TRUE(renderer.frame_render(after.data(), static_cast<uint32_t>(after.size())));
 		after_out = halo_of(after, 96, 54);
+		explicit_bloom_chain_destroy(renderer, chain);
 		renderer.resource().mesh_unload(handle);
 		return true;
 	};
@@ -1854,23 +1968,25 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光参数在尺寸重建后保持)
 }
 
 /*
-HDR 半分辨率泛光随尺寸重建（方向九第 772 轮）
-口径：765 的半分辨率开关与 764 的尺寸重建组合 —— 改尺寸后提取 / 模糊两个 1/2 边长目标同样按新尺寸重建，
-叠加级保持全尺寸。断言：两尺寸下链路级数 4、边界外侧亮度与半分辨率特征一致（两点同值且 ≥150 / ≥120）。
+HDR 显式泛光半分辨率随尺寸重建（第 778 轮；取代方向九第 772 轮）
+口径：半分辨率描述与「调用方按新尺寸重建预设」组合 —— 重建后提取 / 模糊两个 1/2 边长目标按新尺寸建立，
+叠加级保持全尺寸。断言：两尺寸下链路级数 4、边界外侧亮度满足 150 / 120。
 */
-TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光随尺寸重建)
+TEST_F(Renderer_Post_Chain_Test, HDR显式泛光半分辨率随尺寸重建)
 {
 	engine::Renderer renderer;
 	engine::Renderer_Config config = hidden_config();
 	config.vsync = false;
-	config.hdr_targets = true;
-	config.hdr_auto_bloom = true;
-	config.hdr_bloom_half_res = true;
 	ASSERT_TRUE(renderer.init(config));
 	renderer.resource().texture_bind_set(0);
 	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
 	engine::Mesh_Handle handle = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(handle, quad_data()));
+	engine::Bloom_Preset_Desc desc;
+	desc.half_res = true;
+	Explicit_Bloom_Chain chain;
+	ASSERT_TRUE(explicit_bloom_chain_build(renderer, chain, desc));
+	renderer.resource().pipeline_bind_set(chain.scene_pipeline);
 	//边界外侧两点（首个 < 220 的像素与其后一个）
 	auto halo_pair = [](const std::vector<uint8_t>& image, uint32_t width, uint32_t height,
 		int& inner_out, int& outer_out)
@@ -1896,8 +2012,12 @@ TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光随尺寸重建)
 	int before_outer = 0;
 	halo_pair(before, WINDOW_WIDTH, WINDOW_HEIGHT, before_inner, before_outer);
 	uint32_t before_stages = renderer.frame_stats_get().post_stages;
-	//改尺寸
+	//改尺寸：释放旧链 → 触发交换链重建 → 按新尺寸重建同描述预设
 	ASSERT_TRUE(renderer.device().window_size_set(96, 54));
+	explicit_bloom_chain_destroy(renderer, chain);
+	ASSERT_TRUE(renderer.frame_render());
+	ASSERT_TRUE(explicit_bloom_chain_build(renderer, chain, desc));
+	renderer.resource().pipeline_bind_set(chain.scene_pipeline);
 	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
 	std::vector<uint8_t> after(pixel_bytes(96, 54));
 	uint32_t read_width = 0;
@@ -1919,6 +2039,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR半分辨率泛光随尺寸重建)
 	EXPECT_GE(before_outer, 120) << "默认尺寸半分辨率扩散不足：" << before_outer;
 	EXPECT_GE(after_inner, 150) << "改尺寸后半分辨率无泛光：" << after_inner;
 	EXPECT_GE(after_outer, 120) << "改尺寸后半分辨率扩散不足：" << after_outer;
+	explicit_bloom_chain_destroy(renderer, chain);
 	renderer.resource().mesh_unload(handle);
 }
 

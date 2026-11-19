@@ -482,7 +482,7 @@ TEST_F(Renderer_Scene_Test, 场景UBO按需写入)
 
 /*
 实例缓冲按需写入（第六十一轮）
-口径：frame_overlap = 2；每帧绘制同一个四边形（1 个实例 = 112 字节，第四百零八轮 80→96、第四百零九轮 96→112）；
+口径：frame_overlap = 2；每帧绘制同一个四边形（1 个实例 = 128 字节，第四百零八轮 80→96、第四百零九轮 96→112、第 777 轮 112→128）；
      各帧槽预热后静止帧上传 0 字节；平移模型矩阵后逐帧上传 >0 且 ≤112，随后回到 0。
 */
 TEST_F(Renderer_Scene_Test, 实例缓冲按需写入)
@@ -511,7 +511,7 @@ TEST_F(Renderer_Scene_Test, 实例缓冲按需写入)
 		}
 	};
 
-	//静止场景：两个帧槽依次预热（各 112 字节：模型矩阵 16 ＋ 材质 4 ＋ 卡通 4 ＋ 暗部色调 4 浮点），之后为 0
+	//静止场景：两个帧槽依次预热（各 128 字节：模型矩阵 16 ＋ 材质 4 ＋ 卡通 4 ＋ 暗部色调 4 ＋ PBR 特性 4 浮点），之后为 0
 	std::vector<uint64_t> deltas;
 	uint64_t previous = renderer.instance_upload_bytes();
 	upload_delta(deltas, previous, 4, nullptr);

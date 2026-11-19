@@ -600,6 +600,99 @@ TEST_F(Renderer_Scene_Test, PBR写实与二次元双轨同帧)
 }
 
 /*
+逐物体 PBR 特性分层（第 777 轮 · 通用引擎化整改）
+左侧物体材质沿用全局口径（特性全关），右侧材质以位掩码声明「布料 sheen」；
+仅切换右侧材质时左半必须逐像素不变，右半必须出现差异。
+另两项判据：空掩码覆盖与普通材质逐字节一致；光泽度映射（bit5）确实改写本材质粗糙度。
+*/
+TEST_F(Renderer_Scene_Test, PBR特性逐物体分层)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	BYJY_REQUIRE_READBACK(renderer);
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_gray();
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	engine::Mesh_Handle sphere = 0;
+	ASSERT_TRUE(renderer.resource().mesh_sphere_load(sphere, 1.0f, 24, 12));
+	//斜射主光：球面法线变化使 sheen 绒边可观测
+	const float direction[3] = { 0.4f, -0.25f, -0.9f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.15f);
+	renderer.scene().specular_set(0.6f, 48.0f);
+	renderer.scene().pbr_enable_set(true);
+	renderer.scene().pbr_roughness_absolute_set(true);
+	renderer.scene().pbr_roughness_set(0.5f);
+	renderer.scene().pbr_metallic_set(0.0f);
+	//全局特性全部关闭（材质未覆盖时回落该口径）
+	renderer.scene().pbr_sheen_set(false);
+	renderer.scene().pbr_sheen_strength_set(0.8f);
+	renderer.scene().pbr_aniso_set(false);
+	renderer.scene().pbr_skin_sss_set(false);
+	//普通材质（不覆盖特性）
+	engine::Material_Data plain;
+	plain.texture = texture;
+	plain.pbr_override = true;
+	plain.pbr_roughness = 0.4f;
+	plain.pbr_metallic = 0.0f;
+	engine::Material_Handle plain_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(plain_handle, plain));
+	//布料 sheen 材质（bit4 仅在右侧物体生效）
+	engine::Material_Data cloth = plain;
+	cloth.pbr_features_override = true;
+	cloth.pbr_features = 1u << 4;
+	engine::Material_Handle cloth_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(cloth_handle, cloth));
+	//光泽度映射材质（bit5 ＋ gloss 1.0 → 本材质粗糙度压到下限）
+	engine::Material_Data glossy = plain;
+	glossy.pbr_features_override = true;
+	glossy.pbr_features = 1u << 5;
+	glossy.pbr_gloss = 1.0f;
+	engine::Material_Handle glossy_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(glossy_handle, glossy));
+	auto draw_frame = [&](engine::Material_Handle left_handle, engine::Material_Handle right_handle)
+	{
+		std::array<float, 16> left_matrix = quad_offset_matrix(-1.1f);
+		std::array<float, 16> right_matrix = quad_offset_matrix(1.1f);
+		renderer.resource().material_bind_set(left_handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(sphere, left_matrix.data()));
+		renderer.resource().material_bind_set(right_handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(sphere, right_matrix.data()));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		return pixels;
+	};
+	//基线：两侧均为普通材质
+	std::vector<uint8_t> baseline = draw_frame(plain_handle, plain_handle);
+	//右侧改为 sheen 材质：右半变化、左半不动
+	std::vector<uint8_t> right_cloth = draw_frame(plain_handle, cloth_handle);
+	EXPECT_GT(half_changed(baseline, right_cloth, 1, 2), 0u) << "右侧材质的 sheen 特性未生效";
+	EXPECT_EQ(half_changed(baseline, right_cloth, 0, 1), 0u) << "右侧材质影响了左侧物体";
+	RecordProperty("layer_right_changed", static_cast<int>(half_changed(baseline, right_cloth, 1, 2)));
+	//空掩码覆盖：特性全关，与普通材质逐字节一致
+	engine::Material_Data empty_mask = plain;
+	empty_mask.pbr_features_override = true;
+	empty_mask.pbr_features = 0u;
+	engine::Material_Handle empty_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(empty_handle, empty_mask));
+	EXPECT_EQ(baseline, draw_frame(plain_handle, empty_handle)) << "空掩码覆盖改变了画面";
+	//光泽度映射：绑定时本材质粗糙度应被改写为下限
+	renderer.resource().material_bind_set(glossy_handle);
+	EXPECT_TRUE(renderer.resource().material_pbr_active()) << "光泽度映射未登记为逐物体 PBR 覆盖";
+	EXPECT_FLOAT_EQ(renderer.resource().material_pbr_roughness(), 0.05f) << "光泽度映射未改写粗糙度";
+	EXPECT_GT(half_changed(baseline, draw_frame(plain_handle, glossy_handle), 1, 2), 0u)
+		<< "光泽度映射未改变右侧画面";
+	renderer.resource().material_unload(glossy_handle);
+	renderer.resource().material_unload(empty_handle);
+	renderer.resource().material_unload(cloth_handle);
+	renderer.resource().material_unload(plain_handle);
+	renderer.resource().mesh_unload(sphere);
+	renderer.resource().texture_unload(texture);
+}
+
+
+/*
 HDR 默认路径下的双轨色彩（方向九第 762 轮）
 左侧写实、右侧二次元，纹理为纯蓝；比较 ACES 与 AgX 对卡通纯色的处理。
 AgX 的输入矩阵会把彩色高光去饱和（二次元纯色块变灰），ACES 逐通道则保持纯色。
@@ -810,6 +903,105 @@ TEST_F(Renderer_Scene_Test, HDR双轨分轨位置可配)
 	//分轨移到 0.9：右半落入 AgX 区域，非红通道被抬起
 	EXPECT_GE(shifted_blue, 50) << "分轨 0.9 未使右半走 AgX：" << shifted_blue;
 	EXPECT_GT(shifted_blue, default_blue) << "分轨位置未生效";
+}
+
+/*
+逐材质色调算子同帧（第 779 轮 · 通用引擎化整改）
+同一帧左侧材质请求 AgX（4）、右侧材质请求 ACES（0），纹理纯蓝：
+AgX 会把彩色高光去饱和（通道差收窄），ACES 保持纯色 —— 证明算子不再是全帧唯一。
+另断言：材质不请求覆盖（0xFF）时与显式 ACES 材质逐字节一致（默认路径不变）。
+*/
+TEST_F(Renderer_Scene_Test, PBR逐材质色调算子同帧)
+{
+	//纯蓝纹理（RGBA8，2×2；index 0 = 蓝）
+	std::vector<uint8_t> blue_texels(2 * 2 * 4, 0);
+	for (std::size_t index = 0; index < blue_texels.size(); index += 4)
+	{
+		blue_texels[index + 0] = 255;
+		blue_texels[index + 3] = 255;
+	}
+	engine::Renderer renderer;
+	engine::Renderer_Config config = hidden_config();
+	config.vsync = false;
+	config.hdr_targets = true;
+	ASSERT_TRUE(renderer.init(config));
+	BYJY_REQUIRE_READBACK(renderer);
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, blue_texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	ASSERT_TRUE(renderer.scene().exposure_set(2.0f));
+	const float direction[3] = { 0.4f, -0.25f, -0.9f };
+	const float color[3] = { 1.0f, 1.0f, 1.0f };
+	renderer.scene().light_set(direction, color, 1.0f, 0.15f);
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	//三种材质：继承全局（0xFF）/ AgX（4）/ ACES（0）
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.4f;
+	base.pbr_metallic = 0.0f;
+	engine::Material_Handle inherit_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(inherit_handle, base));
+	engine::Material_Data agx_data = base;
+	agx_data.tone_operator = 4;
+	engine::Material_Handle agx_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(agx_handle, agx_data));
+	engine::Material_Data aces_data = base;
+	aces_data.tone_operator = 0;
+	engine::Material_Handle aces_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(aces_handle, aces_data));
+	//左 / 右各一枚四边形的单帧
+	auto frame_by = [&](engine::Material_Handle left_handle, engine::Material_Handle right_handle)
+	{
+		std::array<float, 16> left_matrix = quad_offset_matrix(-1.1f);
+		std::array<float, 16> right_matrix = quad_offset_matrix(1.1f);
+		renderer.resource().material_bind_set(left_handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, left_matrix.data()));
+		renderer.resource().material_bind_set(right_handle);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, right_matrix.data()));
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		return pixels;
+	};
+	//半屏最大通道差（饱和度粗量）
+	auto half_span = [](const std::vector<uint8_t>& pixels, uint32_t half) -> int
+	{
+		int span = 0;
+		uint32_t begin = half == 0 ? 0 : WINDOW_WIDTH / 2;
+		uint32_t end = half == 0 ? WINDOW_WIDTH / 2 : WINDOW_WIDTH;
+		for (uint32_t y = 0; y < WINDOW_HEIGHT; ++y)
+		{
+			for (uint32_t x = begin; x < end; ++x)
+			{
+				std::array<uint8_t, 4> pixel = pixel_get(pixels, x, y);
+				int high = static_cast<int>(*std::max_element(pixel.begin(), pixel.begin() + 3));
+				int low = static_cast<int>(*std::min_element(pixel.begin(), pixel.begin() + 3));
+				if (high - low > span)
+					span = high - low;
+			}
+		}
+		return span;
+	};
+	//左 AgX / 右 ACES
+	std::vector<uint8_t> mixed = frame_by(agx_handle, aces_handle);
+	int left_span = half_span(mixed, 0);
+	int right_span = half_span(mixed, 1);
+	RecordProperty("mat_tone_left_agx_span", left_span);
+	RecordProperty("mat_tone_right_aces_span", right_span);
+	//ACES 侧保持纯色，AgX 侧去饱和
+	EXPECT_GE(right_span, 120) << "右侧 ACES 材质未保持纯色：" << right_span;
+	EXPECT_LT(left_span, right_span - 30) << "左侧 AgX 材质未去饱和：AgX " << left_span
+		<< " / ACES " << right_span;
+	//继承材质（0xFF）与显式 ACES 材质逐字节一致
+	std::vector<uint8_t> inherited = frame_by(inherit_handle, inherit_handle);
+	std::vector<uint8_t> explicit_aces = frame_by(aces_handle, aces_handle);
+	EXPECT_EQ(inherited, explicit_aces) << "未覆盖时画面与全局默认口径不一致";
+	renderer.resource().material_unload(aces_handle);
+	renderer.resource().material_unload(agx_handle);
+	renderer.resource().material_unload(inherit_handle);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
 }
 
 

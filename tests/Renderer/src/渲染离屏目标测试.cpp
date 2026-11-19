@@ -813,3 +813,75 @@ TEST_F(Renderer_Offscreen_Test, 编号通道无附件时零影响)
 	ASSERT_EQ(reference.size(), enabled.size());
 	EXPECT_EQ(reference, enabled) << "目标无编号附件时开关改变了既有渲染结果";
 }
+
+/*
+逐材质色调编号 · 中间算子编码（第 811 轮）
+口径：编号编码覆盖 1..5（算子 0..4）；本用例取靠近区间中段的「胶片（1）/ 指数（2）」两种材质，
+      验证近处 / 远处分别写入 2 / 3，排除只对 0 与 4 成立的巧合。
+*/
+TEST_F(Renderer_Offscreen_Test, 逐材质色调编号中间算子)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	//两种中间算子材质：胶片（1，近处）与指数（2，远处）
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.4f;
+	base.pbr_metallic = 0.0f;
+	engine::Material_Data film_data = base;
+	film_data.tone_operator = 1;
+	engine::Material_Handle film_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(film_handle, film_data));
+	engine::Material_Data exponential_data = base;
+	exponential_data.tone_operator = 2;
+	engine::Material_Handle exponential_handle = 0;
+	ASSERT_TRUE(renderer.resource().material_load(exponential_handle, exponential_data));
+	renderer.device().tone_id_pass_set(true);
+	//远处铺满屏幕、近处覆盖中央（与第 808 轮同一几何口径，仅替换算子与绘制顺序）
+	const auto scale_matrix = [](float scale, float z)
+	{
+		return std::array<float, 16>{
+			scale, 0.0f, 0.0f, 0.0f,
+			0.0f, scale, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, z, 1.0f,
+		};
+	};
+	renderer.resource().material_bind_set(exponential_handle);
+	std::array<float, 16> far_matrix = scale_matrix(4.0f, -1.0f);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, far_matrix.data()));
+	renderer.resource().material_bind_set(film_handle);
+	std::array<float, 16> near_matrix = scale_matrix(0.6f, 1.0f);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, near_matrix.data()));
+	renderer.device().render_target_set(target);
+	std::vector<uint8_t> pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	std::vector<uint8_t> ids(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT);
+	uint32_t width = 0;
+	uint32_t height = 0;
+	ASSERT_TRUE(renderer.resource().render_target_readback_tone_id(target, ids.data(),
+		static_cast<uint32_t>(ids.size()), &width, &height));
+	//中心 = 近处胶片（1 + 1），角落 = 远处指数（2 + 1）
+	EXPECT_EQ(ids[static_cast<std::size_t>(WINDOW_HEIGHT / 2) * WINDOW_WIDTH + WINDOW_WIDTH / 2], 2u);
+	EXPECT_EQ(ids[static_cast<std::size_t>(2) * WINDOW_WIDTH + 2], 3u);
+	//清理
+	renderer.device().render_target_set(0);
+	renderer.resource().material_unload(exponential_handle);
+	renderer.resource().material_unload(film_handle);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().render_target_destroy(target);
+	renderer.resource().texture_unload(texture);
+}

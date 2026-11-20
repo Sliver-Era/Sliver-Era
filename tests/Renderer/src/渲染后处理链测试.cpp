@@ -1618,7 +1618,17 @@ namespace
 			ADD_FAILURE() << "场景目标 / 管线创建失败";
 			return result;
 		}
-		uint64_t middle_pipeline = post_pipeline_register(renderer, middle_fragment);
+		/*
+		中间级管线按 16F 目标格式登记（第 829 轮）
+		中间级写入 mid_target（16F），若沿用交换链格式烘焙会触发动态渲染格式不一致（VUID-08910）。
+		*/
+		uint64_t middle_pipeline = 0;
+		if (!renderer.resource().pipeline_load_ex(middle_pipeline, "后处理.vert.spv", middle_fragment,
+			engine::Blend_Mode::Opaque, false, false, true, false, true, false, 0, 0, hdr_format))
+		{
+			ADD_FAILURE() << "中间级管线登记失败：" << middle_fragment;
+			return result;
+		}
 		uint64_t tone_pipeline = post_pipeline_register(renderer, "材质色调映射.frag.spv");
 		//中间级与末级管线均须登记成功
 		if (middle_pipeline == 0 || tone_pipeline == 0)

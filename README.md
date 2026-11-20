@@ -22,24 +22,23 @@
 | 分支 | 推送源 | 本地分支 | 内容 | 状态 |
 | --- | --- | --- | --- | --- |
 | `main` | 顶层仓库（本目录） | `main` | 总览 ＋ 全仓聚合快照 | 总览线；快照截至 2026-11-15 |
-| `engine` | `Engine/EngineFoundation/` | `main` | 引擎核心层：事件 / 对象 / 空间分区 / 配置与资产加载 / 日志 / 工具集 | 活跃 |
-| `system` | `Engine/EngineSystem/` | `main` | 引擎系统层：碰撞 / 输入与焦点 / ECS / 场景与粒子 | 活跃 |
-| `test` | `Application/Test/` | `test` | 测试体系与测试模块选择器（全项目唯一可执行文件产地） | 活跃 |
-| `game` | `Application/Game/` | `main` | 游戏内容资产与构建骨架 | 内容骨架（2026-10-18 后未迁移） |
-| `doc` | 工作站（工作区之外） | `doc` | 任务报告、项目导航、自主迭代文档 | 活跃 |
+| `EngineFoundation` | `Engine/EngineFoundation/` | `main` | 引擎核心层：事件 / 对象 / 空间分区 / 配置与资产加载 / 日志 / 工具集 | 活跃 |
+| `EngineSystem` | `Engine/EngineSystem/` | `main` | 引擎系统层：碰撞 / 输入与焦点 / ECS / 场景与粒子 | 活跃 |
+| `Test` | `Application/Test/` | `Test` | 测试体系与测试模块选择器（全项目唯一可执行文件产地） | 活跃 |
+| `Game` | `Application/Game/` | `main` | 游戏内容资产与构建骨架 | 内容骨架（2026-10-18 后未迁移） |
+| `Doc` | 工作站（工作区之外） | `Doc` | 任务报告、项目导航、自主迭代文档 | 活跃 |
 | `Engine` | 顶层仓库 | — | Engine 聚合层快照（EngineFoundation ＋ EngineSystem） | 历史快照（2026-11-15） |
-| `EngineFoundation` | EngineFoundation 仓 | — | 早于 `engine` 的核心层版次 | 历史快照（2026-11-07） |
-| `EngineSystem` | EngineSystem 仓 | — | 早于 `system` 的系统层版次 | 历史快照（2026-11-08） |
 | `EngineRender` | 渲染层仓 | — | 渲染层快照 | 由渲染层维护者负责，本仓库不更新 |
 
 说明：
 
 - 层仓库的远端名统一为 `sliverera`；顶层仓库为 `origin`。两者指向同一个 GitHub 仓库（现行地址 `https://github.com/Sliver-Era/Sliver-Era.git`，旧地址 `yuxingyuzhong/SilverEra` 由 GitHub 重定向）。
 - `EngineFoundation` / `EngineSystem` / `Game` 的本地分支名都是 `main`，与远端分支名不一致，推送必须写显式 refspec：
-  - `git push sliverera main:engine`
-  - `git push sliverera main:system`
-  - `git push sliverera main:game`
-- `Engine` / `EngineFoundation` / `EngineSystem` 三个大写分支是聚合或历史快照，不是活跃开发分支；当前开发以 `engine` / `system` / `test` 为准。
+  - `git push sliverera main:EngineFoundation`
+  - `git push sliverera main:EngineSystem`
+  - `git push sliverera main:Game`
+- `Test` 与 `Doc` 的本地分支名与远端同名，可直接 `git push sliverera Test:Test` / `git push origin Doc:Doc`。
+- 旧小写分支 `engine` / `system` / `test` / `game` / `doc` 已删除或改名为大写：当前活跃开发分支以 `EngineFoundation` / `EngineSystem` / `Test` / `Game` / `Doc` 为准。
 - 渲染层活跃仓库：`https://github.com/Sliver-Era/SilverEra-Renderer`（`main`）。
 
 ---
@@ -75,12 +74,12 @@ EngineFoundation ──▶ EngineSystem ──▶ EngineRenderer ──▶ Appli
 │   ├── CMakePresets.json
 │   ├── 版本锁.cmake               # 全链版本锁（留空 = 跟随最新构建树）
 │   ├── 版本缓存/                  # 各层构建后发布：头快照 + 静态库 + 依赖记录
-│   ├── EngineFoundation/          # 独立 git 仓库（engine）
-│   ├── EngineSystem/              # 独立 git 仓库（system）
+│   ├── EngineFoundation/          # 独立 git 仓库（EngineFoundation）
+│   ├── EngineSystem/              # 独立 git 仓库（EngineSystem）
 │   └── EngineRenderer/            # 独立 git 仓库（SilverEra-Renderer）
 └── Application/
     ├── Test/                      # 独立 git 仓库（test）
-    ├── Game/                      # 独立 git 仓库（game）
+    ├── Game/                      # 独立 git 仓库（Game）
     └── Editor/                    # 占位
 ```
 
@@ -200,11 +199,11 @@ EngineTests.exe --gtest_filter=...    # 已带 gtest 参数时直接透传
 
 | 文档 | 位置 |
 | --- | --- |
-| 引擎核心层 | `engine` 分支根目录 `README.md` |
-| 引擎系统层 | `system` 分支根目录 `README.md` |
-| 测试层 | `test` 分支根目录 `README.md` |
-| 游戏层 | `game` 分支根目录 `README.md` |
-| 工作站文档 | `doc` 分支根目录 `README.md`（任务报告、项目导航、自主迭代） |
+| 引擎核心层 | `EngineFoundation` 分支根目录 `README.md` |
+| 引擎系统层 | `EngineSystem` 分支根目录 `README.md` |
+| 测试层 | `Test` 分支根目录 `README.md` |
+| 游戏层 | `Game` 分支根目录 `README.md` |
+| 工作站文档 | `Doc` 分支根目录 `README.md`（任务报告、项目导航、自主迭代） |
 | 渲染层 | 独立仓库 `SilverEra-Renderer` |
 
 ---

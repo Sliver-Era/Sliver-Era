@@ -1263,7 +1263,7 @@ TEST_F(Renderer_Post_Chain_Test, 编号附件驱动逐材质色调)
 	//带编号附件的 8 位场景目标
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, width, height,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
 	//末级：材质色调映射（全局回落 = 默认算子 0 = ACES）
 	uint64_t tone = post_pipeline_register(renderer, "材质色调映射.frag.spv");
@@ -1352,7 +1352,7 @@ TEST_F(Renderer_Post_Chain_Test, 编号附件多重采样驱动逐材质色调)
 	//带编号附件的场景目标（采样数跟随设备 = 4）
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, width, height,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 0));
 	//末级：材质色调映射（全局回落 = 默认算子 0 = ACES）
 	uint64_t tone = post_pipeline_register(renderer, "材质色调映射.frag.spv");

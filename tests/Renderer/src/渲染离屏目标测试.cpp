@@ -576,7 +576,7 @@ TEST_F(Renderer_Offscreen_Test, 色调编号附件资源层)
 	//单采样 ＋ R8_UINT 编号附件
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
 	ASSERT_NE(target, 0u);
 	uint64_t id_image = 0;
@@ -592,7 +592,7 @@ TEST_F(Renderer_Offscreen_Test, 色调编号附件资源层)
 	//多重采样目标：单采样编号图（解析目标）＋ 多重采样编号图（第 821 轮）
 	uint64_t msaa_target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(msaa_target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 4));
 	ASSERT_NE(msaa_target, 0u);
 	ASSERT_TRUE(renderer.resource().render_target_tone_id_get(msaa_target, id_image, id_view, id_format));
@@ -609,7 +609,7 @@ TEST_F(Renderer_Offscreen_Test, 色调编号附件资源层)
 	//未指定格式时与既有接口一致（无编号附件）
 	uint64_t plain_target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format(plain_target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 1));
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 1));
 	ASSERT_NE(plain_target, 0u);
 	EXPECT_FALSE(renderer.resource().render_target_tone_id_get(plain_target, id_image, id_view, id_format));
 	EXPECT_FALSE(renderer.resource().render_target_tone_id_msaa_get(plain_target, msaa_id_image, msaa_id_view));
@@ -631,7 +631,7 @@ TEST_F(Renderer_Offscreen_Test, 色调编号附件不影响既有渲染)
 		if (!renderer.compute().readback_supported())
 			return pixels;
 		uint64_t target = 0;
-		const uint32_t color_format = static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM);
+		const uint32_t color_format = renderer.device().scene_color_format();
 		const uint32_t depth_format = static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT);
 		if (with_tone_id)
 			EXPECT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
@@ -704,7 +704,7 @@ TEST_F(Renderer_Offscreen_Test, 逐材质色调编号预通道)
 	//单采样目标 ＋ R8_UINT 编号附件
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
@@ -797,7 +797,7 @@ TEST_F(Renderer_Offscreen_Test, 编号通道无附件时零影响)
 		//普通目标（无编号附件）
 		uint64_t target = 0;
 		EXPECT_TRUE(renderer.resource().render_target_create_format(target, WINDOW_WIDTH, WINDOW_HEIGHT,
-			static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 1));
+			renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 1));
 		uint64_t texture = 0;
 		std::vector<uint8_t> texels = solid_green(2, 2);
 		EXPECT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
@@ -841,7 +841,7 @@ TEST_F(Renderer_Offscreen_Test, 逐材质色调编号中间算子)
 	renderer.resource().texture_bind_set(texture);
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
@@ -913,7 +913,7 @@ TEST_F(Renderer_Offscreen_Test, 编号通道开销基线)
 	renderer.resource().texture_bind_set(texture);
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
@@ -988,7 +988,7 @@ TEST_F(Renderer_Offscreen_Test, 编号通道按纹素应用alpha裁剪)
 	ASSERT_TRUE(renderer.resource().texture_load(clear_texture, clear_texels.data(), 2, 2));
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
@@ -1058,7 +1058,7 @@ TEST_F(Renderer_Offscreen_Test, 编号通道与静态合批)
 	renderer.resource().texture_bind_set(texture);
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
@@ -1135,7 +1135,7 @@ TEST_F(Renderer_Offscreen_Test, 编号通道多重采样目标)
 	//目标跟随默认采样数（4）＋ 编号附件
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 0));
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
@@ -1193,7 +1193,7 @@ TEST_F(Renderer_Offscreen_Test, 编号通道多重采样解析边界)
 	//目标跟随默认采样数（4）＋ 编号附件
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 0));
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
@@ -1308,7 +1308,7 @@ TEST_F(Renderer_Offscreen_Test, 编号通道单采样与多重采样一致)
 	//单采样目标（显式采样数 1，不跟随设备切换）
 	uint64_t single_target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(single_target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
 	engine::Mesh_Handle quad = 0;
 	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
@@ -1366,7 +1366,7 @@ TEST_F(Renderer_Offscreen_Test, 编号通道单采样与多重采样一致)
 		GTEST_SKIP() << "本机不支持 4× MSAA";
 	uint64_t msaa_target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(msaa_target, WINDOW_WIDTH, WINDOW_HEIGHT,
-		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		renderer.device().scene_color_format(), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 4));
 	//多重采样路径
 	std::vector<uint8_t> msaa_ids = render_ids(msaa_target);

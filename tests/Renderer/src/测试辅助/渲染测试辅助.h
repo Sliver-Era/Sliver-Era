@@ -204,6 +204,32 @@ namespace byjy_render_test
 		return pixels;
 	}
 
+	//构造纯绿纹理（RGBA8：rgb = 绿，alpha = 255；默认 2×2）
+	inline std::vector<uint8_t> solid_green(uint32_t width = 2, uint32_t height = 2)
+	{
+		std::vector<uint8_t> pixels(static_cast<std::size_t>(width) * height * 4);
+		for (std::size_t index = 0; index < pixels.size(); index += 4)
+		{
+			pixels[index] = 0;
+			pixels[index + 1] = 255;
+			pixels[index + 2] = 0;
+			pixels[index + 3] = 255;
+		}
+		return pixels;
+	}
+
+	//判断像素是否近似纯绿（绿通道高、外通道低；通道序无关）
+	inline bool pixel_is_green(const std::array<uint8_t, 4>& value)
+	{
+		//绿通道（下标 1）须为高
+		if (value[1] < 200)
+			return false;
+		//外通道须为低
+		if (outer_max(value) > 60)
+			return false;
+		return true;
+	}
+
 	//构造绕 Y 轴旋转的模型矩阵（列主序；角度为弧度）
 	inline std::array<float, 16> rotation_y_matrix(float angle)
 	{

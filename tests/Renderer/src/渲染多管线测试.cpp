@@ -40,30 +40,10 @@ namespace
 		return byjy_render_test::pixel_get(pixels, x, y, WINDOW_WIDTH);
 	}
 
-	//失败诊断文本
-	std::string pixel_text(const std::array<uint8_t, 4>& value)
-	{
-		return std::to_string(value[0]) + "/" + std::to_string(value[1]) + "/"
-			+ std::to_string(value[2]) + "/" + std::to_string(value[3]);
-	}
-
-	//外通道较大者（R 与 B 通道；避开 std::max —— 本层包含链有 min/max 宏）
-	uint8_t outer_max(const std::array<uint8_t, 4>& value)
-	{
-		return value[0] > value[2] ? value[0] : value[2];
-	}
-
-	//判断像素是否近似纯绿（绿通道高、外通道低）
-	bool pixel_is_green(const std::array<uint8_t, 4>& value)
-	{
-		//绿通道（下标 1）须为高
-		if (value[1] < 200)
-			return false;
-		//外通道须为低
-		if (outer_max(value) > 60)
-			return false;
-		return true;
-	}
+	//诊断文本 / 外通道较大者 / 绿判定：统一使用公共辅助（2026-11-20 重构）
+	using byjy_render_test::pixel_text;
+	using byjy_render_test::outer_max;
+	using byjy_render_test::pixel_is_green;
 
 	//判断像素是否近似纯红（绿通道低、外通道高）
 	bool pixel_is_red(const std::array<uint8_t, 4>& value)
@@ -83,19 +63,8 @@ namespace
 		return byjy_render_test::quad_data();
 	}
 
-	//构造纯绿纹理（RGBA8：rgb = 绿，alpha = 255）
-	std::vector<uint8_t> solid_green(uint32_t width, uint32_t height)
-	{
-		std::vector<uint8_t> pixels(static_cast<std::size_t>(width) * height * 4);
-		for (std::size_t index = 0; index < pixels.size(); index += 4)
-		{
-			pixels[index] = 0;
-			pixels[index + 1] = 255;
-			pixels[index + 2] = 0;
-			pixels[index + 3] = 255;
-		}
-		return pixels;
-	}
+	//构造纯绿纹理（RGBA8：rgb = 绿，alpha = 255；公共实现）
+	using byjy_render_test::solid_green;
 
 	/*
 	构造「左半屏」模型矩阵（列主序）

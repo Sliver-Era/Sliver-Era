@@ -1031,3 +1031,74 @@ TEST_F(Renderer_Offscreen_Test, 编号通道按纹素应用alpha裁剪)
 	renderer.resource().texture_unload(clear_texture);
 	renderer.resource().texture_unload(opaque_texture);
 }
+
+/*
+编号通道 · 静态合批下的逐实例编号（第 820 轮）
+口径：同材质多物体被静态合批为一个绘制项（多实例）后，编号预通道仍按实例属性逐物体写编号。
+*/
+TEST_F(Renderer_Offscreen_Test, 编号通道与静态合批)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	engine::Material_Data data;
+	data.texture = texture;
+	data.pbr_override = true;
+	data.pbr_roughness = 0.4f;
+	data.pbr_metallic = 0.0f;
+	data.tone_operator = 4;
+	engine::Material_Handle material = 0;
+	ASSERT_TRUE(renderer.resource().material_load(material, data));
+	renderer.resource().material_bind_set(material);
+	//开启静态合批与编号通道
+	renderer.device().static_batching_set(true);
+	renderer.device().tone_id_pass_set(true);
+	renderer.device().render_target_set(target);
+	//左右两枚小四边形（同材质 → 应合批为一个多实例绘制项）
+	auto place_matrix = [](float x)
+	{
+		return std::array<float, 16>{
+			0.5f, 0.0f, 0.0f, 0.0f,
+			0.0f, 0.5f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			x, 0.0f, 0.0f, 1.0f,
+		};
+	};
+	std::array<float, 16> left = place_matrix(-1.0f);
+	std::array<float, 16> right = place_matrix(1.0f);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, left.data()));
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, right.data()));
+	std::vector<uint8_t> pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	//合批：1 个绘制项 / 2 个实例
+	engine::Frame_Stats stats = renderer.frame_stats_get();
+	EXPECT_EQ(stats.last_draw_items, 1u) << "同材质两物体未合批";
+	EXPECT_EQ(stats.last_instances, 2u);
+	//编号读回：左右测点均为 5
+	std::vector<uint8_t> ids(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT);
+	uint32_t width = 0;
+	uint32_t height = 0;
+	ASSERT_TRUE(renderer.resource().render_target_readback_tone_id(target, ids.data(),
+		static_cast<uint32_t>(ids.size()), &width, &height));
+	const std::size_t row = static_cast<std::size_t>(WINDOW_HEIGHT / 2) * WINDOW_WIDTH;
+	EXPECT_EQ(ids[row + WINDOW_WIDTH * 3 / 10], 5u) << "左侧实例编号缺失";
+	EXPECT_EQ(ids[row + WINDOW_WIDTH * 7 / 10], 5u) << "右侧实例编号缺失";
+	//清理
+	renderer.device().render_target_set(0);
+	renderer.device().static_batching_set(false);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().render_target_destroy(target);
+	renderer.resource().texture_unload(texture);
+}

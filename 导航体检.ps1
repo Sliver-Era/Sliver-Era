@@ -120,10 +120,10 @@ foreach ($line in ($manifestText -split "`r?`n")) {
         continue
     }
     $cells = @($trimmed.Trim('|').Split('|') | ForEach-Object { $_.Trim() })
-    if ($cells.Count -lt 6) {
+    if ($cells.Count -lt 5) {
         continue
     }
-    if ($cells[0] -eq "模块") {
+    if ($cells[0] -eq "模块" -or $cells[0] -eq "模块文档") {
         continue
     }
     if ($cells[0] -match '^-+$') {
@@ -138,7 +138,7 @@ foreach ($line in ($manifestText -split "`r?`n")) {
         Layer   = $cells[2]
         Version = $cells[3].Trim('`').Trim()
         Updated = $cells[4].Trim('`').Trim()
-        Note    = $cells[5]
+        Note    = $(if ($cells.Count -ge 6) { $cells[5] } else { "" })
     }
 }
 if ($rows.Count -eq 0) {

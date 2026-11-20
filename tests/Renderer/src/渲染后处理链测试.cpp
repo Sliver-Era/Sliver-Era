@@ -1612,8 +1612,7 @@ namespace
 			hdr_format, depth_format, 1)
 			|| !renderer.resource().render_target_create_format(mid_target, width, height,
 				hdr_format, depth_format, 1)
-			|| !renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
-				engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format))
+			|| !renderer.resource().scene_pipeline_variant_load(scene_pipeline, hdr_format, 1, depth_format))
 		{
 			ADD_FAILURE() << "场景目标 / 管线创建失败";
 			return result;
@@ -1658,6 +1657,8 @@ namespace
 		}
 		engine::Material_Data base;
 		base.texture = texture;
+		//场景管线变体：材质引用它后仍可携带逐材质色调编号
+		base.pipeline = scene_pipeline;
 		base.pbr_override = true;
 		base.pbr_roughness = 0.4f;
 		base.pbr_metallic = 0.0f;
@@ -1861,8 +1862,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR双轨不污染全局回落参数)
 	uint64_t scene_pipeline = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_target, width, height,
 		hdr_format, depth_format, 1));
-	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
-		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	ASSERT_TRUE(renderer.resource().scene_pipeline_variant_load(scene_pipeline, hdr_format, 1, depth_format));
 	uint64_t tone_pipeline = post_pipeline_register(renderer, "材质色调映射.frag.spv");
 	ASSERT_NE(tone_pipeline, 0u);
 	engine::Bloom_Preset preset;
@@ -1937,8 +1937,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光链保留逐材质色调)
 	uint64_t scene_pipeline = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_target, width, height,
 		hdr_format, depth_format, 1));
-	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
-		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	ASSERT_TRUE(renderer.resource().scene_pipeline_variant_load(scene_pipeline, hdr_format, 1, depth_format));
 	uint64_t tone_pipeline = post_pipeline_register(renderer, "材质色调映射.frag.spv");
 	ASSERT_NE(tone_pipeline, 0u);
 	engine::Bloom_Preset preset;
@@ -1955,6 +1954,8 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光链保留逐材质色调)
 	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Material_Data base;
 	base.texture = texture;
+	//场景管线变体：材质引用它后仍可携带逐材质色调编号
+	base.pipeline = scene_pipeline;
 	base.pbr_override = true;
 	base.pbr_roughness = 0.4f;
 	base.pbr_metallic = 0.0f;
@@ -2033,8 +2034,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR泛光预设释放摘引用)
 	uint64_t scene_pipeline = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_target, width, height,
 		hdr_format, depth_format, 1));
-	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
-		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	ASSERT_TRUE(renderer.resource().scene_pipeline_variant_load(scene_pipeline, hdr_format, 1, depth_format));
 	uint64_t tone_pipeline = post_pipeline_register(renderer, "色调映射.frag.spv");
 	ASSERT_NE(tone_pipeline, 0u);
 	engine::Bloom_Preset preset;
@@ -2384,8 +2384,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR显式链逐材质色调)
 	uint64_t scene_pipeline = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_target, width, height,
 		hdr_format, depth_format, 1));
-	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
-		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	ASSERT_TRUE(renderer.resource().scene_pipeline_variant_load(scene_pipeline, hdr_format, 1, depth_format));
 	uint64_t tone_pipeline = post_pipeline_register(renderer, "材质色调映射.frag.spv");
 	ASSERT_NE(tone_pipeline, 0u);
 	ASSERT_TRUE(renderer.device().post_chain_set(&tone_pipeline, 1));
@@ -2397,6 +2396,8 @@ TEST_F(Renderer_Post_Chain_Test, HDR显式链逐材质色调)
 	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
 	engine::Material_Data base;
 	base.texture = texture;
+	//场景管线变体：材质引用它后仍可携带逐材质色调编号
+	base.pipeline = scene_pipeline;
 	base.pbr_override = true;
 	base.pbr_roughness = 0.4f;
 	base.pbr_metallic = 0.0f;
@@ -2995,8 +2996,7 @@ TEST_F(Renderer_Post_Chain_Test, HDR多级链传递)
 	ASSERT_TRUE(renderer.resource().render_target_create_format(scene_hdr,
 		renderer.device().extent_width(), renderer.device().extent_height(), hdr_format, depth_format, 1));
 	uint64_t scene_pipeline = 0;
-	ASSERT_TRUE(renderer.resource().pipeline_load_ex(scene_pipeline, "场景.vert.spv", "场景.frag.spv",
-		engine::Blend_Mode::Opaque, false, false, true, false, true, true, depth_format, 1, hdr_format));
+	ASSERT_TRUE(renderer.resource().scene_pipeline_variant_load(scene_pipeline, hdr_format, 1, depth_format));
 	//中间目标：16F 与 8 位各一
 	uint64_t mid_hdr = 0;
 	uint64_t mid_ldr = 0;

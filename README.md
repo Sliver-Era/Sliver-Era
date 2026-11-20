@@ -1,6 +1,6 @@
 # 白银纪元 · Test 层
 
-Test 是「白银纪元」分层工程中的**验证与启动层**。工程按依赖方向分层：`Engine/EngineFoundation` → `Engine/EngineSystem` → `Engine/EngineRenderer` → `Engine`（聚合层）→ `Application/{Game,Test}`；每一层都是一个独立的 git 仓库，各推各的分支；本层对应的分支是 `test`，向远端 `sliverera/test` 推送。顶层 `main` 仓库只记录各层目录指针（不再做源码快照），作总览与合并线。
+Test 是「白银纪元」分层工程中的**验证与启动层**。工程按依赖方向分层：`Engine/EngineFoundation` → `Engine/EngineSystem` → `Engine/EngineRenderer` → `Engine`（聚合层）→ `Application/{Game,Test}`；每一层都是一个独立的 git 仓库，各推各的分支；本层对应的分支是 `Test`，向远端 `sliverera/Test` 推送。顶层 `main` 仓库只记录各层目录指针（不再做源码快照），作总览与合并线。
 
 本层在依赖链中处于**最上层**：它**接 Engine 聚合层一次**——链接两个**已经构建好的静态库**（`EngineFoundation.lib`、`EngineSystem.lib`，由聚合面一并转交）；另单独接入渲染层 `EngineRenderer.lib` 供图形操作界面使用。绝不通过 `add_subdirectory` 把下层源码拉进本构建树重复编译，也没有任何源码回退路径。这条「层间一律链接已构建静态库」的契约由每层的 `cmake/对外接口.cmake` 与 `cmake/接入下层.cmake` 共同保证。
 
@@ -18,14 +18,14 @@ Test 是「白银纪元」分层工程中的**验证与启动层**。工程按�
 | --- | --- |
 | 远端仓库地址 | `https://github.com/Sliver-Era/Sliver-Era.git`（旧地址 `yuxingyuzhong/SilverEra` 由 GitHub 重定向） |
 | 远端名（remote） | `sliverera` |
-| 本地分支名 | `test` |
-| 目标推送分支 | `test`（本地与远端同名） |
-| 上游跟踪关系 | `test` → `sliverera/test` |
-| 推送命令 | `git push sliverera test:test` |
+| 本地分支名 | `Test` |
+| 目标推送分支 | `Test`（本地与远端同名） |
+| 上游跟踪关系 | `Test` → `sliverera/Test` |
+| 推送命令 | `git push sliverera Test:Test` |
 
 说明：
 
-- 各层共用同一个远端仓库，各自推自己的分支（EngineFoundation `engine`、EngineSystem `system`、Test `test`、Game `game`）。本层本地分支就叫 `test`，因此推送时本地名与远端名一致，无需像 EngineFoundation 那样做 `main:engine` 的改名推送。
+- 各层共用同一个远端仓库，各自推自己的分支（EngineFoundation `EngineFoundation`、EngineSystem `EngineSystem`、Test `Test`、Game `Game`）。本层本地分支就叫 `Test`，因此推送时本地名与远端名一致，无需像 EngineFoundation 那样做 `main:EngineFoundation` 的改名推送。
 - 顶层 `main` 分支仓库是独立的一层仓库，与本层的 git 历史互不包含；它只记录各层目录指针（顶层不再收录含自身 `.git` 的子目录源码），不会自动跟随本层更新。
 
 ### 1.2 本层在依赖链中的位置

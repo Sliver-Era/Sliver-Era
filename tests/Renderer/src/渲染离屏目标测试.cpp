@@ -1112,3 +1112,61 @@ TEST_F(Renderer_Offscreen_Test, 编号通道与静态合批)
 	renderer.resource().render_target_destroy(target);
 	renderer.resource().texture_unload(texture);
 }
+
+/*
+编号通道 · 多重采样目标（第 822 轮）
+口径：多重采样目标的编号先写 msaa 编号图，按样本 0 解析到单采样编号图；
+      读回单采样编号图应得到与单采样路径一致的逐材质编号。
+*/
+TEST_F(Renderer_Offscreen_Test, 编号通道多重采样目标)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	//切到 4× MSAA（重建交换链与全部管线；不支持则跳过）
+	renderer.device().msaa_samples_set(4);
+	if (renderer.device().msaa_samples() != 4)
+		GTEST_SKIP() << "本机不支持 4× MSAA";
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	//目标跟随默认采样数（4）＋ 编号附件
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 0));
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	engine::Material_Data data;
+	data.texture = texture;
+	data.pbr_override = true;
+	data.pbr_roughness = 0.4f;
+	data.pbr_metallic = 0.0f;
+	data.tone_operator = 4;
+	engine::Material_Handle material = 0;
+	ASSERT_TRUE(renderer.resource().material_load(material, data));
+	renderer.resource().material_bind_set(material);
+	renderer.device().tone_id_pass_set(true);
+	renderer.device().render_target_set(target);
+	std::array<float, 16> full = full_screen_matrix();
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, full.data()));
+	std::vector<uint8_t> pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	//编号读回（解析后的单采样图）：中心 5
+	std::vector<uint8_t> ids(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT);
+	uint32_t width = 0;
+	uint32_t height = 0;
+	ASSERT_TRUE(renderer.resource().render_target_readback_tone_id(target, ids.data(),
+		static_cast<uint32_t>(ids.size()), &width, &height));
+	EXPECT_EQ(ids[static_cast<std::size_t>(WINDOW_HEIGHT / 2) * WINDOW_WIDTH + WINDOW_WIDTH / 2], 5u)
+		<< "多重采样目标编号解析失败";
+	//清理（先销毁目标再恢复采样数，避免目标随采样数重建）
+	renderer.device().render_target_set(0);
+	renderer.resource().material_unload(material);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().render_target_destroy(target);
+	renderer.resource().texture_unload(texture);
+	renderer.device().msaa_samples_set(1);
+}

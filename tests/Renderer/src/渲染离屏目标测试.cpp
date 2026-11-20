@@ -1289,3 +1289,111 @@ TEST_F(Renderer_Offscreen_Test, 编号通道多重采样解析边界)
 	renderer.resource().texture_unload(texture);
 	renderer.device().msaa_samples_set(1);
 }
+
+/*
+编号通道 · 单采样与多重采样一致（第 824 轮）
+口径：同一场景分别渲染到单采样目标与 4× 目标后，两张编号图在内部区域（避开目标边界 2 像素）
+      必须逐字节一致；固定采样数目标不受设备采样数切换影响。
+*/
+TEST_F(Renderer_Offscreen_Test, 编号通道单采样与多重采样一致)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	//单采样目标（显式采样数 1，不跟随设备切换）
+	uint64_t single_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(single_target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	//远景 AgX（编号 5）与近景 ACES（编号 1）
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.4f;
+	base.pbr_metallic = 0.0f;
+	engine::Material_Data far_data = base;
+	far_data.tone_operator = 4;
+	engine::Material_Handle far_material = 0;
+	ASSERT_TRUE(renderer.resource().material_load(far_material, far_data));
+	engine::Material_Data near_data = base;
+	near_data.tone_operator = 0;
+	engine::Material_Handle near_material = 0;
+	ASSERT_TRUE(renderer.resource().material_load(near_material, near_data));
+	renderer.device().tone_id_pass_set(true);
+	//构造缩放 ＋ 平移矩阵（列主序）
+	auto make_matrix = [](float scale, float x, float z)
+	{
+		return std::array<float, 16>{
+			scale, 0.0f, 0.0f, 0.0f,
+			0.0f, scale, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			x, 0.0f, z, 1.0f,
+		};
+	};
+	//按目标渲染一帧并读回编号图
+	auto render_ids = [&](uint64_t target)
+	{
+		renderer.resource().material_bind_set(far_material);
+		std::array<float, 16> far_matrix = make_matrix(6.0f, 0.0f, -1.0f);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, far_matrix.data()));
+		renderer.resource().material_bind_set(near_material);
+		std::array<float, 16> near_matrix = make_matrix(0.5f, 0.137f, 1.0f);
+		EXPECT_TRUE(renderer.resource().mesh_draw(quad, near_matrix.data()));
+		renderer.device().render_target_set(target);
+		std::vector<uint8_t> pixels(pixel_bytes());
+		EXPECT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		std::vector<uint8_t> ids(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT);
+		uint32_t width = 0;
+		uint32_t height = 0;
+		EXPECT_TRUE(renderer.resource().render_target_readback_tone_id(target, ids.data(),
+			static_cast<uint32_t>(ids.size()), &width, &height));
+		EXPECT_EQ(width, WINDOW_WIDTH);
+		EXPECT_EQ(height, WINDOW_HEIGHT);
+		return ids;
+	};
+	//单采样路径
+	std::vector<uint8_t> single_ids = render_ids(single_target);
+	//切到 4× MSAA（不支持则跳过；固定采样数目标不受影响）
+	renderer.device().msaa_samples_set(4);
+	if (renderer.device().msaa_samples() != 4)
+		GTEST_SKIP() << "本机不支持 4× MSAA";
+	uint64_t msaa_target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(msaa_target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 4));
+	//多重采样路径
+	std::vector<uint8_t> msaa_ids = render_ids(msaa_target);
+	//内部区域逐字节一致（避开目标边界两像素）
+	std::size_t mismatch_count = 0;
+	std::string mismatch_text;
+	for (uint32_t y = 2; y + 2 < WINDOW_HEIGHT; ++y)
+	{
+		for (uint32_t x = 2; x + 2 < WINDOW_WIDTH; ++x)
+		{
+			const std::size_t index = static_cast<std::size_t>(y) * WINDOW_WIDTH + x;
+			if (single_ids[index] == msaa_ids[index])
+				continue;
+			++mismatch_count;
+			if (mismatch_count <= 8)
+				mismatch_text += "(" + std::to_string(x) + "," + std::to_string(y) + ")"
+					+ std::to_string(single_ids[index]) + "/" + std::to_string(msaa_ids[index]) + " ";
+		}
+	}
+	EXPECT_EQ(mismatch_count, 0u) << "单采样与多重采样编号不一致：" << mismatch_text;
+	//清理（先销毁目标再恢复采样数）
+	renderer.device().render_target_set(0);
+	renderer.resource().render_target_destroy(msaa_target);
+	renderer.resource().render_target_destroy(single_target);
+	renderer.resource().material_unload(near_material);
+	renderer.resource().material_unload(far_material);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().texture_unload(texture);
+	renderer.device().msaa_samples_set(1);
+}

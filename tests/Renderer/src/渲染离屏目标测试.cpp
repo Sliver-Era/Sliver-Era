@@ -589,21 +589,31 @@ TEST_F(Renderer_Offscreen_Test, 色调编号附件资源层)
 	//销毁后查询应失败
 	renderer.resource().render_target_destroy(target);
 	EXPECT_FALSE(renderer.resource().render_target_tone_id_get(target, id_image, id_view, id_format));
-	//多重采样目标不创建编号附件，但目标创建成功
+	//多重采样目标：单采样编号图（解析目标）＋ 多重采样编号图（第 821 轮）
 	uint64_t msaa_target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(msaa_target, WINDOW_WIDTH, WINDOW_HEIGHT,
 		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
 		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 4));
 	ASSERT_NE(msaa_target, 0u);
+	ASSERT_TRUE(renderer.resource().render_target_tone_id_get(msaa_target, id_image, id_view, id_format));
+	EXPECT_EQ(id_format, static_cast<uint32_t>(VK_FORMAT_R8_UINT));
+	uint64_t msaa_id_image = 0;
+	uint64_t msaa_id_view = 0;
+	ASSERT_TRUE(renderer.resource().render_target_tone_id_msaa_get(msaa_target, msaa_id_image, msaa_id_view));
+	EXPECT_NE(msaa_id_image, 0u);
+	EXPECT_NE(msaa_id_view, 0u);
+	//销毁后两者均不可用
+	renderer.resource().render_target_destroy(msaa_target);
 	EXPECT_FALSE(renderer.resource().render_target_tone_id_get(msaa_target, id_image, id_view, id_format));
+	EXPECT_FALSE(renderer.resource().render_target_tone_id_msaa_get(msaa_target, msaa_id_image, msaa_id_view));
 	//未指定格式时与既有接口一致（无编号附件）
 	uint64_t plain_target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format(plain_target, WINDOW_WIDTH, WINDOW_HEIGHT,
 		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 1));
 	ASSERT_NE(plain_target, 0u);
 	EXPECT_FALSE(renderer.resource().render_target_tone_id_get(plain_target, id_image, id_view, id_format));
+	EXPECT_FALSE(renderer.resource().render_target_tone_id_msaa_get(plain_target, msaa_id_image, msaa_id_view));
 	renderer.resource().render_target_destroy(plain_target);
-	renderer.resource().render_target_destroy(msaa_target);
 }
 
 /*

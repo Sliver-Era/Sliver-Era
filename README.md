@@ -1,1258 +1,291 @@
-# 白银纪元 · EngineFoundation 层
+# 白银纪元 · EngineFoundation 层（引擎核心层）
 
-EngineFoundation 层是「白银纪元」四层仓库中**拓扑最底层的基础能力层**：向上提供事件、对象、空间分区、碰撞与通用工具集，自身**不包含任何具体游戏逻辑**，不感知任何上层存在。本层是独立 git 仓库，源码通过远端 `engine` 分支发布。
+EngineFoundation 是「白银纪元」分层工程中**拓扑最底层的通用基础层**：向上提供事件总线、对象与对象池、空间分区、配置/资产加载、日志与工具集。本层**不包含任何具体游戏逻辑**，不感知上层存在，也不依赖任何窗口或图形 API。
 
-本层的历史名字是「游戏引擎」——那是一个「源码 / 资源 / 可执行文件 / 配置编辑器」一体的单体工程。分层改造后，本层只保留与具体游戏无关的基础能力，原先属于本层的实体体系、属性槽、效应、配置编辑器、资源与脚本目录均已迁出（详见[第十二节·历史沿革](#十二历史沿革旧名--现名现归属)）。
+本层是一个**独立 git 仓库**（目录内含自身 `.git`），源码通过远端 `engine` 分支发布。
+
+> 本文档依据 2026-11-20 工作区源码重写，替代此前以 `src/core/...` 旧目录结构编写的版本。旧版内容仍可在本分支 git 历史中查阅。
 
 ---
 
 ## 一、分支与仓库信息
 
-### 1.1 仓库基本信息
-
-| 项目 | 内容 |
+| 项目 | 取值 |
 | --- | --- |
-| 层名称 | EngineFoundation 层（源码命名空间为 `engine`） |
-| 本层根目录 | `Engine/EngineFoundation/`（相对工程根） |
-| 名义角色 | 基础能力层，拓扑最底层，**无下层依赖** |
-| 本地分支 | `main` |
+| 仓库地址（现行） | `https://github.com/Sliver-Era/Sliver-Era.git` |
+| 旧地址 | `https://github.com/yuxingyuzhong/SilverEra.git`（GitHub 重定向到现行地址） |
 | 远端名 | `sliverera` |
-| 远端地址 | `https://github.com/yuxingyuzhong/SilverEra.git` |
-| 远端目标分支 | `engine`（推送命令形如 `git push sliverera main:engine`） |
-| 构建产物 | `out/build/x64-Debug/lib/EngineFoundation.lib`（静态库） |
-| 对外库名 | `EngineFoundation` |
-| 对外面自描述 | `cmake/对外接口.cmake` |
-| 接入函数 | **本层没有**（本层无下层可并入；`cmake/接入下层.cmake` 位于EngineSystem 层 / Test 层 / Game 层，三份逐字节相同） |
+| 本地分支名 | `main` |
+| 远端目标分支 | `engine` |
+| 上游跟踪 | `sliverera/engine` |
+| 推送命令 | `git push sliverera main:engine` |
 
-### 1.2 分层位置
-
-```
-EngineFoundation 层  ←  EngineSystem 层  ←  Game 层          Test 层（横跨各层，唯一可执行文件产地）
-```
-
-- 依赖方向**单向**：`EngineFoundation 层 ← EngineSystem 层 ← Game 层`。EngineSystem 层只消费EngineFoundation 层，Game 层只消费EngineSystem 层，反向依赖不存在。
-- **Test 层横跨各层**：Test 层同时接入EngineFoundation 层与EngineSystem 层，承载单元测试与全项目唯一的可执行入口。
-- 层与层之间**只链接下层已构建的静态库**，绝不通过 `add_subdirectory` 回退编译下层源码。
-- 本层**不感知任何上层**：`src/` 与 `common/` 下不存在对 `EngineSystem 层` / `Game 层` / `Test 层` 的任何引用；上层消费本层的方式是「源码 include 本层公共头 + 链接 `EngineFoundation.lib`」。
-
-### 1.3 版次与提交历史
-
-本层每次代码推送在远端 `engine` 分支上汇聚成一个版次；本表按时间倒序，最新版次在最上。
-
-| 代码提交哈希值 | 主题 | 要点 |
-| --- | --- | --- |
-| `65fc74f` | 重写 README：改为本层自述 | 目录结构 / 模块清单 / 对外接口契约 / 构建；当前 README 版次 |
-| `089b070` | 碰撞模块拆分：碰撞代理器 / 碰撞空间 改为多编译单元 | 单文件拆为 5 + 4 个编译单元；对外符号约 16342 条 |
-| `fa8459a` | 四叉树链路尺寸层 64 位化 | 修复超大边长上限整数除零（2^33 截断导致的主崩点） |
-| `16d74df` | 修复区块检索在零尺寸下的整数除零 | `block_size == 0` 时提前返回 |
-| `371a4c5` | 修复事件终端、对象池、四叉树、数据校验器与日志系统缺陷 | 多模块缺陷修复 |
+同一远端还承载其余层的分支：`system`（EngineSystem）、`test`（Test）、`game`（Game）、`doc`（工作站文档）、`main`（顶层总览与聚合快照），以及 `Engine` / `EngineFoundation` / `EngineSystem` / `EngineRender` 四个聚合或历史快照分支。本层只维护 `engine` 分支。
 
 ---
 
-## 二、本层职责与核心特性
+## 二、本层在依赖链中的位置
 
-### 2.1 职责边界
+```text
+EngineFoundation ──▶ EngineSystem ──▶ EngineRenderer ──▶ Application/{Test, Game}
+ EngineFoundation.lib   EngineSystem.lib   EngineRenderer.lib
+```
 
-**本层负责**：
+| 项目 | 内容 |
+| --- | --- |
+| 依赖链位置 | 拓扑最底层，**无下层依赖**，不感知任何上层 |
+| 产物 | `Engine/EngineFoundation/out/build/<配置>/lib/EngineFoundation.lib` |
+| 对外面前缀 | `BYJY_ENGINE_FOUNDATION_*` |
+| 可执行文件 | 本层不产出；全项目唯一可执行入口为 Test 层的 `EngineTests.exe` |
 
-- 模块间通信基础设施（事件系统）；
-- 通用对象编号与容器设施（对象系统）；
-- 二维坐标基元与空间划分（坐标类型、四叉树、四叉树管理器）；
-- 碰撞检测的完整封装（碰撞体、碰撞空间、碰撞代理器）；
-- 与业务无关的通用工具（日志、配置加载、数据校验、网格解析、容器的二分检索、路径转换、可执行路径获取、计时、随机数、编号分配）。
+本层的职责边界：
 
-**本层不负责**：
-
-- 具体游戏逻辑（实体、属性、效应、行为）——归EngineSystem 层；
-- 资源配置与脚本（`assets/config/`、`assets/scripts/`）——归Game 层；
-- 进程入口与帧循环——归Test 层（全项目唯一可执行文件由Test 层产出）；
-- 渲染管线与窗口主循环——归渲染层（`Engine/EngineRenderer`）；本层不建立渲染体系，也不携带任何窗口依赖。
-
-### 2.2 核心特性
-
-1. **事件驱动、模块解耦**：模块之间不互相持有指针，统一通过 `Event_Terminal`（事件终端）接入 `Event_Broker`（事件中转器），以 `Event` 为统一载荷完成订阅 / 发布。每个终端持有一枚 ACL 权限密钥，越权发送会被拒绝。
-2. **层间契约化**：本层对外暴露的内容全部写在 `cmake/对外接口.cmake` 中（包含目录、编译定义、第三方库、系统库），上层据此建立 `IMPORTED STATIC GLOBAL` 目标，无需任何 `add_subdirectory`。
-3. **零上层感知**：本层是唯一「无下层」的层，构建顺序上处于分层构建链的第一步，可独立构建、独立测试。
-4. **内存与生命周期自持**：对象池的编号分配器同时提供「稳定索引」与「排序检索」两种内存布局；四叉树支持原地加倍扩大；碰撞后端的四件套装配采用 `new(nothrow)` 并带失败回滚。
-5. **数值稳健**：浮点坐标比较使用 ULP（最小精度单位）容差（≤ 4 ULP），避免物理模拟中的舍入抖动；四叉树内部几何运算走 64 位整数，规避超大边长下的溢出与除零。
-6. **中文友好的工程实践**：源码、目录、注释均使用中文；文件名中文化；针对 Windows 平台 `lib.exe` 对无 BOM 归档响应文件的误读，专门提供了 `cmake/ar_rsp_bom.ps1` 包装脚本。
+- **不含**实体、属性、效应、场景、粒子等玩法或世界语义（这些位于 EngineSystem）。
+- **不含**碰撞检测（碰撞体、碰撞空间、碰撞代理器已于后续版次整体迁至 `Engine/EngineSystem/src/collision/`）。
+- **不含**窗口、输入采集、Vulkan、SDL3 等平台/图形内容（这些位于 EngineRenderer）。
+- 只保留与具体游戏、具体平台无关的基础设施。
 
 ---
 
 ## 三、技术栈
 
-### 3.1 语言与标准
-
 | 项目 | 取值 |
 | --- | --- |
-| 语言 | C++ |
-| 标准 | C++20（`CMAKE_CXX_STANDARD 20`，`CMAKE_CXX_STANDARD_REQUIRED ON`） |
-| 编译器扩展 | **禁用**（`CMAKE_CXX_EXTENSIONS OFF`） |
-| 源码编码 | UTF-8（MSVC 显式加 `/utf-8`） |
-| 命名空间 | 统一 `engine`（含嵌套 `engine::detail` 存放内部工具） |
-
-C++20 特性在源码中的使用：`concepts`（`Object_Pool` 的 `requires std::is_base_of_v<Object, T>`）、`<format>` / `std::format`（日志与坐标输出）、`std::bit_cast`（ULP 距离计算）、`std::numbers`、`std::ranges`、`<source_location>` 等均由预编译头统一引入。
-
-### 3.2 第三方依赖
-
-本层第三方库以**源码副本**形式存放在 `external/` 下，由 `file(GLOB_RECURSE ...)` 一并纳入 `EngineFoundation`。
-
-| 库 | 目录 | 用途 | 引入方式 |
-| --- | --- | --- | --- |
-| nlohmann/json | `external/Json` | 事件载荷、配置数据的统一 JSON 容器（`nlohmann::json`） | 仅头文件，`PRIVATE` 包含；对外包含目录中同样声明 |
-| GLFW | `external/glfw` | **本层已不使用**：窗口 / 输入已整体迁往渲染层，本层源码与预编译头均无任何 GLFW 引用 | 副本已删除（`external/glfw` 已清理）；本层不声明包含根、不链接、不定义 `GLFW_STATIC` |
-| GLM | `external/glm` | **目录已不存在**（`external/` 下现仅 `Json`） | —— |
-| Bullet Physics | `external/bullet3` | **已整体迁出**：碰撞系统与 bullet3 一并迁至 `Engine/EngineSystem/external/bullet3` | 本层不再声明其头路径，也不再随本层编译 |
-
-补充说明：
-
-- `EngineFoundation` 的第三方包含路径在本层构建中是 `PRIVATE` 的；`cmake/对外接口.cmake` 是按「上层实际需要什么」重新声明的**对外面**，两者若出现差异以 `cmake/对外接口.cmake` 为准。
-- googletest 不属于本层，它由Test 层持有。
-
-### 3.3 构建工具链
-
-| 项目 | 取值 / 说明 |
-| --- | --- |
-| 构建系统 | CMake，最低版本 `3.20`（`cmake_minimum_required(VERSION 3.20)`，因使用了 `CONFIGURE_DEPENDS`） |
-| 生成器 | Ninja（`CMakeSettings.json` 中配置名 `x64-Debug`，生成器 `Ninja`，环境 `msvc_x64_x64`） |
-| 主编译器 | MSVC（已验证）；`CMakeLists.txt` 同时为 GCC / Clang 准备了选项分支 |
-| 构建目录 | `CMakeSettings.json` 中 `buildRoot` 为 `out/build/x64-Debug` |
-| 版本控制 | git（本层为独立仓库） |
+| 语言 | C++20（`CMAKE_CXX_STANDARD 20`，`CMAKE_CXX_EXTENSIONS OFF`） |
+| 命名空间 | `engine`（辅助设施位于 `engine::detail`） |
+| 第三方依赖 | `external/Json`（nlohmann/json）、`external/tinygltf`；均为源码副本，随本层直接编入静态库 |
+| 构建系统 | CMake ≥ 3.20（预设文件要求 ≥ 3.25）、Ninja 或 Visual Studio 多配置生成器 |
+| 已验证平台 | MSVC / x64 / Windows |
 
 ---
 
 ## 四、目录结构
 
-以本层根为基准（`out/` 为构建输出，不纳入版本控制）：
+以本层根为基准（`out/`、`.vs/` 为构建附属物，不纳入版本控制）：
 
-```
+```text
 Engine/EngineFoundation/
-├── CMakeLists.txt              # 构建 EngineFoundation 静态库（CMake ≥ 3.20，C++20）
-├── CMakeSettings.json          # Visual Studio CMake 配置（x64-Debug / Ninja）
-├── LICENSE.txt                 # MIT 许可证
-├── README.md                   # 本文档
+├── CMakeLists.txt
+├── CMakePresets.json              # x64-Debug / x64-Release（Ninja 双预设）
+├── CMakeSettings.json             # Visual Studio 打开层目录时使用
+├── LICENSE.txt
+├── README.md
 ├── .gitignore
+├── 源文件列表.cmake               # 由 GLOB 生成的显式源文件清单（可改写以触发重配）
 ├── cmake/
-│   ├── 对外接口.cmake          # 本层对外面自描述（BYJY_ENGINE_FOUNDATION_OUT_*）
-│   └── ar_rsp_bom.ps1          # 归档响应文件 BOM 包装脚本（MSVC + Ninja 专用）
+│   ├── 对外接口.cmake             # 本层对外面（BYJY_ENGINE_FOUNDATION_OUT_*）
+│   ├── 导出头快照.cmake           # 把本层自有头镜像到构建树，供上层同版次编译
+│   ├── 生成版本锚点.cmake         # 版次锚点（头/库错配在链接期报错）
+│   ├── 发布版本缓存.cmake         # 构建成功后发布「头快照＋库＋依赖记录」
+│   ├── 版本工具.cmake             # 版本锁解析与全链一致性校验
+│   ├── 生成源文件列表.cmake       # GLOB → 显式清单
+│   ├── ar_rsp_bom.ps1             # 归档响应文件补 UTF-8 BOM（MSVC + Ninja）
+│   └── link_rsp_bom.ps1           # 链接响应文件补 UTF-8 BOM
 ├── common/
-│   ├── 前置头文件包含.h        # 统一预编译头：集中引入标准库与第三方库
-│   └── 引擎.h                  # 引擎总入口：聚合事件系统运行包
-├── external/                   # 第三方库副本：Json
-├── src/
-│   ├── core/                   # 核心能力
-│   │   ├── config/             #   配置加载
-│   │   │   └── Config_Loader/{配置加载器.h, 局部命名空间使用.h, core/（9 个按功能域拆分的编译单元）}
-│   │   ├── Event/              #   事件系统
-│   │   │   ├── 事件系统运行包.h
-│   │   │   ├── Event/事件.h
-│   │   │   ├── Event_Broker/{事件中转器.h, 局部命名空间使用.h, core/事件中转器.cpp}
-│   │   │   └── Event_Terminal/{事件终端.h, 终端接口.h, 局部命名空间使用.h,
-│   │   │                        core/{事件终端.cpp, 终端接口.cpp}}
-│   │   ├── object/             #   对象系统
-│   │   │   ├── 对象系统运行包.h
-│   │   │   ├── Object/对象.h
-│   │   │   └── Object_Pool/{对象池.h, core/对象池实例化.cpp}
-│   │   └── spatial/            #   空间系统
-│   │       ├── common/         #     坐标类型与依赖库封装
-│   │       │   ├── 碰撞系统运行包.h
-│   │       │   └── core/{坐标类型.h, 依赖库封装.h}
-│   │       ├── collision/      #     碰撞系统
-│   │       │   ├── Collider/碰撞体.h
-│   │       │   ├── Collision_Region/{碰撞空间.h, 局部命名空间使用.h,
-│   │       │   │                    core/{空间与边界.cpp, 碰撞体管理.cpp,
-│   │       │   │                          形状构建.cpp, 检测执行.cpp,
-│   │       │   │                          跨越通知.cpp}}
-│   │       │   └── Collision_Proxy/{碰撞代理器.h, 局部命名空间使用.h,
-│   │       │                        core/{空间边界与配置.cpp, 空间管理.cpp,
-│   │       │                              碰撞体管理.cpp, 碰撞体配置.cpp,
-│   │       │                              位移管理.cpp, 碰撞响应.cpp,
-│   │       │                              事件交互.cpp}}
-│   │       └── partition/      #     空间分区
-│   │           ├── Quadtree/{四叉树.h, 函数预声明.h, 数据结构.h,
-│   │           │              core/{导航与范围计算.hpp, 节点创建与树扩大.hpp,
-│   │           │                    区块信息检索.hpp, 设置与交互.hpp,
-│   │           │                    四叉树实例化.cpp}}
-│   │           └── Quadtree_Manager/{四叉树管理器.h, 函数预声明.h, 数据结构.h,
-│   │                                  core/{基础操作.hpp, 区块信息检索.hpp,
-│   │                                        设置与交互.hpp, 四叉树合并.hpp,
-│   │                                        四叉树扩大回调管理.hpp,
-│   │                                        四叉树智能创建.hpp,
-│   │                                        相邻四叉树查找.hpp,
-│   │                                        四叉树管理器实例化.cpp}}
-│   └── tools/                  # 工具模块群
-│       ├── Detail/{二分查找.h, 路径字符串转换.h, 哈希混合.h,
-│       │           json字段可用性校验.h, 文件路径可用性校验.h,
-│       │           package/数据校验工具.h}
-│       ├── Engine_Env/引擎环境.h
-│       ├── Logging/日志系统.h
-│       ├── Mesh_Loader/{网格加载器.h, 局部命名空间使用.h, core/网格加载器.cpp}
-│       ├── Number_Pool/数值分配器.h
-│       ├── Random_Generator/随机数生成器.h
-│       └── Timer/{计时器.h, 局部命名空间使用.h, core/计时器.cpp}
-└── out/                        # CMake 构建输出（build / install，不纳入版本控制）
+│   └── 前置头文件包含.h           # 统一预编译头（标准库与第三方库集中引入）
+├── external/
+│   ├── Json/nlohmann/json.hpp
+│   └── tinygltf/                  # glTF 解析（随本层编入）
+└── src/
+    ├── detail/                    # 细粒度工具
+    │   ├── class/Number_Pool/数值分配器.h
+    │   ├── class/Random_Generator/随机数生成器.h
+    │   └── methods/               # 二分查找、哈希混合、路径与文本、数据校验、format 特化等
+    ├── event/                     # 事件系统
+    │   ├── Common/事件协议.h
+    │   ├── Event/事件.h
+    │   ├── Event_Broker/          # 事件中转器
+    │   ├── Event_Terminal/        # 事件终端 + 终端端口
+    │   └── 事件系统运行包.h
+    ├── loader/                    # 加载器
+    │   ├── assets/Gltf_Loader/    # glTF 静态子集
+    │   ├── assets/Mesh_Loader/    # Mesh_Data + OBJ
+    │   ├── assets/Mtl_Loader/     # MTL 材质库
+    │   └── config/Config_Loader/  # 配置目录加载、脏标记缓存、Config/Load 事件
+    ├── log/                       # 日志系统
+    │   ├── Log/日志系统.h
+    │   ├── Logging_Config_Bridge/
+    │   ├── Node_Cache/、Rule/、Stream_Sink/、Stream_Tree/
+    │   └── 日志系统运行包.h
+    ├── object/                    # 对象与对象池
+    │   ├── Object/对象.h
+    │   ├── Object_Pool/对象池.h
+    │   └── 对象系统运行包.h
+    ├── spatial/                   # 空间
+    │   ├── math/坐标类型.h
+    │   └── partition/
+    │       ├── Quadtree/          # 四叉树
+    │       └── Quadtree_Manager/  # 多树组织、智能创建、合并与扩大回调
+    └── time/Timer/计时器.h
 ```
-
-目录组织约定：
-
-- **模块目录**通常由「公共头文件 + `局部命名空间使用.h` + `core/` 实现目录」三部分组成。`core/` 下可以是一个或多个 `.cpp`（编译单元），也可以是一个或多个 `.hpp`（模板实现分片）。
-- `局部命名空间使用.h` 不是业务头，它只做两件事：`#include` 本模块的公共头文件，并把本模块实现里频繁使用的 `std::` 名字（如 `string`、`vector`、`shared_ptr`、`nothrow`、`json`）提为文件级 `using` 声明。
-- **模板类**（`Object_Pool<T, Key>`、`Quadtree<T>`、`Quadtree_Manager<T>`）实现拆到 `.hpp` 分片中，并由一个形如 `xxx实例化.cpp` 的编译单元显式实例化，从而既保留模板灵活性，又把实现编译进 `EngineFoundation`。
-- **运行包头**（`事件系统运行包.h`、`对象系统运行包.h`、`碰撞系统运行包.h`）是纯粹的聚合头（facade），不含逻辑，用于「一行包含即引入某子系统全部公共定义」。
 
 ---
 
 ## 五、核心架构与运行链路
 
-### 5.1 事件驱动架构
+### 5.1 事件驱动
 
-事件系统是本层的骨架，其余模块通过它解耦。三个角色：
+本层所有跨模块通知统一走事件总线：
 
-```
-  业务模块（持有 Event_Terminal）
-        │  ① attach(module_name, needed_events, acl_key)
-        │  ② build(sender, target, category, tag) → send(evt, acl_key)
-        ▼
-  ┌─────────────────────────┐
-  │  Event_Broker（事件中转器）│  ③ 按订阅表把事件投递给命中模块的接收入口
-  └─────────────────────────┘
-        │  ④ 投递 receive(evt)
-        ▼
-  订阅方模块（持有 Event_Terminal，注册过 event_receiver）
-```
+- `Event`：事件本体，含类别、名称与 JSON 载荷。
+- `Event_Terminal`：事件终端，负责订阅登记、权限密钥与分发；对外通过 `终端端口.h` 暴露接口。
+- `Event_Broker`：事件中转器，按协议词汇完成订阅查询与定向投递。
+- `Common/事件协议.h`：集中定义订阅登记与配置投递的协议字符串，避免发送侧与接收侧各写一份而漂移。
 
-- **订阅**：模块在 `attach()` 中声明自己关心的事件清单（`vector<Event>`，只有 `category` 与 `tag` 参与匹配），事件中转器为其分配订阅者编号并登记。
-- **发布**：模块用 `build()` 构造事件，用 `send()` 投出；`send()` 需要携带自己的 ACL 密钥。
-- **投递**：中转器在 `process()` 中遍历订阅表，把事件逐个送入订阅方注册的 `std::function<void(std::shared_ptr<Event>)>` 入口；订阅方通常在入口里再按 `tag` 分派到各 `event_process` 私有方法。
-- **权限**：`Event_Terminal::attach()` 会校验终端接口中「事件发送入口」是否注册；只有持有合法密钥的终端才能发送，未分配的密钥会被拒绝。密钥由 `key()` 基于 PCG32 随机数生成器产生。
-- **定向与广播**：事件的 `receiver` 为空表示广播，非空表示定向；接收方（如 `Collision_Proxy`）在 `event_process()` 开头用 `evt->receiver != module_name` 过滤掉不属于自己的定向事件。
+### 5.2 层内依赖方向
 
-### 5.2 层内模块依赖关系
-
-```
-                         ┌───────────────┐
-                         │   事件系统      │  Event / Event_Terminal / Event_Broker
-                         └──────┬────────┘
-       ┌────────────────────────┼────────────────────────┐
-       │                        │                        │
-┌──────▼──────┐          ┌──────▼───────┐         ┌──────▼──────────┐
-│  对象系统    │          │   空间系统     │         │   碰撞系统        │
-│  Object     │          │  坐标类型       │────────▶│ Collider         │
-│  Object_Pool│          │  Quadtree      │         │ Collision_Region │
-└──────┬──────┘          │  Quadtree_     │         │ Collision_Proxy  │
-       │                 │  Manager       │         └──────┬──────────┘
-       │                 └──────┬────────┘                 │
-       └──────────┬─────────────┴──────────────┬───────────┘
-                  ▼                            ▼
-           ┌──────────────┐            ┌────────────────────┐
-           │ 通用工具模块群 │            │ 第三方依赖（外部）    │
-           │ Logging       │            │ Json                │
-           │ Number_Alloc. │            └────────────────────┘
-           │ Random / Timer│
-           │ Auxi_Algo ... │
-           └──────────────┘
+```text
+detail（无依赖）
+   ▲
+   ├── log
+   ├── event ──▶ detail
+   ├── object ──▶ detail（数值分配器、二分查找）
+   ├── loader ──▶ event（配置/资产事件）
+   ├── spatial ──▶ detail
+   └── time
 ```
 
-关键依赖事实：
+`detail` 是最底层工具集合，其余模块只向下依赖，不反向引用事件或日志实现，避免形成包含环。
 
-- 事件系统被对象系统、碰撞系统、配置加载器共同复用；`Config_Loader` 与 `Collision_Proxy` 都持有公开成员 `Event_Terminal event_terminal`。
-- `Collision_Proxy` 是本层**唯一对外的碰撞门面**：它持有多个 `Collision_Region`，维护「碰撞体编号 → 归属空间」的多重映射，并订阅 / 发布事件。
-- `Object_Pool` 依赖 `Number_Pool` 提供编号；`Event_Terminal` 依赖 `Random_Generator` 生成 ACL 密钥。
-- 四叉树内部依赖 `坐标类型.h` 的 `Point2i/Point2l/Point2d` 与 `Rect2i/Rect2l/Rect2d`；碰撞模块依赖 `依赖库封装.h` 收敛 bullet3 类型。
+### 5.3 典型链路
 
-### 5.3 典型运行链路
-
-**链路一：配置驱动的碰撞空间构建**
-
-```
-1. Config_Loader::act()
-     └ 扫描 assets/config/route/ 下路由文件，读取目标配置
-        └ 发事件 Config/Load（receiver = 目标模块名，config = 配置 JSON）
-2. Event_Broker 命中 Collision_Proxy 的订阅（Config/Load）
-3. Collision_Proxy::event_process()
-     └ 过滤 receiver → config_apply(config)
-        ├ 读边界配置 → region_build / region_boundary_set
-        └ 读碰撞体配置 → collider_build + collider_config_apply
-                            └ 形状构建（六种形状之一）挂入 Collision_Region 的子弹世界
-4. 后续由 Collision/RegionDetect 等指令驱动检测，结果以 Collision/<tag> 事件发布
-```
-
-**链路二：单点 / 范围空间检索**
-
-```
-调用方
-  └ Quadtree_Manager::seek(单点检索) 或 seek(范围检索, stable)
-       ├ 从树缓存中定位覆盖目标的四叉树（无则 quadtree_build_smart 新建）
-       ├ Quadtree::chunk_operate / chunk_operate
-       │    ├ reachable_range_calcu 判断是否需要扩大
-       │    ├ 需要扩大 → 扩大回调交给管理器裁决（tree_expand_approve）→ tree_expand 原地加倍
-       │    └ 沿递归路径下钻，产出 Tree_Chunk_Data<T>
-       └ 多树命中时用布尔表去重后返回
-```
-
-**链路三：网格加载到碰撞形状**
-
-```
-Collider::geometry（JSON）→ Mesh_Loader::load_obj(path, Mesh_Data)
-     └ 解析 OBJ 顶点与面索引（含面索引四种写法、扇形三角化）
-        └ 顶点数据喂给 bullet3 的 Triangle_Mesh → 挂入 Collision_Shape
-           └ Collider 通过 setUserPointer 反向登记自身，供检测结果 recover 回查
-```
+1. **配置加载**：`Config_Loader` 扫描可信根与路由目录，读取配置并维护脏标记缓存；变更后广播 `Config/Load` 事件，订阅者按需刷新。
+2. **对象池**：`Object_Pool` 通过 `Number_Pool` 分配/回收编号，支持 `Unorder` 与 `Sorted` 两种排列；排序键投影与比较器在运行期以 `std::function` 提供。
+3. **空间检索**：`Quadtree` 负责单树建树、插入、区域检索与合并；`Quadtree_Manager` 管理多棵树、按范围智能创建并处理扩大回调。
+4. **资产解析**：`Mesh_Loader` / `Mtl_Loader` / `Gltf_Loader` 把 OBJ / MTL / glTF 解析为纯 CPU 数据（`Mesh_Data`、材质字段、节点层级），**不创建任何 GPU 资源**，由渲染层消费。
 
 ---
 
 ## 六、模块详解
 
-> 本节各模块的路径均以本层根为基准；行数为该版次源码的实际规模，用于衡量模块复杂度。
+### 6.1 `detail` —— 细粒度工具
 
-### 6.1 事件系统（`src/core/Event/`）
-
-本层模块间通信的枢纽。三个子件 + 一个聚合头。
-
-#### 6.1.1 `Event` 结构体
-
-**涉及文件**：`src/core/Event/Event/事件.h`（95 行）
-
-**功能**：定义模块间传递的统一事件载荷。
-
-**对外接口**：
-
-```cpp
-namespace engine
-{
-    //事件
-    struct Event
-    {
-        std::string sender;   //发起事件的对象名
-        std::string receiver;   //事件的目标对象名（为空表示广播）
-        std::string category;        //事件大类（英文，如 Config / Collision）
-        std::string tag;             //事件标签（英文，如 Load / RegionBuild）
-        nlohmann::json config;       //事件载荷
-
-        Event() = default;                                                  //默认构造
-        Event(const std::string& category, const std::string& tag);         //构造大类与标签
-        Event(const std::string& sender, const std::string& receiver,
-              const std::string& category, const std::string& tag);         //对象标签构造
-        Event(const std::string& sender, const std::string& receiver,
-              const std::string& category, const std::string& tag,
-              const nlohmann::json& config);                                //全量构造
-
-        bool operator==(const Event& other) const;                          //判等
-    };
-}
-```
-
-**内部实现要点**：
-
-- 三类含参构造逐级补全信息：只给大类与标签 → 再给发送者与目标 → 再给 `config` 载荷，便于订阅清单写得简洁（订阅清单里通常写 `Event("", "", "Collision", "RegionBuild")`）。
-- `operator==` 比较 `category`、`tag`、`receiver`、`config` 四项，**不比较 `sender`**——这样同一个事件无论由谁发出都可被同一订阅规则命中。
-- 文件内提供 `std::hash<engine::Event>` 特化：对 `category`、`tag`、`receiver` 做 `hash_combine`，再叠加 `config.dump()` 的哈希，使事件可作为 `unordered_*` 的键。
-- `namespace detail` 中的 `hash_combine` 为内部工具，供上述特化使用。
-
-#### 6.1.2 事件终端 `Event_Terminal` 与终端接口 `Terminal_Port`
-
-**涉及文件**：`src/core/Event/Event_Terminal/事件终端.h`（68 行）、`终端接口.h`（80 行）、`core/事件终端.cpp`（239 行）、`core/终端接口.cpp`（88 行）、`局部命名空间使用.h`
-
-**功能**：`Event_Terminal` 是模块持有的事件收发把手，负责密钥管理、事件构造、发送、接收与查阅；`Terminal_Port` 是终端的「入口注册表」，把各类回调以 `std::function` 形式登记在案，供 `Event_Terminal` 转发调用。
-
-**对外接口（`Event_Terminal`）**：
-
-```cpp
-namespace engine
-{
-    //事件终端
-    class Event_Terminal
-    {
-    public:
-        Event_Terminal() = default;
-        ~Event_Terminal() = default;
-        Event_Terminal(Event_Terminal&&) = default;
-        Event_Terminal& operator=(Event_Terminal&&) = default;
-
-        Terminal_Port* operator->(void);                                     //终端接口快捷通道
-
-        int64_t key(void);                                                //权限密钥生成
-
-        bool attach(const std::string& module_name,
-                    const std::vector<Event>& needed_events,
-                    const int64_t& acl_key);                                      //中转站接入
-        bool interact(std::shared_ptr<Event> evt, const int64_t& acl_key);        //中转站交互（单事件）
-        bool interact(std::vector<std::shared_ptr<Event>> events,
-                      const int64_t& acl_key);                                    //中转站交互（多事件）
-
-        std::shared_ptr<Event> build(void);                                       //事件构造（空）
-        std::shared_ptr<Event> build(const std::string& category,
-                                     const std::string& tag);                     //事件构造（大类标签）
-        std::shared_ptr<Event> build(const std::string& sender,
-                                     const std::string& receiver,
-                                     const std::string& category,
-                                     const std::string& tag);                     //事件构造（全量）
-
-        bool send(std::shared_ptr<Event> evt, const int64_t& acl_key);            //事件发送（单事件）
-        bool send(std::vector<std::shared_ptr<Event>> events,
-                  const int64_t& acl_key);                                        //事件发送（多事件）
-        void receive(std::shared_ptr<Event> evt);                                 //事件接收（单事件）
-        void receive(std::vector<std::shared_ptr<Event>> events);                 //事件接收（多事件）
-        const std::vector<std::shared_ptr<Event>>* query(const int64_t& acl_key); //事件查阅
-        bool clear(const int64_t& acl_key);                                       //事件清空
-    };
-}
-```
-
-**对外接口（`Terminal_Port`）**：
-
-```cpp
-namespace engine
-{
-    //终端接口列表
-    enum class Port_ID
-    {
-        NONE, ATTACH_HANDLER, EVENT_INTERACTOR, EVENTS_INTERACTOR,
-        EVENT_SENDOR, EVENTS_SENDOR, EVENT_RECEIVER, EVENTS_RECEIVER
-    };
-
-    //终端接口
-    class Terminal_Port
-    {
-        //（私有）类型别名
-        using Needed_Events  = const std::vector<Event>&;
-        using Event_Handler  = std::function<void(std::shared_ptr<Event> evt)>;
-        using Events_Handler = std::function<void(std::vector<std::shared_ptr<Event>>)>;
-        using Attach_Handler  = std::function<void(const std::string& name,
-                                   Needed_Events events, Event_Handler receiver)>;
-        friend class Event_Terminal;
-    public:
-        bool attach_handler_register(Attach_Handler callback);           //中转站接入入口注册
-        bool event_interactor_register(Event_Handler callback);         //中转站交互入口注册（单事件）
-        bool events_interactor_register(Events_Handler callback);       //中转站交互入口注册（多事件）
-
-        bool event_sender_register(Event_Handler callback);             //事件发送入口注册（单事件）
-        bool event_sender_register(Events_Handler callback);            //事件发送入口注册（多事件）
-
-        bool event_receiver_register(Event_Handler callback);           //事件接收入口注册（单事件）
-        bool event_receiver_register(Events_Handler callback);          //事件接收入口注册（多事件）
-
-        bool check(const Port_ID& ID);                   //入口是否已注册
-    };
-}
-```
-
-**内部实现要点**：
-
-- `Event_Terminal` 私有成员：`std::optional<int64_t> acl_key`（本终端密钥）、`Random_Generator key_generator`（密钥生成器）、`std::vector<std::shared_ptr<Event>> event_set`（待发 / 已收事件集合）、`Terminal_Port terminal_port`（接口表）。
-- `operator->()` 返回 `Terminal_Port*`，于是模块可以写 `event_terminal->event_receiver_register(...)`，把注册工作直接穿透到接口表，而不必先取 `terminal_port` 成员。
-- `Terminal_Port` 用 `std::vector<Port_ID> map` 记录各入口的注册顺序，配以 7 个 `std::unique_ptr<std::function<...>>` 成员（`attach_handler`、`event_interactor`、`events_interactor`、`event_sender`、`events_sender`、`event_receiver`、`events_receiver`）保存回调；公开的注册入口是 5 个名字、共 7 个重载（发送与接收各有单事件 / 多事件两个重载）。`check(ID)` 供调用方在转发前确认入口已就位（`Collision_Proxy::attach()` 就是先检查 `ATTACH_HANDLER` 再注册接收入口）。
-- `memory_malloc` / `function_register` 是 `Terminal_Port` 的内部模板工具，负责在 `new(nothrow)` 失败时安全退出。
-- **持有者责任**：`attach()` 用的「中转站接入入口」由事件中转站的持有者（宿主组合根）注册；终端本身只负责调用。
-
-#### 6.1.3 事件中转器 `Event_Broker`
-
-**涉及文件**：`src/core/Event/Event_Broker/事件中转器.h`（40 行）、`core/事件中转器.cpp`（209 行）、`局部命名空间使用.h`
-
-**功能**：订阅表 + 投递中枢。记录「谁订阅了哪些事件」，并在事件到来时逐个投递。
-
-**对外接口**：
-
-```cpp
-namespace engine
-{
-    //事件中转器
-    class Event_Broker
-    {
-    public:
-        //订阅者登记注册
-        void attach(const std::string& module_name,
-                           const std::vector<Event>& needed_events,
-                           std::function<void(std::shared_ptr<Event>)> event_entry);
-        void receive(std::shared_ptr<Event> evt);                                  //单事件接收
-        void receive(std::vector<std::shared_ptr<Event>> event_set);               //多事件接收
-        std::shared_ptr<Event> process(std::shared_ptr<Event> evt);                //单事件处理
-        std::vector<std::shared_ptr<Event>> process(
-            std::vector<std::shared_ptr<Event>> event_set);                        //多事件处理
-    };
-}
-```
-
-**内部实现要点**：
-
-- 嵌套私有结构 `event_acl { std::string tag; std::vector<int32_t> ID_set; }`：用一个「事件标签 + 订阅者编号集合」表示一条订阅记录（匹配粒度是 `tag`）。
-- 三张表：`acl_set`（`unordered_map<string, vector<event_acl>>`，大类 → 订阅记录集）、`mapping_set`（`unordered_map<string, int32_t>`，模块名 → 订阅者编号）、`event_entries`（`unordered_map<int32_t, function<void(shared_ptr<Event>)>>`，编号 → 投递入口）。
-- `attach()` 分配 / 复用模块编号，登记投递入口，并把 `needed_events` 逐条写入 `acl_set`。
-- `process()` 按事件的 `category` 取出候选订阅记录，再用 `tag` 精确比对，最后按 `ID_set` 逐项调用投递入口。
-
-#### 6.1.4 事件系统运行包
-
-**涉及文件**：`src/core/Event/事件系统运行包.h`
-
-一行聚合头：包含 `Event/事件.h` 与 `Event_Terminal/事件终端.h`。`common/引擎.h` 目前就只聚合了这一个运行包。
-
----
-
-### 6.2 对象系统（`src/core/object/`）
-
-#### 6.2.1 对象基类 `Object`
-
-**涉及文件**：`src/core/object/Object/对象.h`（37 行）
-
-**功能**：提供对象的最小共同契约——编号与合法性。
-
-**对外接口**：
-
-```cpp
-namespace engine
-{
-    //对象
-    class Object
-    {
-    protected:
-        uint64_t object_ID = 0;      //对象编号
-        bool is_valid = false;       //对象是否合法
-    public:
-        void ID_set(const uint64_t& ID);      //设置编号
-        void valid_set(bool valid);           //设置合法性
-        uint64_t ID(void) const;              //读取编号
-        bool valid(void);                     //读取合法性
-    };
-}
-```
-
-**内部实现要点**：受保护成员只暴露读写函数，编号与合法性由派生者（以及对象池）负责维护；编号 0 与 `is_valid == false` 共同构成「空对象」标记。**注意方法名是 `ID_set`**，不是历史文档中的旧名。
-
-#### 6.2.2 对象池 `Object_Pool`
-
-**涉及文件**：`src/core/object/Object_Pool/对象池.h`（318 行）、`core/对象池实例化.cpp`（6 行）
-
-**功能**：受约束的模板化对象容器，提供「稳定索引」与「排序检索」两套内存布局，配以编号分配与回收。
-
-**对外接口（要点）**：
-
-```cpp
-namespace engine
-{
-    //对象池
-    template <typename T, typename Key = uint64_t>
-        requires std::is_base_of_v<Object, T>
-    class Object_Pool
-    {
-    public:
-        template <typename Projection>
-        void sort_order_set(bool greater, Projection proj);                   //切换到排序模式
-        void sort_order_reset(void);                                          //切回稳定模式
-
-        typename std::vector<T>::iterator find(const Key& key);               //按键查找
-        uint64_t build(void);                                                 //新增对象，返回其池下标
-
-        void unload(const Key& key);                                          //卸载单个
-        void unload(const std::vector<Key>& keys);                            //卸载多个
-        void clear(void);                                                     //清空
-        std::vector<T>& data(void);                                           //数据容器
-        typename std::vector<T>::iterator end(void);                          //数据末尾
-    };
-}
-```
-
-**内部实现要点**：
-
-- 类约束 `requires std::is_base_of_v<Object, T>`：只有继承 `Object` 的类型才能入池，从类型层面保证每个元素都有编号。
-- 双分配器：`Number_Pool ID_allocator`（分配对象编号）与 `Number_Pool index_allocator`（分配容器下标）。
-- **union 双模式**：容器内部用一个匿名 `union` 复用同一块内存——稳定模式下是 `unordered_map`（键 → 下标），排序模式下是「投影器 + 比较器 + `min_valid_index`」三元组，配合排序后的 `std::vector<T> objects` 做二分查找。`is_sorted` 标记当前模式。
-- `build()` 是唯一的「新增对象」入口：先用 `index_allocator.get()` 取得池下标（越界则扩容），把该槽位重置为 `T{}` 以清除残留，再用 `ID_allocator.get()` 分配对象编号并 `valid_set(true)`，最后按当前模式维护索引映射或重排序；返回值为新对象所在的池下标。
-- `min_valid_index` 记录当前有效元素的最小下标，`find()` 在排序模式下从该下标起二分，避免在已卸载的前缀上白费比较；`find()` 返回容器的迭代器，未命中时返回 `end()`。
-- 卸载会做三重清理（释放编号、标记非法、归零编号），编号可被回收复用；`Object_Pool<Object>` 由 `core/对象池实例化.cpp` 显式实例化。
-- 该模板实现直接写在头文件内（非 `.hpp` 分片），因此包含即得实现。
-
-#### 6.2.3 对象系统运行包
-
-**涉及文件**：`src/core/object/对象系统运行包.h`
-
-聚合 `Object/对象.h` 与 `Object_Pool/对象池.h`。
-
----
-
-### 6.3 坐标类型与依赖封装（`src/core/spatial/common/`）
-
-**涉及文件**：`core/坐标类型.h`（146 行）、`core/依赖库封装.h`（117 行）、`碰撞系统运行包.h`（9 行）
-
-#### 6.3.1 坐标类型
-
-**功能**：引擎自有的二维点 / 矩形基元，全引擎唯一权威定义。
-
-**对外接口**：
-
-```cpp
-namespace engine
-{
-    //二维点
-    template <typename T>
-    struct Point2
-    {
-        T X = T{};   //横坐标
-        T Y = T{};   //纵坐标
-        Point2() = default;
-        Point2(T x, T y);
-        bool operator==(const Point2& other) const noexcept;   //浮点走 ULP 容差
-        bool operator!=(const Point2& other) const noexcept;
-    };
-
-    //二维矩形范围
-    template <typename T>
-    struct Rect2
-    {
-        T left = T{};    //左边界
-        T right = T{};   //右边界
-        T up = T{};      //上边界
-        T down = T{};    //下边界
-        Rect2() = default;
-        Rect2(T l, T r, T u, T d);
-        bool operator==(const Rect2& other) const noexcept;    //四边界精确比较
-        bool operator!=(const Rect2& other) const noexcept;
-    };
-
-    using Point2i = Point2<int>;          //整数精度点
-    using Point2l = Point2<int64_t>;      //64 位整数精度点
-    using Point2d = Point2<double>;       //双精度点
-    using Rect2i  = Rect2<int>;           //整数精度矩形
-    using Rect2l  = Rect2<int64_t>;       //64 位整数精度矩形
-    using Rect2d  = Rect2<double>;        //双精度矩形
-
-    inline Point2i point_to_int(const Point2d& p) noexcept;       //浮点 → 整数（四舍五入）
-    inline Point2d point_to_double(const Point2i& p) noexcept;    //整数 → 浮点
-    inline Point2l point_to_l(const Point2d& p) noexcept;         //浮点 → 64 位整数
-    inline Point2d point_to_double(const Point2l& p) noexcept;    //64 位整数 → 浮点
-}
-```
-
-**内部实现要点**：
-
-- `Point2::operator==` 对浮点类型启用 **ULP 容差**：先精确比较（含 `+0.0` / `-0.0`），再处理无穷与 NaN（NaN 恒不等），最后比较位模式距离，**≤ 4 ULP 视为相等**。整数类型走精确比较。
-- `Rect2::operator==` 是四边界**逐项精确比较**，不复用 ULP 逻辑——矩形比较语义从严。
-- `engine::detail::ulp_distance(double, double)` 是 ULP 距离的内部实现：按位取模式、符号不同直接返回 `UINT64_MAX`、swap 后相减得到距离。
-- 三种精度之间**没有隐式转换**，跨精度必须显式调用上面四个转换自由函数；转换统一采用四舍五入（`std::lround` / `std::llround`）。
-- 必须注意的有损场景：`int64_t` 超过 2^53 转 `double` 会丢精度；`Point2d` 超出 `int` 范围转 `Point2i` 会被收窄。
-
-#### 6.3.2 依赖库封装
-
-**功能**：把 bullet3 的核心类型收敛为 `engine` 命名空间下的语义别名，并提供碰撞后端聚合体。
-
-**对外接口（要点）**：
-
-```cpp
-namespace engine
-{
-    //碰撞架构四件套
-    using Collision_Config     = btDefaultCollisionConfiguration;   //碰撞配置
-    using Collision_Dispatcher = btCollisionDispatcher;             //窄阶段调度器
-    using Collision_Interface  = btBroadphaseInterface;             //宽阶段接口
-    using Collision_World      = btCollisionWorld;                  //碰撞世界
-    //宽阶段加速结构
-    using Bvh_Tree = btDbvtBroadphase;    //动态包围体层次树
-    using SAP      = btAxisSweep3;        //扫描线剪枝
-    //其余别名涵盖：世界对象、三角网格、向量 / 变换 / 四元数 / 标量、
-    //六种形状（盒体 / 球体 / 胶囊 / 圆柱 / 圆锥 / 凸包 / 三角网格）、复合形状、
-    //持久流形、扫掠回调与扫掠结果、全命中射线检测回调等。
-
-    inline constexpr int Static_Object_Flag = ...;   //静态碰撞对象标记
-
-    //碰撞后端
-    struct Collision_Backend
-    {
-        std::shared_ptr<Collision_Config>     config;      //配置
-        std::unique_ptr<Collision_Dispatcher> dispatcher;  //窄阶段调度器
-        std::unique_ptr<Collision_Interface>  broadphase;  //宽阶段接口
-        std::unique_ptr<Collision_World>      world;       //碰撞世界
-        bool valid(void) const;                            //四件是否齐备
-    };
-}
-```
-
-**内部实现要点**：
-
-- `Collision_Backend` 的装配集中在含参构造（`explicit Collision_Backend(std::shared_ptr<Collision_Config>)`）中：`dispatcher`、`broadphase`（实际实例是 `Bvh_Tree`）、`world` 用 `new(std::nothrow)` 分配，任一为空即**整体回滚**（四个成员全部 `reset()`），不留下半装配状态；默认构造委托该含参构造并以 `std::make_shared<Collision_Config>()` 提供配置。`valid()` 检查四者是否齐备；禁拷贝、可移动，避免 world 内部指针被浅拷贝破坏。
-- 类型别名的意义在于「更换物理库时只需改这一个头文件」，上层代码只依赖 `engine::Collision_World` 之类的名字。
-- `碰撞系统运行包.h` 把「依赖库封装 + 碰撞体 + 碰撞空间」聚合为单点包含，`Collision_Proxy` 只 include 它即可。
-
----
-
-### 6.4 四叉树（`src/core/spatial/partition/Quadtree/`）
-
-**涉及文件**：`四叉树.h`、`函数预声明.h`（131 行）、`数据结构.h`（48 行）、`core/导航与范围计算.hpp`（181 行）、`core/节点创建与树扩大.hpp`（64 行）、`core/区块信息检索.hpp`（364 行）、`core/设置与交互.hpp`（98 行）、`core/四叉树实例化.cpp`（6 行）
-
-**功能**：以区块（chunk）为单位管理二维空间数据的四叉树容器——单棵方形区域的区块寻址、范围检索、自身原地扩大与销毁。它**不负责多棵树之间的调度、合并、去重**，那是 `Quadtree_Manager` 的职责。
-
-**对外接口（要点）**：
-
-```cpp
-namespace engine
-{
-    //四叉树
-    template <typename T>
-    class Quadtree
-    {
-    public:
-        Quadtree(const uint64_t& size = 256, const Point2d& root = { 0.5,0.5 });
-        ~Quadtree(void);
-
-        void set_block_size(const uint64_t& size);                          //最小区块单元边长
-        void set_max_size(const uint64_t& size);                            //边长上限
-        void set_callback_manage(const std::function<bool(Point2d root,
-                                     Point2l target)>& cb);                 //扩大权限回调
-
-        void chunk_operate(std::shared_ptr<Tree_Chunk_Data<T>>& receiver,
-                        const Point2l& target, bool stable,
-                        std::shared_ptr<T> adopt = nullptr);               //单点区块查询（adopt：叶子接管数据）
-        void chunk_operate(std::vector<std::shared_ptr<Tree_Chunk_Data<T>>>& receiver,
-                        const Rect2l& target_range, bool stable);            //范围区块查询
-
-        const Tree_State& tree_state_get(void);                             //读取树状态
-        bool tree_expand(void);                                             //原地扩大（边长翻倍）
-
-        //底层计算工具（供 Quadtree_Manager 复用）
-        void recta_range_calcu(Rect2l& receiver, const Point2d& root,
-                                const uint64_t tree_size);
-        void target_range_format(Rect2l& target_range, const Point2d& root,
-                                 const uint64_t block_size);
-        Point2d reachable_range_calcu(const Rect2l& target_range,
-                                     Rect2l& reachable_range);
-    };
-}
-```
-
-配套数据结构（`数据结构.h`）：
-
-```cpp
-namespace engine
-{
-    //树状态
-    struct Tree_State
-    {
-        Point2d  root       { 0.5, 0.5 };               //根坐标
-        uint64_t size       = 256;                      //当前边长
-        uint64_t max_size   = 9223372036854775808ULL;   //边长上限（2^63）
-        uint64_t block_size = 16;                       //最小区块单元边长
-    };
-
-    //区块数据（查询结果）
-    template <typename T>
-    struct Tree_Chunk_Data
-    {
-        Point2d node;      //区块中心坐标
-        T*      data;  //区块叶子数据指针
-    };
-}
-```
-
-**内部实现要点**：
-
-- **64 位尺寸层契约**（由前序版次 `fa8459a` 引入）：区块节点范围用 `Rect2l`、回调目标坐标用 `Point2l`，内部几何运算全走 64 位整数，从而使边长可以配置到 `INT_MAX` 以上而不溢出；对外暴露的区块中心仍回落为 `Point2d`，保持与上层浮点接口兼容。
-- `chunk_operate` 采用**显式栈迭代而非递归**：以 `std::vector<Recur_Record>` 模拟栈、`std::vector<int> recur_path` 记录当前路径，规避深递归导致的栈溢出。
-- **原地扩大** `tree_expand()`：分配 4 个新的中间节点，把原根 4 个槽位的子树按反方向（`NW→SE、NE→SW、SW→NE、SE→NW`）下沉挂到新节点，再把新节点挂回根，最后 `size *= 2`；O(1) 完成「向上加一层」。
-- **扩大权限受控**：四叉树不擅自扩大，`set_callback_manage()` 注册的 `callback` 向 `Quadtree_Manager` 申请权限，批准后才执行 `tree_expand()`；未注册回调时若 `size < max_size` 则自行扩大。
-- **单点查询三态分析**：`point_seekable_analyse` 返回 0（不可行，终止）/ 1（可能可行，继续尝试扩大）/ 2（可行，直接寻址）。
-- 节点 `Node` 是联合体：中间节点用 `ptr_child[4]`，叶子节点用 `leaf`（类型 `T`），按 `Node_Type` 用 placement new 激活对应成员。
-- **范围查询可能返回重复区块**：同一坐标的区块在相邻多次查询边界重叠时会被重复创建，去重由 `Quadtree_Manager` 用布尔表负责。
-- 调用方注意：`chunk_operate` 的 `stable == false` 不分配缺失节点；`stable == true` 会即时 `new` 补齐路径，保证结果必定存在。
-- 工程内以 `Quadtree<int>` 实例化（见 `core/四叉树实例化.cpp`），并在头文件末尾以 `using engine::Quadtree;` 引出命名空间。
-
----
-
-### 6.5 四叉树管理器（`src/core/spatial/partition/Quadtree_Manager/`）
-
-**涉及文件**：`四叉树管理器.h`、`函数预声明.h`（142 行）、`数据结构.h`（46 行）、`core/基础操作.hpp`（244 行）、`core/区块信息检索.hpp`（220 行）、`core/设置与交互.hpp`（118 行）、`core/四叉树合并.hpp`（307 行）、`core/四叉树扩大回调管理.hpp`（215 行）、`core/四叉树智能创建.hpp`（291 行）、`core/相邻四叉树查找.hpp`（182 行）、`core/四叉树管理器实例化.cpp`（6 行）
-
-**功能**：管理若干棵四叉树的调度层——建树 / 卸载、单点与范围检索、相邻树查找、四叉树合并、以及四叉树扩大申请的裁决。是碰撞模块与空间查询的对外入口。
-
-**对外接口（要点）**：
-
-```cpp
-namespace engine
-{
-    //四叉树管理器
-    template <typename T>
-    class Quadtree_Manager
-    {
-    public:
-        Quadtree_Manager(void);
-        ~Quadtree_Manager(void);
-
-        void set_block_size(const uint64_t& block_size);                 //最小区块单元边长
-        void set_max_size(const uint64_t& max_size);                     //单树边长上限
-        void set_min_size(const uint64_t& min_size);                     //单树边长下限
-        void set_cache_state(bool enabled);                              //树缓存开关
-        void set_cache_active_threshold(const uint64_t& threshold);      //缓存启用阈值
-        void set_max_cache_records(const uint64_t max_entries);          //缓存记录上限
-
-        void quadtree_build_smart(const std::vector<Point2i>& coord_set); //按点集智能建树
-
-        void seek(std::shared_ptr<Tree_Chunk_Data<T>>& receiver,
-                  const Point2i& target, bool stable);                   //单点检索
-        void seek(std::vector<std::shared_ptr<Tree_Chunk_Data<T>>>& receiver,
-                  const Rect2i& target_range, bool stable);              //范围检索
-
-        const Tree_Manager_Settings& settings_get(void);                 //读取设置
-        const std::vector<Tree_Record<T>*>& records_get(void);           //读取树记录
-        const uint64_t& largest_size_get(void);                          //最大单树边长
-
-        void quadtree_merge(void);                                       //四叉树合并
-        void cache_clear(void);                                          //清空树缓存
-        void clear(void);                                                //清空全部树
-        void quadtree_unload(const std::vector<Point2d>& root_set);      //按根集卸载
-    };
-}
-```
-
-配套数据结构（`数据结构.h`）：
-
-```cpp
-namespace engine
-{
-    //单棵树记录
-    template <typename T>
-    struct Tree_Record
-    {
-        Quadtree<T>* tree;              //树指针
-        Point2d      root { 0.5, 0.5 }; //树根坐标
-        uint64_t     size = 256;        //树边长
-    };
-
-    //管理器设置
-    struct Tree_Manager_Settings
-    {
-        uint64_t block_size            = 16;     //最小区块单元边长
-        uint64_t max_tree_size         = 65536;  //单树边长上限
-        uint64_t min_tree_size         = 256;    //单树边长下限
-        bool     is_cache_enabled      = true;   //是否启用树缓存
-        uint64_t cache_active_threshold = 32;    //缓存启用阈值
-        uint64_t max_cache_records     = 16;     //缓存记录上限
-    };
-}
-```
-
-**内部实现要点**：
-
-- **64 位契约延续**：管理器内部以 64 位承载树尺寸；修复了超大边长（2^33）在尺寸截断后导致的整数除零主崩点。
-- **智能建树** `quadtree_build_smart(std::vector<Point2i>)`：依据待覆盖点集自动决定建树位置与边长，而非要求调用方指定根与尺寸。
-- **相邻树三级筛选查找**：`相邻四叉树查找.hpp` 以由粗到细的三级筛选定位与目标范围相邻的树，降低查找开销。
-- **四叉树合并**：`四叉树合并.hpp` 把可以合并的相邻同尺寸树归并为一棵，控制树的数量膨胀。
-- **扩大裁决**：四叉树把自己的扩大申请通过回调上报给管理器；管理器由 `四叉树扩大回调管理.hpp` 判断该次扩大会否与已在册的其它树发生管辖范围重叠，再决定批准与否——这是多树并存时避免相互重叠的关键。
-- **合并时数据迁移**：区块数据 `T` 由叶子以 `std::shared_ptr<T>` 持有；合并时 `chunk_operate` 经新增的 `adopt` 形参让新树命中叶子**直接接管**旧区块的 shared_ptr（`std::get<1>(叶子.data) = adopt`），旧树卸载后由新树独占持有，`T` 对象地址不变。`T` 无需提供拷贝方法，管理器也不再提供任何数据迁移注册接口（原 `callback_register` 已移除，合并无条件执行）。
-- **最大边长随建树/卸载维护**：`largest_tree_size` 现于 `quadtree_build` 取入树边长的最大值、于两个 `quadtree_unload` 重载末尾按剩余树重算（`clear` 经卸载重载归零）；此前该值仅在扩大审批路径更新，智能建树后恒为 0，会使合并的相邻树矩形筛选半径塌缩而永远找不到可合并组合。
-- **缓存**：管理器维护 `tree_cache { records, ranges }`，缓存近期使用过的树；缓存启用阈值与记录上限可配置，`cache_clear()` 可手动清空。
-- **对外检索的坐标仍受 32 位约束**：`seek` 使用 `Point2i` / `Rect2i`（详见第九节已知问题）。
-- 工程内以 `Quadtree_Manager<int>` 实例化（见 `core/四叉树管理器实例化.cpp`）。
-
----
-
-### 6.6 碰撞体（`src/core/spatial/collision/Collider/`）
-
-**涉及文件**：`碰撞体.h`（148 行）
-
-**功能**：描述一个碰撞体的全部属性：编号、子弹世界对象、**几何体部件集合**、位移向量与位移作废标记、检测方式、豁免标记、原始几何 JSON。
-
-**对外接口（要点）**：
-
-```cpp
-namespace engine
-{
-    //检测方式
-    struct Detection_Mode
-    {
-        bool     is_swept_volume = false;   //是否使用扫掠体检测
-        uint32_t step_length     = 0;       //扫掠步长
-    };
-
-    //几何体部件（碰撞体内一个带相对变换的几何体）
-    struct Geometry_Part
-    {
-        std::unique_ptr<Triangle_Mesh>   mesh;            //网格数据源（先于形状声明）
-        std::unique_ptr<Collision_Shape> shape;           //几何形状
-        Transform                        local_transform; //相对本体原点的变换
-    };
-
-    //碰撞体
-    struct Collider
-    {
-        uint64_t                         ID = 0;              //碰撞体编号
-        Collision_Object                 object;              //子弹世界对象
-        std::vector<Geometry_Part>       parts;               //几何体部件集合
-        std::unique_ptr<Collision_Shape> compound;            //复合形状（仅部件数 > 1 时持有）
-        Vector3                          displacement_vector; //位移向量
-        bool                             displacement_invalid = false; //位移作废标记
-        Detection_Mode                   detection_mode;      //检测方式
-        uint64_t                         exemption_flag = 0;  //豁免标记
-        nlohmann::json                   geometry;            //原始几何配置
-
-        static Collider*  recover(const Collision_Object* object);  //由世界对象反查碰撞体
-        Collision_Shape*  mounted_shape(void) const;                //当前实际挂载到碰撞对象的形状
-    };
-}
-```
-
-**内部实现要点**：
-
-- **几何体集合**：一个碰撞体可容纳多个几何体，各几何体的相对位置由 `Geometry_Part::local_transform` 描述；同一碰撞体的全部几何体共用同一个碰撞对象与世界变换，故整体具有相同的移动方向与速度。
-- **单部件不套复合形状**：`mounted_shape()` 在部件数大于一时返回复合形状（`compound`，各部件形状为其子形状），单部件时直接返回该部件形状本体，无部件时返回空指针。这样既保住凸包判断（凸包检测与扫掠检测要求形状本身是凸的）与旧配置语义，也避免无谓的复合形状开销。
-- **声明顺序即生命周期契约**：`Geometry_Part::mesh` 必须先于 `shape` 声明，`Collider::parts` / `compound` 必须先于其使用者声明。原因是有形状（如三角网格形状）只持有网格指针而不接管所有权，析构顺序与声明顺序相反，把网格放在前面可保证形状先释放、网格后释放，避免悬挂引用。
-- **自指针重挂**：`Collider` 移动（容器扩容等）后内部指针仍需指向新的自身地址，故移动构造与移动赋值都会重新挂接自指针，并清空源对象自指针。
-- **反查机制**：构建时对子弹世界对象调用 `setUserPointer(this)`，检测回调里用 `Collider::recover(const Collision_Object*)` 把世界对象还原成 `Collider*`，从而拿到编号与豁免标记。
-- **六种形状**：盒体、球体、胶囊、圆柱、圆锥、三角网格（OBJ），由 `Collision_Region` 的 `形状构建.cpp` 按 `geometry` JSON 装配。
-- `displacement_invalid` 由碰撞响应判定「停止运动」时置位，作废期间不再施加位移。
-- `exemption_flag` 供业务层标记「本碰撞体不参与某些配对检测」。
-
----
-
-### 6.7 碰撞空间 `Collision_Region`（`src/core/spatial/collision/Collision_Region/`）
-
-**涉及文件**：`碰撞空间.h`（169 行）、`局部命名空间使用.h`、`core/空间与边界.cpp`（120 行）、`core/碰撞体管理.cpp`（304 行）、`core/形状构建.cpp`（412 行）、`core/检测执行.cpp`（219 行）、`core/跨越通知.cpp`（130 行）
-
-**功能**：一个独立的碰撞世界。持有一份 `Collision_Backend`（子弹后端），管理空间边界与其中的全部碰撞体，执行扫掠 + 离散两阶段检测，并在位置更新后跟踪各碰撞体的跨越状态。
-
-**对外接口（要点）**：
-
-```cpp
-namespace engine
-{
-    //碰撞结果
-    struct Collision_Result
-    {
-        uint64_t collider_A;   //参与碰撞的碰撞体编号 A
-        uint64_t collider_B;   //参与碰撞的碰撞体编号 B
-    };
-
-    //碰撞体相对碰撞空间的跨越状态
-    enum class Cross_State
-    {
-        inside,     //完全位于碰撞空间内
-        crossing,   //部分位于碰撞空间内（跨越边界）
-        outside     //完全位于碰撞空间外
-    };
-
-    //跨越通知（碰撞体相对碰撞空间发生跨越状态转移）
-    struct Cross_Notice
-    {
-        uint64_t    collider_ID = 0;   //碰撞体编号
-        std::string kind;              //通知类型：cross / return / exit
-    };
-
-    //碰撞空间
-    struct Collision_Region
-    {
-        //默认构造 / 含参构造（指定碰撞空间名称）
-        Collision_Region();
-        explicit Collision_Region(const std::string& region_name);
-        Collision_Region(const Collision_Region&) = delete;            //禁止拷贝（后端含 unique_ptr）
-        Collision_Region(Collision_Region&&) = default;                //可移动
-        ~Collision_Region();
-
-        bool valid(void) const;                                        //空间是否有效
-        void state_set(bool active);                                   //设置活跃性
-        bool state_check() const;                                      //读取活跃性
-
-        bool boundary_build(const std::string& mesh_path);              //按网格路径构建边界
-        void boundary_unload();                                        //卸载边界
-
-        uint64_t collider_build(void);                                 //构建碰撞体（分配编号）
-        bool collider_unload(uint64_t collider_ID);                    //卸载碰撞体
-        bool collider_set(const uint64_t collider_ID, const Detection_Mode& vector); //设置检测方式
-        bool collider_set(const uint64_t collider_ID, const uint64_t& vector);       //设置豁免标记
-        bool collider_set(nlohmann::json geometry_config);             //设置几何体（单几何体或几何体集合）
-        bool collider_find(uint64_t collider_id) const;                //编号是否存在于本空间
-        std::vector<uint64_t> colliders(void);                         //列出全部编号
-        bool collider_adopt(uint64_t collider_ID);                     //按编号接管（供空间间转移）
-        nlohmann::json collider_geometry(uint64_t collider_ID) const;  //读取几何配置
-
-        void displacement_reader_set(std::function<bool(uint64_t, Vector3&)> reader); //注入位移事件读取回调
-        bool collider_displacement_void(uint64_t collider_ID);         //位移作废（停止运动）
-        bool collider_displacement_replace(uint64_t collider_ID, const Vector3& displacement); //位移改写
-
-        std::optional<std::vector<Collision_Result>> detect(void);     //执行碰撞检测
-        bool contains(uint64_t collider_ID) const;                     //编号是否归属本空间
-        std::vector<Cross_Notice> cross_notices_take(void);            //取走本帧跨越通知（取出并清空）
-    };
-}
-```
-
-**内部实现要点**：
-
-- 私有成员：`name`（空间名）、`is_active`（活跃标记）、`Number_Pool ID_allocator`（碰撞体编号分配）、`Collider region_boundary`（空间边界本身也是一个碰撞体）、`Collision_Backend backend`（子弹后端四件套）、`std::unordered_map<uint64_t, Collider> mapping`（编号 → 碰撞体）、`std::function<bool(uint64_t, Vector3&)> displacement_reader`（位移事件读取回调）、`std::unordered_map<uint64_t, cross_state> cross_states`（各碰撞体的跨越状态记录）、`std::vector<Cross_Notice> cross_notices`（本帧收集的跨越通知）。
-- **位移来源只有事件通道**：位移向量由碰撞代理器的 `Collision/ColliderDisplacement` 事件提供，代理器经 `displacement_reader_set` 注入读取回调；`detect()` 开头按编号重读最新位移事件写入 `displacement_vector`，**位移持续生效**，直到被新事件覆盖或被响应流程作废，不再有「一次性生效后清零」与直接写位移的接口。
-- **边界即碰撞体**：空间边界复用了 `Collider` 的表示（`region_boundary`），由 `boundary_build(mesh_path)` 按 OBJ 网格路径构建，因此边界与普通碰撞体走同一套检测机制；但边界本身**不参与碰撞对**（见下）。
-- **析构顺序的硬约束**：碰撞体与空间边界都直接持有子弹对象，而碰撞世界内部记录的是这些对象的地址。`~Collision_Region()` 先把全部碰撞对象移出碰撞世界，再让映射与后端析构，否则碰撞世界析构时会解引用已释放的对象。同理，按值搬移（默认移动构造）之后须重新执行边界构建，否则边界会留下悬空指针；`Collision_Proxy` 用 `unique_ptr` 持有空间则不受此影响。
-- **两阶段检测**：`检测执行.cpp` 先做扫掠（对配置了 `is_swept_volume` 的碰撞体**逐几何体部件**按 `世界变换 ∘ local_transform` 与位移向量推进），再做离散检测；豁免标记在配对阶段生效。扫掠命中与离散流形两处都会**排除空间边界**，否则边界会被当作编号 0 的普通碰撞体写进碰撞对。
-- **形状构建**：`形状构建.cpp` 的 `geometry_build` 统一处理单几何体形式与几何体集合形式，按 `geometry` JSON 构建六种形状；部件数大于一时分配复合形状并逐部件 `addChildShape`；三角网格形状会调用 `Mesh_Loader` 读 OBJ，并把顶点数据转成子弹的三角网格。
-- **跨越状态跟踪**：`跨越通知.cpp` 在位置更新完毕（离散平移与 `performDiscreteCollisionDetection` 之后）逐碰撞体判定当前态——与边界接触即 `crossing`，否则以碰撞体包围盒中心为探针点对边界做**射线奇偶**包含性判定得出 `inside` / `outside`（射线奇偶用 `AllHits_Ray_Callback` 收集全部交点，交点数为奇数即在内部）。与上一帧记录比对，发生转移即收集一条 `Cross_Notice`：`cross`（首次部分跨越）/ `return`（完全回归）/ `exit`（完全超出跨越），**仅转移发一次、稳态不发**，首次判定只建基准。碰撞体卸载（含转移的源空间卸载）会抹除其状态记录，避免编号回收后被新碰撞体误继承。
-- 私有 `collider_seek` / `scalar_read` / `vector_read` / `quaternion_read` / `mesh_shape_build` / `shape_build` / `geometry_build` / `boundary_point_inside` / `cross_state_update` 是配置解析、形状装配与跨越判定的内部工具。
-- 编号由空间**自行分配**，因此不同空间可以持有相同编号（这正是 `Collision_Proxy` 用多重映射登记归属的原因）。
-
----
-
-### 6.8 碰撞代理器 `Collision_Proxy`（`src/core/spatial/collision/Collision_Proxy/`）
-
-**涉及文件**：`碰撞代理器.h`（119 行）、`局部命名空间使用.h`、`core/空间边界与配置.cpp`（177 行）、`core/空间管理.cpp`（186 行）、`core/碰撞体管理.cpp`（190 行）、`core/碰撞体配置.cpp`（142 行）、`core/位移管理.cpp`（100 行）、`core/碰撞响应.cpp`（229 行）、`core/事件交互.cpp`（290 行）
-
-**功能**：本层对外唯一的碰撞门面。管理多个碰撞空间，维护「碰撞体编号 → 归属空间」映射，订阅配置与碰撞指令事件，执行碰撞响应时序，发布检测结果与跨越通知事件。
-
-**对外接口（要点）**：
-
-```cpp
-namespace engine
-{
-    //碰撞代理器
-    class Collision_Proxy
-    {
-    public:
-        Event_Terminal event_terminal;                                   //事件终端（公开）
-
-        Collision_Proxy();
-        ~Collision_Proxy() = default;
-
-        bool region_build(const std::string& region);                    //构建碰撞空间
-        bool region_unload(const std::string& region);                   //卸载碰撞空间
-        bool region_detect(const std::string& region);                   //执行检测
-        bool region_boundary_set(const std::string& path);               //按路径设置边界
-        bool region_state_set(const std::string& region, bool active);   //设置活跃性
-
-        std::optional<uint64_t> collider_build(const std::string& region);          //构建碰撞体
-        bool collider_unload(const uint64_t collider_ID, const std::string& region);//卸载
-        bool collider_transfer(const uint64_t collider_ID, const std::string& region);//转移
-        bool collider_mirror(const uint64_t collider_ID, const std::string& region);  //镜像
-        bool collider_set(const uint64_t collider_ID, const Detection_Mode& mode);   //设置检测方式
-        bool collider_set(const uint64_t collider_ID, const uint64_t& flag);         //设置豁免标记
-
-        void attach(void);                                               //接入事件中转站
-    };
-}
-```
-
-**订阅事件清单**（`attach()` 中登记，共 13 条）：
-
-| category | tag | 含义 |
+| 模块 | 路径 | 说明 |
 | --- | --- | --- |
-| `Config` | `Load` | 配置加载（定向：`receiver == "Collision_Proxy"`） |
-| `Collision` | `RegionBuild` | 构建碰撞空间 |
-| `Collision` | `RegionUnload` | 卸载碰撞空间 |
-| `Collision` | `RegionState` | 设置空间活跃性 |
-| `Collision` | `RegionBoundary` | 设置空间边界 |
-| `Collision` | `RegionDetect` | 执行空间检测 |
-| `Collision` | `ColliderBuild` | 构建碰撞体 |
-| `Collision` | `ColliderUnload` | 卸载碰撞体 |
-| `Collision` | `ColliderTransfer` | 转移碰撞体归属 |
-| `Collision` | `ColliderMirror` | 镜像碰撞体 |
-| `Collision` | `ColliderSet` | 设置碰撞体参数 |
-| `Collision` | `ColliderDisplacement` | 提供碰撞体位移向量（持续生效） |
-| `Collision` | `ColliderCollisionResponse` | 碰撞体对碰撞事件的响应回复 |
+| 数值分配器 | `src/detail/class/Number_Pool/数值分配器.h` | 整数编号分配与回收，支持 LIFO / FIFO 复用 |
+| 随机数生成器 | `src/detail/class/Random_Generator/随机数生成器.h` | 基于 PCG32，按整数类型生成对应范围随机数 |
+| 查找与哈希 | `src/detail/methods/二分查找.h`、`哈希混合.h` | 容器二分/区间查找；多值哈希混合 |
+| 路径工具 | `路径字符串转换.h`、`文件路径获取.h`、`文件路径规范化.h`、`文件路径可用性校验.h`、`package/路径操作工具.h` | 中文路径与 UTF-8 字符串互转、绝对路径拼接、路径规范化与可用性校验 |
+| 文本与校验 | `json字段可用性校验.h`、`数值校验.h`、`文本行解析.h`、`package/文本处理工具.h`、`package/数据校验工具.h` | JSON 字段校验、数值合法性校验、按行文本解析 |
+| 格式化 | `标准库format特化.h` | 错误码、错误条件、文件系统路径的 `std::format` 特化 |
 
-**内部实现要点**：
+### 6.2 `event` —— 事件系统
 
-- `inline static const std::string module_name = "Collision_Proxy"`：既是事件中转站的登记名，也是事件 `sender` 标识、以及 `Config/Load` 定向过滤的比对基准。
-- 私有成员：`std::unordered_map<std::string, std::unique_ptr<Collision_Region>> regions`（空间集合）、`std::unordered_multimap<uint64_t, std::string> collider_mapping`（碰撞体编号 → 归属空间名，**多重映射**）、`std::unordered_map<uint64_t, nlohmann::json> displacement_events`（位移事件保存，同编号新事件覆盖旧事件）、`std::unordered_map<uint64_t, nlohmann::json> collision_responses`（碰撞响应回复信箱）、`int64_t acl_key`（事件发送密钥）。
-- **多重映射的必要性**：编号由各空间自行分配，同一编号可能被不同空间分别持有，故用 `unordered_multimap`；`collider_set_dispatch()` 会把一次参数设置分发到所有持有该编号的空间。
-- **位移与事件通道**：位移向量只由 `Collision/ColliderDisplacement` 事件提供，代理器把事件 `config` 存入 `displacement_events`，并向每个新建空间注入读取回调（`位移管理.cpp`），碰撞空间在更新位置时按编号重读，位移因此**持续生效直至被新事件覆盖**；通用设置指令 `Collision/ColliderSet` 不再承担位移字段。
-- **碰撞响应时序**（`碰撞响应.cpp`）：检测得出碰撞对后逐个发布碰撞事件，立即回查事件终端是否已收到 `Collision/ColliderCollisionResponse` 回复；未收到则先搁置该碰撞体继续处理其余碰撞体，其余处理完后再查一次，仍未收到则重发一次碰撞事件再查，最终仍无回复即日志报错并搁置。响应三选一——`stop`（位移作废，自下一帧起不再推进）、`keep`（位移保持）、`change`（改用回复给出的新位移）。
-- **跨越通知**：`region_detect` 在碰撞响应流程之后、发布 `DetectResult` 之前，取走空间的 `cross_notices_take()` 并逐个发布 `Collision/RegionCrossNotice`，供外界据以把碰撞体迁移到其余碰撞空间；该事件是代理器**自身的出站事件**，不登记订阅（订阅会导致自收自处理）。
-- **转移与镜像**：转移把碰撞体从一个空间移交给另一个空间（同时改动归属映射，并抹除源空间的跨越状态记录）；镜像在同一空间内按位位移向量生成对称的碰撞体，用于「成对出现」的几何体。
-- `attach()` 的顺序是：先 `check(ATTACH_HANDLER)` 确认接入入口已注册 → `event_receiver_register()` 注册接收入口 → 组装 `needed_events` → `event_terminal.attach(module_name, needed_events, acl_key)`。
-- 发布侧统一走 `event_publish(tag, payload)`，内部用 `build(module_name, "", "Collision", tag)` 构造带有发送者标识的广播事件。
-
----
-
-### 6.9 工具模块群（`src/tools/`）
-
-| 模块 | 涉及文件 | 职责 |
+| 模块 | 路径 | 说明 |
 | --- | --- | --- |
-| `Detail`（辅助算法与校验细节） | `Detail/二分查找.h`、`Detail/路径字符串转换.h`、`Detail/哈希混合.h`、`Detail/json字段可用性校验.h`、`Detail/文件路径可用性校验.h`、`Detail/文件路径规范化.h`、`Detail/标准库format特化.h`（另见 `package/` 下的聚合头） | 容器二分 / 区间查找；中文路径与字符串互转；哈希混合；JSON 字段与文件路径可用性校验；路径规范化与路径键规范化；标准库 `std::format` 缺口特化（`error_code`／`error_condition`／`filesystem::path`） |
-| `Detail/package`（数据校验工具聚合头） | `Detail/package/数据校验工具.h` | 聚合 JSON 字段校验与文件路径校验头，供上层一行引入 |
-| `Logging`（日志系统） | `Logging/日志系统.h`（151 行） | 分级日志格式化输出 |
-| `Mesh_Loader`（网格加载器） | `Mesh_Loader/网格加载器.h`（31 行）、`core/网格加载器.cpp`（194 行）、`局部命名空间使用.h` | 解析 OBJ 为 `Mesh_Data`，供碰撞网格形状使用 |
-| `Engine_Env`（引擎环境） | `Engine_Env/引擎环境.h`（137 行） | 获取可执行文件路径 / 目录，拼接绝对路径 |
-| `Timer`（计时器） | `Timer/计时器.h`（39 行）、`core/计时器.cpp`（74 行）、`局部命名空间使用.h` | 多任务命名计时 |
-| `Random_Generator`（随机数生成器） | `Random_Generator/随机数生成器.h` | 基于 PCG32 的全范围 / 无偏区间随机数（模板类，约束 `std::is_integral_v<T>`） |
-| `Number_Pool`（数值分配器） | `Number_Pool/数值分配器.h`（78 行） | 编号分配与回收（复用池） |
+| 事件 | `src/event/Event/事件.h` | `Event` 结构体：类别、名称、载荷 |
+| 协议词汇 | `src/event/Common/事件协议.h` | 订阅登记、订阅者查询、配置投递的协议常量 |
+| 事件终端 | `src/event/Event_Terminal/事件终端.h`、`终端端口.h` | 订阅、权限密钥、事件分发与终端接口 |
+| 事件中转器 | `src/event/Event_Broker/事件中转器.h` | 全局事件路由与定向投递 |
+| 运行包 | `src/event/事件系统运行包.h` | 一次性引入事件系统公共头 |
 
-> `Config_Loader`（配置加载器）已从 `src/tools/` 迁至 `src/core/config/Config_Loader/`（头文件 `配置加载器.h`），职责与接口不变。
-> 实现已按功能域拆分为 `core/` 下的 **9 个编译单元**：配置加载器（构造与接入）／路径与文件／脏标记／路由文件读写／配置投递／路由文件处理／配置加载／缓存清除／事件分发。
-> 头文件中的函数声明与各编译单元内的实现**同序**，排序规则为「被依赖者在依赖者前面 ＋ 功能相近者相邻」（公开门面 构造/析构/接入 置顶）。
+### 6.3 `loader` —— 配置与资产加载
 
-**要点摘录**：
+| 模块 | 路径 | 说明 |
+| --- | --- | --- |
+| 配置加载器 | `src/loader/config/Config_Loader/配置加载器.h` | 可信根/路由目录扫描、脏标记缓存回写、`Config/Load` 事件广播 |
+| 网格加载器 | `src/loader/assets/Mesh_Loader/网格加载器.h` | 引擎唯一的 `Mesh_Data` 定义与 OBJ 解析（顶点步长 32 字节，与渲染层着色器一致） |
+| 材质加载器 | `src/loader/assets/Mtl_Loader/材质加载器.h` | MTL 文本解析为纯字段，贴图路径原样保留 |
+| glTF 加载器 | `src/loader/assets/Gltf_Loader/gltf加载器.h` | glTF 静态子集（节点、primitive、PBR 材质）；不解析动画/蒙皮/形态目标 |
 
-- `Detail`（校验部分）：命名空间自由函数 `template <typename T> inline bool engine::detail::field_check(const nlohmann::json&, const std::string&)` 检查字段是否存在且类型匹配；`inline bool engine::detail::path_check(path/string)` 两个重载校验路径有效性；`inline void engine::detail::hash_combine(size_t&, size_t)` 做哈希混合。这是历史文档中「配置检查器」的现名（类 `Data_Validator` 已改为命名空间自由函数）。
-- `Config_Loader`：私有成员 `std::u8string scan_content = u8"assets/config/route/"` 与 `allowed_root = u8"assets/config/"`，即**它只扫描路由目录，并限制在配置根目录之内**（防止越权跳转，内部有 `skip_safety_inspect` 恶意跳转检查）；读取成功后构造事件，填写 `category = "Config"`、`tag = "Load"`，并设置 `receiver` 为路由里声明的目标模块名；`act()` 是入口。
-- `Logging`：`Log` 类提供静态模板 `info / warn / error / debug`，签名接受 `std::format_string<Args...>` 支持 `{}` 占位格式化；`stream_set()` 可切换输出流（用于重定向到文件）；标准库缺失的格式化器集中于 `Detail/标准库format特化.h`（`error_code`／`error_condition`／`filesystem::path`），由 `Log/日志系统.h` 包含；项目自定义类型的格式化器放在各自类型所在的头文件（如 `Config_Content` 在 `配置加载器.h`）。
-- `Mesh_Loader`：`struct Mesh_Data { std::vector<float> vertices; std::vector<uint32_t> indices; }`；`static bool load_obj(const std::string&, Mesh_Data&)` 解析 OBJ；带两个硬上限——`max_file_size = 64MiB`（文件大小）与 `max_vertex_count = 1000000`（顶点数量）；面索引支持四种常见写法，非三角面用扇形三角化，末尾做完整性终检；路径采取双源回退。
-- `Detail`（算法部分）：`binary_search(first, last, target, comp, proj)` 返回相对 `first` 的全局下标，未命中返回 `std::nullopt`（返回类型 `std::optional<uint64_t>`），另有容器重载；`range_binary_search` 返回闭区间 `std::optional<std::pair<uint64_t, uint64_t>>`，未命中返回 `std::nullopt`。`path_to_string()` / `string_to_path()` 经 `std::filesystem::path::u8string()` 往返，用于处理包含中文的文件路径。
-- `Engine_Env`：`exe_path_get()`、`exe_dir_get()`、`absolute_path_get(path/string)`；可执行路径的获取按平台分派（Windows `GetModuleFileNameW` / Linux `/proc/self/exe` / macOS `_NSGetExecutablePath`），失败时回退到当前工作目录。
-- `Timer`：`using Clock = std::chrono::steady_clock`，`task_build()` 建任务、`elapsed(task, restart = false)` 读耗时，静态 `units()` / `Milli_units()` / `Micro_units()` / `Nano_units()` 提供单位换算。
-- `Random_Generator`：模板类 `template <typename T> requires std::is_integral_v<T> class Random_Generator`；内核是结构 `Pcg32 { uint64_t state, inc; }`，`operator()()` 生成 `T` 的全范围无偏随机数，`operator()(min, max)` 生成 `[min, max]` 无偏区间随机数；构造函数可传种子；`key()` 就是它的使用者。
-- `Number_Pool`：`set(min)` 设下限、`get()` 取号、`recycle(单/多)` 回收、`reset()` 复位；回收时用二分查找查重，重复回收会打 `logger.warn("Number_Pool::待回收数值已被回收!!!")`。
+三个资产加载器均为 **Vulkan-free**，彼此平级且互不依赖。
+
+### 6.4 `log` —— 日志系统
+
+| 模块 | 路径 | 说明 |
+| --- | --- | --- |
+| 日志门面 | `src/log/Log/日志系统.h` | `Log` 的日志方法与流设置接口 |
+| 流节点树 | `src/log/Stream_Tree/流节点树.h` | 按路径公共前缀分流 |
+| 输出目标 | `src/log/Stream_Sink/输出目标.h` | 文件/控制台等输出端 |
+| 日志规则 | `src/log/Rule/日志规则.h` | 根目录作用域与输出许可 |
+| 节点缓存 | `src/log/Node_Cache/节点缓存.h` | 流节点缓存 |
+| 配置桥接 | `src/log/Logging_Config_Bridge/日志配置桥接.h` | 把配置系统的日志设置接入日志系统 |
+
+日志按 `logger.` 实例语义调用；调用方只需引用运行包 `src/log/日志系统运行包.h`。
+
+### 6.5 `object` —— 对象与对象池
+
+| 模块 | 路径 | 说明 |
+| --- | --- | --- |
+| 对象 | `src/object/Object/对象.h` | 仅持有 ID 的基类，无虚表、无带参构造；ID 与有效性由对象池内部读写 |
+| 对象池 | `src/object/Object_Pool/对象池.h` | 运行期键投影与比较器；`Unorder` / `Sorted` 两种排列；查找与排序共用同一比较口径 |
+
+### 6.6 `spatial` —— 空间
+
+| 模块 | 路径 | 说明 |
+| --- | --- | --- |
+| 坐标类型 | `src/spatial/math/坐标类型.h` | `Point2i/2d/2l`、`Rect2i/2d/2l` 等模板类型与 ULP 精度比较 |
+| 四叉树 | `src/spatial/partition/Quadtree/四叉树.h` | 单树建树、插入、区域检索、合并与范围计算 |
+| 四叉树管理器 | `src/spatial/partition/Quadtree_Manager/四叉树管理器.h` | 多树组织、智能创建、相邻查找、扩大回调与合并 |
+
+### 6.7 `time` —— 计时器
+
+`src/time/Timer/计时器.h`：基于 `std::chrono::steady_clock` 的多任务命名计时。
 
 ---
 
 ## 七、对外接口契约
 
-层间交接由「对外面自描述 ＋ 接入函数」两部分组成。
+本层是拓扑最底层，没有下层可并入。`cmake/对外接口.cmake` 只描述本层自身，按约定导出六个变量（前缀 `ENGINE_FOUNDATION`）：
 
-### 7.1 本层对外面：`cmake/对外接口.cmake`
-
-本层是拓扑最底层，没有下层可并入，故该文件只描述本层自身，按约定导出六个变量（前缀 `ENGINE_FOUNDATION`）：
-
-| 变量 | 值 | 含义 |
+| 变量 | 取值 | 含义 |
 | --- | --- | --- |
-| `BYJY_ENGINE_FOUNDATION_OUT_LIB` | `EngineFoundation` | 本层静态库名（`OUT_LIB` 自本版次起为**分号列表**形态，本层仍单元素） |
-| `BYJY_ENGINE_FOUNDATION_OUT_LIBDIR` | `Engine/EngineFoundation`（本层根） | 与 `OUT_LIB` 一一对应的「该库所在层目录」，供上层自动探测（**本版次新增**） |
-| `BYJY_ENGINE_FOUNDATION_OUT_INC` | **项目根**、`external/Json` | 使用本层公共头所需的包含目录（共 2 条） |
-| `BYJY_ENGINE_FOUNDATION_OUT_DEF` | 空 | 本层不再需要编译定义（原 `GLFW_STATIC` 已随 GLFW 撤下） |
-| `BYJY_ENGINE_FOUNDATION_OUT_LINK` | 空 | 本层不再对外传递第三方静态库（原 `glfw3.lib` 已撤下） |
-| `BYJY_ENGINE_FOUNDATION_OUT_SYS` | 空 | 本层不对外传递系统库（窗口 / 图形所需的 Win32 库由渲染层提供） |
+| `BYJY_ENGINE_FOUNDATION_OUT_LIB` | `EngineFoundation` | 本层静态库名 |
+| `BYJY_ENGINE_FOUNDATION_OUT_LIBDIR` | `Engine/EngineFoundation` | 与 `OUT_LIB` 一一对应的层目录，供上层自动探测 |
+| `BYJY_ENGINE_FOUNDATION_OUT_INC` | 项目根、`external/Json` | 使用本层公共头所需的包含目录 |
+| `BYJY_ENGINE_FOUNDATION_OUT_DEF` | 空 | 无编译定义 |
+| `BYJY_ENGINE_FOUNDATION_OUT_LINK` | 空 | 不对外传递第三方静态库 |
+| `BYJY_ENGINE_FOUNDATION_OUT_SYS` | 空 | 不对外传递系统库 |
 
-包含目录为什么是这三条：**首项是「项目根」**，使上层与本层源码都能按项目根相对全路径 `Engine/EngineFoundation/...` 解析本层头，彻底消除直接 `src/...` 包含带来的路径归属不明与文件重名；`external/Json` 供 `<nlohmann/json.hpp>`；`external` 作为第三方顶层兜底。**GLFW / OpenGL 条目已全部撤除**——本层源码与预编译头（`common/前置头文件包含.h`）均无任何 GLFW / OpenGL 引用（窗口与输入已在渲染层），故 `external/glfw`、`GLFW_STATIC`、`glfw3.lib`、`opengl32` 一并下线；bullet3 已迁至 EngineSystem，`external/glm` 目录已不存在。
+工程内部一律写**项目根相对全路径**包含：`#include "Engine/EngineFoundation/src/event/Event/事件.h"`。
 
-`BYJY_ENGINE_FOUNDATION_ROOT` 与 `BYJY_ENGINE_FOUNDATION_PROJECT_ROOT` 由 `get_filename_component(... ABSOLUTE)` 在本文件内推导，**不是硬编码路径**。
-
-### 7.2 接入函数 `byjy_jieru_xiaceng()`
-
-`cmake/接入下层.cmake` **不属于本层**（本层无下层可接入），它位于 EngineSystem / **Engine 聚合层** / Test / Game，**四份逐字节相同**。上层通过其中的 `byjy_jieru_xiaceng(接口文件, 前缀, 覆盖变量)` 读取本层对外面，按**三级策略**定位已构建的 `EngineFoundation.lib`：
-
-1. **覆盖变量优先**：`BYJY_ENGINE_FOUNDATION_LIB_PATH`（EngineSystem 层）或聚合面转交的 `BYJY_ENGINE_LIB_PATH`（分号列表，须与库数等长）非空且文件存在 → 直接使用；非空但文件不存在 → **硬失败**，不静默降级。
-2. **自动探测**：覆盖变量为空 → 按 `OUT_LIBDIR` **逐库**扫描 `<该库所在层目录>/out/build/*/lib/<库名>.lib`，多个候选取时间戳最新的一份。
-3. **硬失败**：仍找不到 → 报错并给出构建本层的命令。
-
-定位成功后建立 `IMPORTED STATIC GLOBAL` 目标 `EngineFoundation`，并把包含目录 / 编译定义 / 链接库与系统库挂到 `INTERFACE` 属性上，逐层向上传递。**任何情况下都不回退编译本层源码。** 同一文件内的 `byjy_tou_kuaizhao_gen(<结果变量> <导入目标>)` 负责由导入目标反推本层的**对外头快照根**（`<本层构建目录>/include`）。
-
-### 7.3 归档响应文件 BOM 包装：`cmake/ar_rsp_bom.ps1`
-
-Ninja 写出的归档响应文件（`*.rsp`）是 UTF-8 无 BOM，而 MSVC 的 `lib.exe` 在没有 BOM 时按系统 ANSI 代码页解读文件内容，中文对象名会被解成乱码，归档阶段报 `LNK1181`。该脚本在调用真实归档器前为响应文件补上 UTF-8 BOM（已含 BOM 或全 ASCII 的文件不改动），使源文件名保持中文（各层的中文源文件名都不必改成英文）。
-
-接线要点（源码注释中明确强调）：`set(CMAKE_CXX_CREATE_STATIC_LIBRARY ...)` **必须在 `project()` 之后设置**，否则会被 `Platform/Windows-MSVC.cmake` 的默认值覆盖回去；该改写**只对 Ninja 生成器生效**，避免影响 Visual Studio 生成器（其归档由 MSBuild 的 `Lib` 任务完成）。当包装脚本或 PowerShell 任一缺失时，配置阶段会给出 `WARNING` 而不是静默继续。
-
-### 7.4 版本锁、版本缓存与头完整性校验
-
-构建工具在 `Engine/EngineFoundation/cmake/` 下提供三份共享件，供各层在配置期 / 构建期调用：
-
-| 文件 | 角色 |
-| --- | --- |
-| `版本工具.cmake` | 读版本哈希、按版本锁解析某层、一致性校验、头完整性校验 |
-| `发布版本缓存.cmake` | 构建成功后把「头快照 + 库 + 依赖版本记录」按版本哈希发布到 `Engine/版本缓存/` |
-| `Engine/版本锁.cmake` | 全链唯一真源：留空 = 跟随最新，填哈希 = 锁定到该版本 |
-
-**版本是什么**：每层构建期生成的 `版本锚点.h` 里有符号 `byjy_stamp_<层标识>_<12 位哈希>`，该哈希 = 「对外头集合 + 构建类型 + 运行库口径」。Debug / Release 哈希不同，故缓存与锁都按配置分目录。
-
-**解析规则**（System / Renderer / Engine / Test 同口径）：
-
-1. 覆盖变量（如 `BYJY_ENGINE_FOUNDATION_LIB_PATH`）非空 → 用它；
-2. 否则读 `Engine/版本锁.cmake`：锁空 → 从下层构建树解析；锁非空 → `Engine/版本缓存/<层>/x64-<配置>/<哈希>/`；
-3. 锁指定但缓存缺失 → `FATAL_ERROR`，并给出「先构建该层 / 清空锁 / 换哈希」三种处理方式。
-
-**构建树布局与定位优先级**（锁空时）：
-
-| 生成器 | 库 | 头快照 |
-| --- | --- | --- |
-| Ninja 双预设 | `<树>/lib/<层>.lib` | `<树>/include/Engine/<层>/...` |
-| Visual Studio（单树双配置） | `<树>/lib/<配置>/<层>.lib` | `<树>/include/<配置>/Engine/<层>/...` |
-
-解析顺序是**先 Ninja 布局（`out/build/x64-<配置>`），缺失才扫 `out/build/*` 找 `lib/<配置>/<层>.lib`**
-（多棵 VS 树取库文件最新者）。也就是同一层两棵树并存时**优先 Ninja**；全 VS 工作流下每层只有一棵 VS 树，
-自然落到候选②。这个优先级保证既有双预设流程不会因为多出一棵 VS 树而改变行为。
-
-**双配置**：每层在配置期同时解析 Debug 与 Release 两份，并分别落到
-`IMPORTED_LOCATION_<CONFIG>`、`$<CONFIG>` 包含根与按配置注入的 `/FI` 锚点上。
-因此单配置生成器（Ninja 双预设）与多配置生成器（Visual Studio）都能正确工作：
-VS 下切到 Debug / Release 时，链接的是同配置的下层库，强制包含的也是同配置的锚点头。
-
-**为什么锁空走构建树**：构建树快照随下层构建自动滚动，天然与库同版次，不需要维护副本。版本缓存只服务「下层继续演进、上层停在旧版」这种并行开发场景。
-
-**全链一致性**：每层配置期把本次解析到的下层版本写进 `<构建目录>/依赖版本.cmake`（随版本缓存一起发布）。上层配置期读取被消费层的该记录，与本层解析结果逐项比对；不一致直接 `FATAL_ERROR`，把原本要到链接期才暴露的锚点失配提前到配置期。
-
-**头完整性校验（兜底）**：快照只在下层构建成功后才导出，因此下层新增 / 重命名的公共头不在快照里，上层的 `#include` 会继续搜到项目根的源码树（头一套、库一套）。`byjy_jiaoyan_xiacengtou()` 以快照为「合法头集合」，扫描本层源码里行首的 `#include "Engine/<下层>/..."`，缺一个就 `FATAL_ERROR`，提示先构建下层。它只拦「引用了快照里没有的头」，不会误伤「下层改了已有头但未重建」——后者正是快照机制要保留的行为。
-
-**缓存清理**：每个 `<层>/<配置>` 下保留最近 8 个版本（按库文件时间排序），被 `Engine/版本锁.cmake` 引用的版本永不清理。
+上层通过 `cmake/接入下层.cmake` 的 `byjy_jieru_xiaceng()` 读取本层对外面，按 `OUT_LIB` 逐库定位**已构建好的**静态库，建立 `IMPORTED STATIC GLOBAL` 目标；任何情况下都不回退编译本层源码。
 
 ---
 
-## 八、构建与运行
+## 八、构建
 
-### 8.1 环境要求
+### 8.1 前置条件
 
-| 项目 | 要求 |
-| --- | --- |
-| CMake | ≥ 3.20 |
-| 生成器 | Ninja |
-| 编译器 | MSVC（已验证）；亦支持 GCC / Clang |
-| C++ 标准 | C++20，禁用编译器扩展 |
-| 平台 | Windows 为主要开发平台（源码内含 `windows.h` 的按需引入） |
+- CMake ≥ 3.20（`CMakePresets.json` 要求 ≥ 3.25）、Ninja 或 Visual Studio 多配置生成器；
+- 支持 C++20 的 MSVC；
+- 本层无下层依赖，可独立构建。
 
 ### 8.2 构建步骤
 
-本层无下层依赖，是分层构建链的第一步。
+```powershell
+cd Engine/EngineFoundation
 
-```bash
-# 配置（在本层根目录执行）
-cmake -S . -B out/build/x64-Debug -G Ninja
+# Debug
+cmake --preset x64-Debug
+cmake --build --preset build-Debug
 
-# 构建
+# Release
+cmake --preset x64-Release
+cmake --build --preset build-Release
+```
+
+也可以直接用生成器命令：
+
+```powershell
+cmake -S . -B out/build/x64-Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build out/build/x64-Debug
 ```
 
-- **配置期须处于 UTF-8 代码页**（先进 VS 开发人员环境，再 `chcp 65001`），否则头文件依赖不会被记录；`TMP`/`TEMP` 须为**纯 ASCII** 路径，否则 cl 只要带调试信息就报 `D8050`（详见顶层 README 的构建说明）。
-- 本层构建时会向导出的**对外头快照**写入 `out/build/<配置>/include/`（`cmake/导出头快照.cmake` 由常驻目标 `EngineFoundationIncludeSnapshot` 每轮调用，只复制内容有变化的头、并清理源侧已删除的头）。上层改为按该快照编译；**镜像范围自本版次起收窄为自有头**（`Engine/EngineFoundation/common` 与 `Engine/EngineFoundation/src`）——第三方头在对外面上是独立的绝对路径条目、不经快照解析，故不必逐头复制。
-- **版次锚点**：快照另携带构建期生成的 `Engine/EngineFoundation/版本锚点.h`。它把「对外头集合 + 构建类型 + 运行库口径」的哈希编进符号名，由接入函数对每个消费 TU 强制前置包含（MSVC `/FI`）；头与 `EngineFoundation.lib` 不同版次时链接期直接 `LNK2019`。该目标已改为依赖 `EngineFoundation`：库构建失败时不会导出新快照，杜绝「新头 + 旧库」的中间状态。
+产物：`out/build/<配置>/lib/EngineFoundation.lib`；头快照：`out/build/<配置>/include/Engine/EngineFoundation/...`。
 
-若使用 Visual Studio，直接以 `CMakeSettings.json` 中已配置好的 `x64-Debug`（Ninja + `msvc_x64_x64`）打开本层根目录即可。
+### 8.3 版本锁、版次锚点与头快照
 
-### 8.3 产物与关键构建行为
+- 本层构建成功后把「头快照 ＋ 静态库 ＋ 依赖版本记录」发布到 `Engine/版本缓存/EngineFoundation/x64-<配置>/<版本哈希>/`。
+- 上层读取全仓共享的 `Engine/版本锁.cmake`：留空 = 跟随本层最新构建树；填哈希 = 锁定到版本缓存中的冻结副本。锁值落后于当前构建树时，配置期打印 WARNING。
+- 每个构建产出都带**版次锚点**符号：头与库不同版次时，链接期直接报错，避免「新头配旧库」。
+- 上层把本层头快照根排在项目根之前编译，确保引用的头与所链接的库同版次。
 
-- **产物**：`out/build/x64-Debug/lib/EngineFoundation.lib`（静态库；输出目录由 `ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"` 指定）。该库的外部符号约 16342 条。
-- **源文件收集**：先 `file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS src/*.cpp common/*.cpp external/*.cpp)` 扫描，构建目录内的文件会被正则过滤掉，防止误编译临时产物；若过滤后无源文件则 `FATAL_ERROR` 终止。扫描结果随后**同步进本层根目录的显式清单 `源文件列表.cmake`**（由共享脚本 `cmake/生成源文件列表.cmake` 的 `byjy_source_list_sync()` 在每轮配置时按路径集合差异写回），`add_library` 本身不再传任何源文件，全部由该清单的 `target_sources` 提供。清单机制的目的见第 8.5 节。
-- **增删文件自动重配（本版次）**：GLOB 之后另把 `src`、`common`、`external` 三个源根目录登记进 `set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ...)`；增删文件后**直接构建**即自动重跑配置并重扫 GLOB（ninja 会打印 `Re-checking globbed directories...`），不必手动「重新生成缓存」，VS 目录视图随之刷新。
-- **包含路径（本版次调整）**：`target_include_directories(EngineFoundation PRIVATE "${BYJY_PROJECT_ROOT}" "${PROJECT_ROOT_DIR}")` —— 两个私有包含根各司其职：
-  - **项目根**（`Engine/EngineFoundation/...` 前缀）：**头文件**里的跨目录包含一律写项目根相对全路径。对外头快照把本层头镜像到 `<快照根>/Engine/EngineFoundation/...`，上层以「快照根」替换「项目根」来解析，故头内包含必须以项目根为基准，否则上层消费快照时会解析到错误位置。
-  - **本层根**（`src/...` 前缀）：**实现文件（.cpp）**里的跨目录包含写层根相对。.cpp 不进对外头快照、不被别层消费，无需背项目根前缀；而层根相对又不像 `../` 那样「相对当前文件所在目录」、层级一错就断。
-  - 头与 .cpp 分属两种基准、互不干扰；第三方路径（Json）同样为 `PRIVATE`。
-- **链接**：不链 GLFW / OpenGL / GDI 等任何系统库——本层只用 `kernel32` 的 `GetModuleFileNameW`（编译器默认链接）。窗口与图形所需的 Win32 系统库（`user32`、`gdi32`、`shell32`、SDL3 的一组依赖）由真正编译 SDL3 的渲染层对外提供。
-- **编译选项（MSVC）**：`/MP`（多核）、`/utf-8`（源文件 UTF-8）、`/WX-`（不将警告视为错误，全局设置）、`_CRT_SECURE_NO_WARNINGS`。
-- **编译选项（GCC / Clang）**：`-Wall -Wextra -pedantic`，并定义 `_GNU_SOURCE`。
-- **IDE 索引**：另递归收集 `.h/.hpp`（`src`、`common`）纳入目标，**仅供 IDE 与生成系统建索引、不参与编译**；并开启 `set(CMAKE_EXPORT_COMPILE_COMMANDS ON)`。
-- **安装规则**：头文件（`*.h` / `*.hpp`）安装到 `include/Engine/EngineFoundation/` 下（与源码内 `Engine/EngineFoundation/...` 的包含写法一致），静态库安装到 `lib` 下。
-- **本层不产出任何 `.exe`**：全项目唯一的可执行文件由 `Application/Test` 产出，本层只交出一份静态库。
+### 8.4 本机环境注意事项
 
-### 8.4 与其他层的协作
-
-- 其他层要使用本层，只需在自己的 `CMakeLists.txt` 中 `include` 三份相同的 `cmake/接入下层.cmake`，调用 `byjy_jieru_xiaceng(...)` 指向本层的 `cmake/对外接口.cmake`，即可获得 `EngineFoundation` 目标（或通过 `BYJY_ENGINE_LIB_PATH` 显式指定库路径）。
-- 本层构建产物不在版本控制中，`out/` 目录应被忽略。
-
-### 8.5 源文件清单机制与「在 VS 文件视图里改名 / 迁移」
-
-#### 8.5.1 机制
-
-本层（及 EngineSystem / Test / Game / Renderer 各层）的源文件不再由 `add_library` 直接接收，而是：
-
-```
-file(GLOB_RECURSE ...)  ──▶  byjy_source_list_sync()  ──▶  层根/源文件列表.cmake（target_sources 字面量）
-                                                              │
-                                              CMakeLists：add_library(EngineFoundation STATIC) → include(源文件列表.cmake)
-```
-
-原因：Visual Studio 的**文件视图**改名 / 迁移操作，靠 CMake File API `codemodel` 的 backtrace 去找「可改写的引用」，而 backtrace **只落在把源文件直接加入 target 的那条命令上**。GLOB 工程的构建脚本里没有任何「具体文件名」，VS 便报「引用了文件……但无法修改引用」，既不重配也不刷新工程模型。把字面文件名交给 `target_sources`、且该调用位于一个被 `include` 的 `.cmake` 中后，backtrace 就落在该 `.cmake` 的对应行上——VS 改写它即触发重新配置。
-
-关键约束（改脚本前务必先读 `cmake/生成源文件列表.cmake` 头部）：
-
-1. **清单必须放在「本层根目录」**（与调用它的 `CMakeLists.txt` 同级），路径一律写成「相对本层根、正斜杠」。因为 CMake 解析 `target_sources` 相对路径的基准是「被 `include` 的 `CMakeLists` 所在目录」＝本层根，而 VS 改写引用的基准是「被编辑的 `.cmake` 文件自身所在目录」——只有清单落在本层根时两个基准才重合。若清单留在 `cmake/` 子目录，VS 会写出 `../src/…` 这类 CMake 解析不到的路径，配置直接失败（`Cannot find source file` / `No SOURCES given to target`），VS 随即**取消生成并回滚改名**。
-2. **清单是这些文件的「唯一」加入点**：同一文件若既在 `add_library` 参数里又在清单里，backtrace 归先加入者，VS 仍无法改写。
-3. **清单只在路径集合有差异时写回**（按集合而非逐字节判定），避免时间戳被反复刷新、与「清单是配置依赖」咬合成「每次构建都重新配置」。
-
-#### 8.5.2 在 VS 里的正确姿势
-
-- **在文件视图里改名 / 迁移**：VS 改写清单 → 清单是配置依赖 → 自动重新配置、工程模型与错误列表随之刷新。**不要**在资源管理器里改完就以为 VS 会同步——那样要等下一轮构建（`GLOB` ＋ 目录登记会兜底重配，ninja 打印 `Re-checking globbed directories...`）。
-- **改名后若错误列表仍报「找不到文件」**：那是 VS 的工程模型还停在旧版次（模型来自上一次配置的 File API 应答）；执行一次「项目 → 配置缓存」即可刷新。
-- **`E1696` / `C1083`（找不到 include）是真实断裂**：改名会让所有 `#include 旧名` 的翻译单元失效，必须改代码，不是缓存问题。
-- **改了头文件却看不到新符号**：上层按**头快照**编译（见 8.2），要让新头生效须先重建被改的那一层。
-
-#### 8.5.3 跨层盲区（在别的层工作区操作时注意）
-
-| 层 / 工作区 | 情况 |
-| --- | --- |
-| `Engine/EngineFoundation`、`Engine/EngineSystem`、`Application/Test`、`Application/Game` | 均已有 `源文件列表*.cmake`（层根）＋ GLOB 兜底，视图改名可自动同步 |
-| `Engine/`（聚合层） | **无源码、无 GLOB**，只链预编译库。若在它的工作区视图里改子层文件，**100% 静默**（不改任何脚本、也不重配）；请在子层自己的工作区操作 |
-| `Engine/EngineSystem` 的 GLOB 基点 | 只覆盖 `src/entity`、`src/prop`、`src/effect`；`src` 父目录已在 `CMAKE_CONFIGURE_DEPENDS` 中登记，新建 `src/新模块/` 会触发重配，但**新增模块目录须同时补进 GLOB 模式与登记列表** |
-| `Engine/EngineRenderer` 的 `cmake/SDL3源文件列表.cmake` | 手写清单、经变量传入 `target_sources`，仍属「无字面引用的 target_sources」形态；在视图里改 SDL3 文件路径**无法被 VS 改写**（SDL3 换版次时重新生成该文件即可，实践中不依赖视图改名） |
+1. 配置期必须处于 UTF-8 代码页（`chcp 65001`），且必须在进入 VS 开发人员环境**之后**执行；否则 `/showIncludes` 前缀编码不一致，Ninja 记录不到头文件依赖。
+2. `TMP` / `TEMP` 必须指向纯 ASCII 路径，否则 MSVC 请求调试信息时会报 `D8050`。
+3. 中文源码文件名经 `ar_rsp_bom.ps1` / `link_rsp_bom.ps1` 为响应文件补 UTF-8 BOM，避免 `lib.exe` / `link.exe` 按 ANSI 代码页误读。
 
 ---
 
@@ -1260,141 +293,18 @@ file(GLOB_RECURSE ...)  ──▶  byjy_source_list_sync()  ──▶  层根/�
 
 ### 9.1 已完成
 
-- 事件系统：`Event`、`Event_Terminal`、`Terminal_Port`、`Event_Broker` 全部落地，含 ACL 权限密钥模型与订阅 / 发布投递。
-- 对象系统：`Object` 基类与 `Object_Pool<T, Key>`（双模式内存布局、编号分配回收）。
-- 空间系统：`Point2` / `Rect2` 坐标基元（含 ULP 容差）、四叉树与四叉树管理器（含 64 位尺寸层、原地扩大、智能建树、相邻查找、合并、缓存）。
-- 碰撞系统：`Collider`（六种形状、几何体集合 + 相对变换 + 复合形状）、`Collision_Region`（后端四件套 + 两阶段检测 + 跨越三态跟踪）、`Collision_Proxy`（多空间门面 + 事件订阅发布 + 编号多重映射 + 位移事件通道 + 碰撞响应时序 + 跨越通知发布）。
-- 工具模块群：上表九个模块全部可用。
-- 层间契约：`cmake/对外接口.cmake` 五个变量齐备；本层可被上层以 `IMPORTED` 目标方式接入。
-- 构建工程化：MSVC + Ninja 下中文对象名归档问题已有 `ar_rsp_bom.ps1` 方案。
-- 测试现状（Test 层视角）：22 个测试套件、349 个用例全部通过。
+- 事件总线、对象池、四叉树族、配置加载器、日志系统、计时器、数值分配器、随机数生成器、路径与校验工具。
+- OBJ / MTL / glTF 三类资产解析（Vulkan-free）。
+- 版本锁、版本缓存、版次锚点、头快照、双配置（Debug / Release）与 Ninja / VS 双生成器支持。
 
-### 9.2 尚未完成
+### 9.2 已知边界
 
-- **渲染管线**：已整体迁往渲染层（`Engine/EngineRenderer`），本层不再持有任何窗口 / 图形依赖。
-- **空间系统与碰撞系统的联动**：碰撞模块当前不依赖 `Quadtree_Manager` 做候选筛选，区域检测仍是空间内全量两阶段检测；空间分区用于碰撞加速的接线尚未完成。
-- **`common/引擎.h` 的聚合范围**：目前只聚合了事件系统运行包；`引擎.h` 末尾留有占位注释，对象系统运行包等尚未登记。
-
-### 9.3 已知问题
-
-| 位置 | 现象 |
-| --- | --- |
-| `src/core/spatial/partition/Quadtree/core/区块信息检索.hpp` | 既有 `warning C4715`：非 void 函数存在未覆盖的返回路径（历史遗留，尚未消除） |
-| `src/core/Event/Event_Broker/core/事件中转器.cpp` | 同上，存在既有 `warning C4715` |
-| `Quadtree_Manager::seek` / 对外检索接口 | 使用 `Point2i` / `Rect2i`（32 位整数），对外世界坐标仍受 `int`（± 2^31）约束；超大尺寸层仅在树内部以 64 位整数承载 |
-| 编译告警面 | 第三方头（尤其 bullet3 / Windows 头）会引入 `C4005`（宏重定义）一类的既有告警；`/WX-` 保证其不阻断构建 |
-| 浮点比较语义 | `Point2::operator==` 使用 ≤ 4 ULP 容差，而 `Rect2::operator==` 为精确比较，两者语义不同，调用方须明确区分 |
-| 大坐标精度 | `int64_t` 超过 2^53 转 `double` 会丢精度（`point_to_double` 的已知有损场景） |
+- 碰撞检测已整体迁至 EngineSystem，本层不再提供碰撞体 / 碰撞空间 / 碰撞代理器。
+- 窗口、输入采集、图形 API 由 EngineRenderer 负责；本层不引用任何窗口或图形库。
+- 中文路径在 `std::filesystem::path` 下需使用 `src/detail/methods/` 提供的路径转换工具，不要直接把 UTF-8 字符串交给系统本地编码接口。
 
 ---
 
-## 十、开发指南
+## 十、许可
 
-### 10.1 编码与目录规范
-
-- 命名空间统一为 `engine`，内部工具放 `engine::detail`。
-- 文件命名以中文优先；英文文件名单词间以下划线分隔、首字母小写。
-- 类名单词首字母大写（如 `Event_Terminal`）；结构体 / 联合体 / 枚举同样单词首字母大写（如 `Event`、`Event_Identity`、`Tree_State`）。
-- 变量 / 函数名英文、单词间下划线分隔、首字母小写（如 `region_boundary_set`）。
-- 目录级命名约定：`模块名_Manager`（管理器）、`模块名_Broker`（中转器）、`模块名_Terminal`（终端）、`模块名_Proxy`（代理器）、`模块名_Region`（区域）、`模块名_Pool`（池）、`模块名_Loader`（加载器）、`模块名_Validator`（校验器）、`模块名_Allocator`（分配器）、`模块名_Generator`（生成器）。
-- 注释使用中文，采用换行注释；预计少于三行用 `//`，三行及以上用 `/* */`；`//` 后不留空格。
-- include 路径必须与实际目录大小写完全一致（跨平台硬性要求）。
-- 文件编码统一 UTF-8（MSVC 已加 `/utf-8`）。
-- 为避免中文路径在 Windows 下的编码冲突，路径与字符串互转走 `Detail/路径字符串转换.h`。
-
-### 10.2 如何新增一个引擎模块
-
-1. 在 `src/core/` 或 `src/tools/` 下创建模块目录，目录内建立公共头文件（如需内部 `using` 别名则加 `局部命名空间使用.h`），实现放 `core/` 子目录；模板实现拆到 `.hpp` 分片并配一个显式实例化的 `.cpp`。
-2. 若模块要参与事件通信：加入公开成员 `Event_Terminal event_terminal`，提供 `attach()`，在其中依次做「确认接入入口已注册 → 注册接收入口 → 组装 `needed_events` → `event_terminal.attach(...)`」。
-3. 若模块需要被上层使用：其头文件应在 `cmake/对外接口.cmake` 的包含路径覆盖之内（本层根目录已在列表中），或把必要入口并入某个运行包头。
-4. 若模块需要新的第三方库：新增内容应放入 `external/`（本层的公共外部库存储目录），并在 `CMakeLists.txt` 与 `cmake/对外接口.cmake` 两侧同步包含路径。
-5. 源码文件会被 `CONFIGURE_DEPENDS` 自动收集，直接构建即可，无需手动重跑 CMake。
-
-### 10.3 常见坑位
-
-- **`CMAKE_CXX_CREATE_STATIC_LIBRARY` 的赋值位置**：必须在 `project()` 之后、且仅在 Ninja 生成器下改写，否则会被平台模块默认值覆盖。
-- **`Collider` 的成员声明顺序**：`mesh` 必须先于 `shape`，破坏此顺序会导致形状先于网格释放的顺序错乱。
-- **模板实例化**：新增模板类型若要进入 `EngineFoundation`，需在对应 `xxx实例化.cpp` 中补 `template class ...;`。
-- **事件 `receiver` 过滤**：定向事件（非空 `receiver`）必须由接收方自行过滤，中转器不会代劳。
-- **`Event_Broker` 的匹配粒度**：订阅匹配看 `category` + `tag`，`config` 不参与匹配；因此同一 `category` + `tag` 只能有一条投递规则。
-- **`Number_Pool` 重复回收**：会打印告警而非崩溃，排查编号错乱时可据此定位。
-- **路径扫描越权防护**：`Config_Loader` 只扫描 `assets/config/route/` 且限制在 `assets/config/` 之内，新增路由目录不在此范围会被跳过。
-
----
-
-## 十一、路线图
-
-- [ ] **空间 - 碰撞联动**：让 `Collision_Proxy` / `Collision_Region` 借助 `Quadtree_Manager` 做碰撞候选筛选，替代当前的空间内全量检测。
-- [ ] **对外检索尺寸层 64 位化**：把 `Quadtree_Manager::seek` 的对外接口由 `Point2i` / `Rect2i` 提升为 64 位（或将 32 位明确固化为对外契约并写清边界）。
-- [ ] **清理既有告警**：消除两处 `C4715`，梳理第三方头引入的宏重定义告警。
-- [ ] **`common/引擎.h` 补全**：在聚合事件系统运行包之外，登记对象系统运行包与其余常用入口。
-- [ ] **渲染管线**：已迁至渲染层实现（`Engine/EngineRenderer`），本层不再承担。
-- [ ] **`Object_Pool` 使用面扩展**：为编号复用补充更明确的文档与防护，降低编号错配风险。
-- [ ] **插件化模块接口**：为可选模块预留可插拔的接入方式。
-
----
-
-## 十二、历史沿革（旧名 → 现名／现归属）
-
-本层的前身是单体工程「游戏引擎」。分层改造后，原工程中与具体游戏相关的内容已分配到其他层或取消。**下面这些旧内容在EngineFoundation 层已不存在**，列在此处只为追溯来源；它们的现归属请查阅对应层的 README。
-
-| 旧（单体「游戏引擎」时期） | 现名 / 现归属 | 说明 |
-| --- | --- | --- |
-| 仓库 / 工程名「游戏引擎」 | 「白银纪元 · EngineFoundation 层」 | 一体工程拆分为四层，本层只是基础能力层 |
-| 根目录下嵌套 `游戏引擎/` 子目录 | 本层根即 `Engine/EngineFoundation/` | 源码不再嵌套一层 |
-| `common/types/对象类型.h`（`Object` + `Prop`） | `Object` → `src/core/object/Object/对象.h`（本层）；`Prop` 属性槽 → EngineSystem 层 | 对象基类留在本层，属性槽随实体体系迁出 |
-| `common/types/事件类型.h` | `src/core/Event/Event/事件.h` | 事件类型定义位置调整 |
-| `common/types/坐标类型.h`、`几何体类型.h`、`计时器类型.h` | `src/core/spatial/common/core/坐标类型.h`（本层）；`几何体类型.h` 已不存在 | 计时器类型并入 `src/tools/Timer/计时器.h` 内部；几何体相关定义已不保留 |
-| `common/引擎总头文件.h` | `common/引擎.h` | 聚合范围收窄为事件系统运行包 |
-| `common/external/Sol2/`（sol 类型别名 / 注册） | Lua 绑定层 → Game 层 | 脚本绑定迁出本层 |
-| `src/core/entity/`（`Entity`、`Entity_Manager`、`Prop_Distributor`） | 实体系统、属性、效应（旧 `Prop_Effect`）、实体管理器、属性槽分发器 → EngineSystem 层 | 整体迁出本层 |
-| `src/core/space/` | `src/core/spatial/` | 目录改名并细分为 `common` / `collision` / `partition` |
-| `src/core/collision/Collision_Agent/` | `Collision_Proxy`（`src/core/spatial/collision/Collision_Proxy/`） | 旧「碰撞代理器」命名被 `Collision_Proxy` 取代 |
-| `src/core/collision/Collision_Processer/` | `Collision_Region`（`src/core/spatial/collision/Collision_Region/`） | 旧「碰撞处理器」命名被 `Collision_Region` 取代 |
-| `src/tools/Object_Pool/` | `src/core/object/Object_Pool/` | 对象池升入对象系统 |
-| `Config_Checker` / 「配置检查器」 | `detail`（`src/tools/Detail/package/数据校验工具.h`） | 更名，职责不变 |
-| `src/tools/Non_GUI/` 中间层 | 已取消 | 工具模块直接挂在 `src/tools/` 下 |
-| `src/tools/GUI/Config_Editor/`（配置编辑器 GUI 与 `ConfigEditor.exe`、`imgui.ini`） | 配置编辑器 → EngineSystem 层 | 图形化编辑器迁出本层 |
-| `主调文件/主调文件.cpp`（宿主组合根、依赖注入装配、`for(;;)` 帧循环） | 已取消 | 宿主机制取消；全项目唯一可执行文件由Test 层产出 |
-| `游戏引擎/TestEngine.exe` | Test 层产出的可执行文件 | 测试入口改由Test 层承载 |
-| `assets/config/`、`assets/scripts/`、`assets/UI/` | Game 层 | 资源、JSON 配置、Lua 脚本、UI 资源整体迁出 |
-| `排除编译代码/effect/`（旧效应系统） | 效应系统 → EngineSystem 层 | 效应系统从本层移出 |
-| `external/` 下的 `Dear_ImGui`、`glad`、`Lua`、`Sol2`、`stb` | 已移出本层 | 本层现仅保留 `Json` |
-| 旧坐标类型命名（如 `coord2D_int`） | `Point2i` / `Point2d` / `Point2l`、`Rect2i` / `Rect2d` / `Rect2l`（均在 `namespace engine`） | 统一收敛到模板 + 精度别名 |
-| `四叉树通信结构体.h` / `四叉树管理器通信结构体.h` | `Quadtree/数据结构.h` / `Quadtree_Manager/数据结构.h` | 通信结构体更名为数据结构，并统一为 `Tree_Chunk_Data` / `Tree_State` / `Tree_Record` / `Tree_Manager_Settings` |
-| `Object::ID_bind` | `Object::ID_set` | 方法更名 |
-| 旧版次 `0b8dbd27` 所描述的模块布局 | 已被 `089b070`、`65fc74f` 取代 | 旧版次的目录 / 命名不再适用 |
-
-关于「旧版 README 中的失效条目」：单体时期文档描述的多处缺陷与未完成项（如实体创建的循环内返回、`Event_Terminal::attach` 的空指针解引用、`query` 的悬垂引用、路由中的模块名拼写错误、include 路径大小写不一致等）均属于**当时的实体体系与资源配置**，随相应代码一并迁出本层，因此不在本层第九节中重复记录。
-
----
-
-## 十三、许可
-
-本层采用 **MIT License**，许可证正文见本层根目录下的 `LICENSE.txt`。
-
-```
-MIT License
-
-Copyright (c) [year] [fullname]
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-`LICENSE.txt` 中的版权年份与署名仍为占位符（`[year]` / `[fullname]`），尚未填写，需要发布前补齐。
+见本层 [LICENSE.txt](LICENSE.txt)。

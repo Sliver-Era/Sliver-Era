@@ -22,6 +22,8 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏)
 	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
 	constexpr uint32_t LIGHT_COUNT = 512;
 	const float color[3] = { 0.6f, 0.7f, 0.8f };
+	//登记前的记录数基线（全局 / 环境等非逐盏记录）
+	const uint32_t base_records = renderer.scene().light_record_count();
 	//32 × 16 网格分布（相机前方，半径 2 覆盖局部簇）
 	for (uint32_t index = 0; index < LIGHT_COUNT; ++index)
 	{
@@ -30,7 +32,8 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏)
 		ASSERT_TRUE(renderer.scene().light_add_point(position, color, 2.0f, 0.05f, 0.0f));
 	}
 	EXPECT_EQ(renderer.scene().point_light_count(), LIGHT_COUNT);
-	EXPECT_EQ(renderer.scene().light_record_count(), LIGHT_COUNT + 2u);
+	//记录数应随登记点数在基线上同步增长
+	EXPECT_EQ(renderer.scene().light_record_count(), base_records + LIGHT_COUNT);
 
 	//出帧（逐帧回读口径）
 	uint64_t texture = 0;
@@ -101,6 +104,8 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏聚光灯)
 	constexpr uint32_t LIGHT_COUNT = 512;
 	const float color[3] = { 0.5f, 0.7f, 0.9f };
 	const float direction[3] = { 0.0f, 0.0f, -1.0f };
+	//登记前的记录数基线（全局 / 环境等非逐盏记录）
+	const uint32_t base_records = renderer.scene().light_record_count();
 	//32 × 16 网格；内 20° / 外 30° 窄锥，半径 2
 	for (uint32_t index = 0; index < LIGHT_COUNT; ++index)
 	{
@@ -109,7 +114,8 @@ TEST(Renderer_Cluster_Test, 大光源场景_五百一十二盏聚光灯)
 		ASSERT_TRUE(renderer.scene().light_add_spot(position, direction, color, 2.0f, 0.05f, 20.0f, 30.0f, 0.0f));
 	}
 	EXPECT_EQ(renderer.scene().point_light_count(), LIGHT_COUNT);
-	EXPECT_EQ(renderer.scene().light_record_count(), LIGHT_COUNT + 2u);
+	//记录数应随登记点数在基线上同步增长
+	EXPECT_EQ(renderer.scene().light_record_count(), base_records + LIGHT_COUNT);
 
 	//出帧（逐帧回读）
 	uint64_t texture = 0;

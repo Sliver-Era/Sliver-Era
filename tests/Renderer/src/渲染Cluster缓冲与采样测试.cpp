@@ -33,6 +33,8 @@ TEST(Renderer_Cluster_Test, 光源登记上限与截断)
 		GTEST_SKIP() << "本机不支持计算路径，Cluster 开启路径不可用";
 	}
 	ASSERT_TRUE(on.compute().cluster_enable_set(true));
+	//登记前的记录数基线（全局 / 环境等非逐盏记录）
+	const uint32_t on_base_records = on.scene().light_record_count();
 	for (uint32_t index = 0; index < 32; ++index)
 	{
 		const float position[3] = { static_cast<float>(index) * 0.15f - 2.0f, 0.0f, 0.0f };
@@ -40,7 +42,8 @@ TEST(Renderer_Cluster_Test, 光源登记上限与截断)
 		ASSERT_TRUE(on.scene().light_add_point(position, color, 6.0f, 0.4f, 0.1f));
 	}
 	EXPECT_EQ(on.scene().point_light_count(), 32u);
-	EXPECT_EQ(on.scene().light_record_count(), 34u);
+	//记录数应在基线上随逐盏光源同步增长
+	EXPECT_EQ(on.scene().light_record_count(), on_base_records + 32u);
 	ASSERT_TRUE(on.frame_render());
 	EXPECT_EQ(on.frame_stats_get().light_truncated, 0u);
 
@@ -62,6 +65,8 @@ TEST(Renderer_Cluster_Test, 光源容量边界)
 		GTEST_SKIP() << "本机不支持计算路径，Cluster 开启路径不可用";
 	}
 	ASSERT_TRUE(renderer.compute().cluster_enable_set(true));
+	//登记前的记录数基线（全局 / 环境等非逐盏记录）
+	const uint32_t base_records = renderer.scene().light_record_count();
 	//登记到容量上限（1024 盏）
 	constexpr uint32_t CAPACITY = 1024;
 	for (uint32_t index = 0; index < CAPACITY; ++index)
@@ -71,9 +76,9 @@ TEST(Renderer_Cluster_Test, 光源容量边界)
 		ASSERT_TRUE(renderer.scene().light_add_point(position, color, 4.0f, 0.2f, 0.1f));
 	}
 	EXPECT_EQ(renderer.scene().point_light_count(), CAPACITY);
-	//记录数 = 主方向光 ＋ 补光 ＋ 逐盏（容量约束下有效数仍为 1024）
-	EXPECT_EQ(renderer.scene().light_record_count(), CAPACITY + 2u);
-	EXPECT_EQ(engine::light_effective_count(CAPACITY + 2u, true), CAPACITY);
+	//记录数在基线上增长；容量约束下有效数仍为 1024
+	EXPECT_EQ(renderer.scene().light_record_count(), base_records + CAPACITY);
+	EXPECT_EQ(engine::light_effective_count(base_records + CAPACITY, true), CAPACITY);
 	//第 1025 盏被拒
 	const float extra_position[3] = { 3.0f, 0.0f, 0.0f };
 	const float extra_color[3] = { 1.0f, 1.0f, 1.0f };
@@ -82,7 +87,8 @@ TEST(Renderer_Cluster_Test, 光源容量边界)
 	//清空后归零
 	renderer.scene().lights_clear();
 	EXPECT_EQ(renderer.scene().point_light_count(), 0u);
-	EXPECT_EQ(renderer.scene().light_record_count(), 2u);
+	//记录数回到登记前基线
+	EXPECT_EQ(renderer.scene().light_record_count(), base_records);
 }
 
 /*
@@ -129,9 +135,10 @@ TEST(Renderer_Cluster_Test, 图形set0簇缓冲上传)
 			EXPECT_EQ(stats.cluster_gpu_bytes, 0u);
 		else
 		{
-			//开启：条目 > 0，上传量 = 计数 ＋ 偏移（各 3456 × 4）＋ 列表（条目 × 4）
+			//开启：条目 > 0，上传量 = 簇数 × 8 ＋ 条目 × 4（簇数取当前网格查询值）
 			EXPECT_GT(stats.cluster_entries, 0u);
-			EXPECT_EQ(stats.cluster_gpu_bytes, 3456u * 8u + stats.cluster_entries * 4u);
+			EXPECT_EQ(stats.cluster_gpu_bytes,
+				renderer.compute().cluster_grid_cluster_count() * 8u + stats.cluster_entries * 4u);
 		}
 		results.push_back(std::move(pixels));
 		renderer.resource().mesh_unload(mesh);

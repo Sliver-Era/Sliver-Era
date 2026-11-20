@@ -73,7 +73,8 @@ TEST(Renderer_Cluster_Test, 分簇网格与逐簇计数参考)
 	EXPECT_EQ(grid_x, 16u);
 	EXPECT_EQ(grid_y, 9u);
 	EXPECT_EQ(grid_z, 24u);
-	EXPECT_EQ(renderer.compute().cluster_grid_cluster_count(), 3456u);
+	//默认网格的总簇数应等于三轴乘积（不硬编码具体网格参数）
+	EXPECT_EQ(renderer.compute().cluster_grid_cluster_count(), grid_x * grid_y * grid_z);
 
 	//网格钳制：全 0 → 每轴 1；100 × 100 × 100 → 总簇数不超过 4096
 	ASSERT_TRUE(renderer.compute().cluster_grid_set(0, 0, 0));
@@ -86,24 +87,27 @@ TEST(Renderer_Cluster_Test, 分簇网格与逐簇计数参考)
 	//容量不足被拒
 	EXPECT_FALSE(renderer.compute().cluster_counts_reference_ex(counts.data(), 100, &total));
 
+	//当前网格的簇总数（查询值，作为容量与遍历上界）
+	const uint32_t cluster_total = renderer.compute().cluster_grid_cluster_count();
+
 	//仅主方向光（补光强度 0 不计）：全部簇计数 1
-	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), 3456, &total));
-	EXPECT_EQ(total, 3456u);
-	for (uint32_t index = 0; index < 3456; ++index)
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), cluster_total, &total));
+	EXPECT_EQ(total, cluster_total);
+	for (uint32_t index = 0; index < cluster_total; ++index)
 		EXPECT_EQ(counts[index], 1u);
 
 	//一盏大半径点光（跨近平面 → 整屏全深度保守覆盖）：全部簇计数 2
 	const float position[3] = { 0.0f, 0.0f, 0.0f };
 	const float color[3] = { 1.0f, 1.0f, 1.0f };
 	ASSERT_TRUE(renderer.scene().light_add_point(position, color, 100.0f, 0.5f, 0.1f));
-	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), 3456, &total));
-	for (uint32_t index = 0; index < 3456; ++index)
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), cluster_total, &total));
+	for (uint32_t index = 0; index < cluster_total; ++index)
 		EXPECT_EQ(counts[index], 2u);
 
 	//清空点光后回到 1
 	renderer.scene().lights_clear();
-	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), 3456, &total));
-	for (uint32_t index = 0; index < 3456; ++index)
+	ASSERT_TRUE(renderer.compute().cluster_counts_reference_ex(counts.data(), cluster_total, &total));
+	for (uint32_t index = 0; index < cluster_total; ++index)
 		EXPECT_EQ(counts[index], 1u);
 }
 

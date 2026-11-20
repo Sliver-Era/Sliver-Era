@@ -954,20 +954,28 @@ TEST_F(Renderer_Offscreen_Test, 编号通道开销基线)
 }
 
 /*
-编号通道 · alpha 裁剪材质不写编号（第 814 轮）
-口径：编号通道不采样反照率、无法复现 discard，故裁剪材质整体跳过；
-      同一目标上「裁剪材质」编号应全 0，普通材质编号正常写入。
+编号通道 · 按纹素应用 alpha 裁剪（第 819 轮）
+口径：编号片元与主 pass 同式采样反照率并按阈值 discard；
+      不透明纹素照常写编号，透明纹素（alpha 低于阈值）不写编号。
 */
-TEST_F(Renderer_Offscreen_Test, 编号通道跳过alpha裁剪材质)
+TEST_F(Renderer_Offscreen_Test, 编号通道按纹素应用alpha裁剪)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
 	if (!renderer.compute().readback_supported())
 		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
-	uint64_t texture = 0;
-	std::vector<uint8_t> texels = solid_green(2, 2);
-	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
-	renderer.resource().texture_bind_set(texture);
+	//两张反照率贴图：不透明（alpha 255）与全透明（alpha 0）
+	uint64_t opaque_texture = 0;
+	std::vector<uint8_t> opaque_texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(opaque_texture, opaque_texels.data(), 2, 2));
+	std::vector<uint8_t> clear_texels(2 * 2 * 4, 0);
+	for (std::size_t index = 0; index < clear_texels.size(); index += 4)
+	{
+		clear_texels[index + 1] = 255;
+		clear_texels[index + 3] = 0;
+	}
+	uint64_t clear_texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(clear_texture, clear_texels.data(), 2, 2));
 	uint64_t target = 0;
 	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
 		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
@@ -985,6 +993,7 @@ TEST_F(Renderer_Offscreen_Test, 编号通道跳过alpha裁剪材质)
 		engine::Material_Handle material = 0;
 		EXPECT_TRUE(renderer.resource().material_load(material, data));
 		renderer.resource().material_bind_set(material);
+		renderer.resource().texture_bind_set(data.texture);
 		std::array<float, 16> full = full_screen_matrix();
 		EXPECT_TRUE(renderer.resource().mesh_draw(quad, full.data()));
 		std::vector<uint8_t> pixels(pixel_bytes());
@@ -995,21 +1004,30 @@ TEST_F(Renderer_Offscreen_Test, 编号通道跳过alpha裁剪材质)
 		renderer.resource().material_unload(material);
 		return ids[static_cast<std::size_t>(WINDOW_HEIGHT / 2) * WINDOW_WIDTH + WINDOW_WIDTH / 2];
 	};
-	//基础材质（AgX 算子 4、无裁剪）
+	//基础材质（AgX 算子 4）
 	engine::Material_Data base;
-	base.texture = texture;
 	base.pbr_override = true;
 	base.pbr_roughness = 0.4f;
 	base.pbr_metallic = 0.0f;
 	base.tone_operator = 4;
-	EXPECT_EQ(center_id_by(base), 5u) << "非裁剪材质编号缺失";
-	//裁剪材质（同算子，但声明 alpha 裁剪）
-	engine::Material_Data clipped = base;
-	clipped.alpha_cutoff = 0.5f;
-	EXPECT_EQ(center_id_by(clipped), 0u) << "裁剪材质不应写编号";
+	//不透明贴图 ＋ 裁剪：不触发 discard，编号 5
+	engine::Material_Data opaque_clipped = base;
+	opaque_clipped.texture = opaque_texture;
+	opaque_clipped.alpha_cutoff = 0.5f;
+	EXPECT_EQ(center_id_by(opaque_clipped), 5u) << "不透明纹素不应被裁剪";
+	//全透明贴图 ＋ 裁剪：全像素 discard，编号 0
+	engine::Material_Data clear_clipped = base;
+	clear_clipped.texture = clear_texture;
+	clear_clipped.alpha_cutoff = 0.5f;
+	EXPECT_EQ(center_id_by(clear_clipped), 0u) << "透明纹素应被编号通道裁剪";
+	//全透明贴图 ＋ 不裁剪：照常写编号（关闭阈值时零影响）
+	engine::Material_Data clear_plain = base;
+	clear_plain.texture = clear_texture;
+	EXPECT_EQ(center_id_by(clear_plain), 5u) << "未声明裁剪时编号不应丢失";
 	//清理
 	renderer.device().render_target_set(0);
 	renderer.resource().mesh_unload(quad);
 	renderer.resource().render_target_destroy(target);
-	renderer.resource().texture_unload(texture);
+	renderer.resource().texture_unload(clear_texture);
+	renderer.resource().texture_unload(opaque_texture);
 }

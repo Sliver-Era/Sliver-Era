@@ -1170,3 +1170,122 @@ TEST_F(Renderer_Offscreen_Test, 编号通道多重采样目标)
 	renderer.resource().texture_unload(texture);
 	renderer.device().msaa_samples_set(1);
 }
+
+/*
+编号通道 · 多重采样解析边界（第 823 轮）
+口径：4× 目标的编号按「样本 0」解析，几何边缘落在像素内部时读回值仍是某一侧的完整编号，
+      不得出现两种编号的插值；遮挡关系仍由深度决定（近处算子胜出），且远景全屏覆盖下无空洞。
+*/
+TEST_F(Renderer_Offscreen_Test, 编号通道多重采样解析边界)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	//切到 4× MSAA（不支持则跳过）
+	renderer.device().msaa_samples_set(4);
+	if (renderer.device().msaa_samples() != 4)
+		GTEST_SKIP() << "本机不支持 4× MSAA";
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	//目标跟随默认采样数（4）＋ 编号附件
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		static_cast<uint32_t>(VK_FORMAT_R8G8B8A8_UNORM), static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 0));
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	//远景 AgX（算子 4 → 编号 5）、近景 ACES（算子 0 → 编号 1）
+	engine::Material_Data base;
+	base.texture = texture;
+	base.pbr_override = true;
+	base.pbr_roughness = 0.4f;
+	base.pbr_metallic = 0.0f;
+	engine::Material_Data far_data = base;
+	far_data.tone_operator = 4;
+	engine::Material_Handle far_material = 0;
+	ASSERT_TRUE(renderer.resource().material_load(far_material, far_data));
+	engine::Material_Data near_data = base;
+	near_data.tone_operator = 0;
+	engine::Material_Handle near_material = 0;
+	ASSERT_TRUE(renderer.resource().material_load(near_material, near_data));
+	renderer.device().tone_id_pass_set(true);
+	renderer.device().render_target_set(target);
+	//构造缩放 ＋ 平移矩阵（列主序；默认相机在 +Z 3 单位处，z 越大越近）
+	auto make_matrix = [](float scale, float x, float z)
+	{
+		return std::array<float, 16>{
+			scale, 0.0f, 0.0f, 0.0f,
+			0.0f, scale, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			x, 0.0f, z, 1.0f,
+		};
+	};
+	//远景铺满全屏（尺度 6 → 越过视口边界，避免边缘像素的样本覆盖歧义；z = −1）先画
+	renderer.resource().material_bind_set(far_material);
+	std::array<float, 16> far_matrix = make_matrix(6.0f, 0.0f, -1.0f);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, far_matrix.data()));
+	//近景半幅 ＋ 非整像素偏移（尺度 0.5、x = 0.137、z = 1）→ 左右边缘均落在像素内部
+	renderer.resource().material_bind_set(near_material);
+	std::array<float, 16> near_matrix = make_matrix(0.5f, 0.137f, 1.0f);
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, near_matrix.data()));
+	std::vector<uint8_t> pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	//读回解析后的编号图
+	std::vector<uint8_t> ids(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT);
+	uint32_t width = 0;
+	uint32_t height = 0;
+	ASSERT_TRUE(renderer.resource().render_target_readback_tone_id(target, ids.data(),
+		static_cast<uint32_t>(ids.size()), &width, &height));
+	ASSERT_EQ(width, WINDOW_WIDTH);
+	ASSERT_EQ(height, WINDOW_HEIGHT);
+	//近景内部（x = 40）为 ACES 编号、远景角落为 AgX 编号
+	EXPECT_EQ(ids[static_cast<std::size_t>(WINDOW_HEIGHT / 2) * WINDOW_WIDTH + 40], 1u)
+		<< "近景未被编号覆盖";
+	EXPECT_EQ(ids[2 * WINDOW_WIDTH + 2], 5u) << "远景编号缺失";
+	//全屏远景覆盖下不得出现空洞，也不得出现两种编号的插值（只允许 1 / 5）
+	std::size_t hole_count = 0;
+	std::size_t mixed_count = 0;
+	std::size_t near_count = 0;
+	std::size_t far_count = 0;
+	std::string hole_text;
+	for (std::size_t index = 0; index < ids.size(); ++index)
+	{
+		if (ids[index] == 0)
+		{
+			++hole_count;
+			if (hole_count <= 8)
+				hole_text += "(" + std::to_string(index % WINDOW_WIDTH) + ","
+					+ std::to_string(index / WINDOW_WIDTH) + ") ";
+		}
+		else if (ids[index] == 1)
+			++near_count;
+		else if (ids[index] == 5)
+			++far_count;
+		else
+			++mixed_count;
+	}
+	EXPECT_EQ(hole_count, 0u) << "全屏远景覆盖下编号出现空洞：" << hole_text;
+	EXPECT_EQ(mixed_count, 0u) << "MSAA 解析产生了两种编号的插值";
+	EXPECT_GT(near_count, 0u);
+	EXPECT_GT(far_count, 0u);
+	//边缘为硬过渡：沿中行只允许一次 1 → 5 的阶跃（近景矩形左右各一次，故恰好两段）
+	uint32_t transition_count = 0;
+	const std::size_t row_offset = static_cast<std::size_t>(WINDOW_HEIGHT / 2) * WINDOW_WIDTH;
+	for (uint32_t x = 1; x < WINDOW_WIDTH; ++x)
+	{
+		if (ids[row_offset + x] != ids[row_offset + x - 1])
+			++transition_count;
+	}
+	EXPECT_EQ(transition_count, 2u) << "MSAA 编号边缘出现半透明过渡";
+	//清理（先销毁目标再恢复采样数，避免目标随采样数重建）
+	renderer.device().render_target_set(0);
+	renderer.resource().material_unload(near_material);
+	renderer.resource().material_unload(far_material);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().render_target_destroy(target);
+	renderer.resource().texture_unload(texture);
+	renderer.device().msaa_samples_set(1);
+}

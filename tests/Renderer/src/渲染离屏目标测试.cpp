@@ -1397,3 +1397,51 @@ TEST_F(Renderer_Offscreen_Test, 编号通道单采样与多重采样一致)
 	renderer.resource().texture_unload(texture);
 	renderer.device().msaa_samples_set(1);
 }
+
+/*
+场景管线颜色格式查询（第 826 轮）
+口径：`device().scene_color_format()` 返回场景管线烘焙用的颜色格式——默认与交换链一致，
+      HDR 默认路径为 16F；按该格式建离屏目标后渲染可正常回读。
+*/
+TEST_F(Renderer_Offscreen_Test, 场景管线颜色格式查询)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	//默认路径：场景格式 = 交换链格式
+	const uint32_t scene_format = renderer.device().scene_color_format();
+	EXPECT_NE(scene_format, 0u);
+	EXPECT_EQ(scene_format, renderer.device().swapchain_format());
+	//按查询到的格式建目标（管线声明格式一致，不触发动态渲染格式不一致）
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		scene_format, static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT), 0, 1));
+	uint64_t texture = 0;
+	std::vector<uint8_t> texels = solid_green(2, 2);
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	renderer.resource().texture_bind_set(texture);
+	engine::Mesh_Handle quad = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(quad, quad_data()));
+	renderer.device().render_target_set(target);
+	std::array<float, 16> full = full_screen_matrix();
+	ASSERT_TRUE(renderer.resource().mesh_draw(quad, full.data()));
+	std::vector<uint8_t> pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	EXPECT_TRUE(pixel_is_green(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)))
+		<< "按场景格式建目标后渲染异常：" << pixel_text(pixel_get(pixels, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2));
+	//清理
+	renderer.device().render_target_set(0);
+	renderer.resource().mesh_unload(quad);
+	renderer.resource().render_target_destroy(target);
+	renderer.resource().texture_unload(texture);
+	//HDR 默认路径：场景格式为 16F，默认目标创建沿用同一格式
+	engine::Renderer_Config hdr_config = hidden_config();
+	hdr_config.hdr_targets = true;
+	engine::Renderer hdr_renderer;
+	ASSERT_TRUE(hdr_renderer.init(hdr_config));
+	EXPECT_EQ(hdr_renderer.device().scene_color_format(),
+		static_cast<uint32_t>(VK_FORMAT_R16G16B16A16_SFLOAT));
+	EXPECT_NE(hdr_renderer.device().scene_color_format(), hdr_renderer.device().swapchain_format());
+	uint64_t hdr_target = 0;
+	ASSERT_TRUE(hdr_renderer.resource().render_target_create(hdr_target, WINDOW_WIDTH, WINDOW_HEIGHT));
+	hdr_renderer.resource().render_target_destroy(hdr_target);
+}

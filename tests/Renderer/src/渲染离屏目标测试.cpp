@@ -1445,3 +1445,29 @@ TEST_F(Renderer_Offscreen_Test, 场景管线颜色格式查询)
 	ASSERT_TRUE(hdr_renderer.resource().render_target_create(hdr_target, WINDOW_WIDTH, WINDOW_HEIGHT));
 	hdr_renderer.resource().render_target_destroy(hdr_target);
 }
+
+/*
+渲染目标原生信息 · 格式查询（第 828 轮）
+口径：`render_target_native_get` 返回颜色 / 深度格式；调用方可据此核对目标格式与 `scene_color_format()` 一致。
+*/
+TEST_F(Renderer_Offscreen_Test, 目标原生信息含格式)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	const uint32_t scene_format = renderer.device().scene_color_format();
+	uint64_t target = 0;
+	ASSERT_TRUE(renderer.resource().render_target_create_format_ex(target, WINDOW_WIDTH, WINDOW_HEIGHT,
+		scene_format, static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT),
+		static_cast<uint32_t>(VK_FORMAT_R8_UINT), 1));
+	engine::Render_Target_Native_Info info;
+	ASSERT_TRUE(renderer.resource().render_target_native_get(target, info));
+	EXPECT_EQ(info.color_format, scene_format);
+	EXPECT_EQ(info.depth_format, static_cast<uint32_t>(VK_FORMAT_D32_SFLOAT));
+	EXPECT_EQ(info.width, WINDOW_WIDTH);
+	EXPECT_EQ(info.height, WINDOW_HEIGHT);
+	EXPECT_EQ(info.sample_count, 1u);
+	//销毁后查询失败且出参复位
+	renderer.resource().render_target_destroy(target);
+	EXPECT_FALSE(renderer.resource().render_target_native_get(target, info));
+	EXPECT_EQ(info.color_format, 0u);
+}

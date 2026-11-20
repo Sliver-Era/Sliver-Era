@@ -1,6 +1,6 @@
-# 白银纪元 · 工作站文档（doc 分支）
+# 白银纪元 · 工作站文档（Doc 分支）
 
-本仓库是「白银纪元」的**工作站文档仓库**，位于项目工作区之外，通过远端 `doc` 分支发布。这里只保存开发过程文档与维护脚本，**不含项目源码、构建产物或第三方库**。
+本仓库是「白银纪元」的**工作站文档仓库**，位于项目工作区之外，通过远端 `Doc` 分支发布。这里只保存开发过程文档与维护脚本，**不含项目源码、构建产物或第三方库**。
 
 项目源码分布在若干独立层仓库中，各自推送远端的不同分支；本分支只承载与代码版次配套的文档索引。
 
@@ -13,12 +13,12 @@
 | 仓库地址（现行） | `https://github.com/Sliver-Era/Sliver-Era.git` |
 | 旧地址 | `https://github.com/yuxingyuzhong/SilverEra.git`（GitHub 重定向到现行地址） |
 | 远端名 | `origin` |
-| 本地分支名 | `doc` |
-| 远端目标分支 | `doc` |
-| 上游跟踪 | `origin/doc` |
-| 推送命令 | `git push origin doc:doc` |
+| 本地分支名 | `Doc` |
+| 远端目标分支 | `Doc` |
+| 上游跟踪 | `origin/Doc` |
+| 推送命令 | `git push origin Doc:Doc` |
 
-同一远端承载的代码分支：`engine`（EngineFoundation）、`system`（EngineSystem）、`test`（Test）、`game`（Game）、`main`（顶层总览与聚合快照），以及 `Engine` / `EngineFoundation` / `EngineSystem` / `EngineRender` 等聚合或历史快照分支。渲染层活跃源码位于独立仓库 `SilverEra-Renderer`。
+同一远端承载的代码分支：`EngineFoundation`、`EngineSystem`、`Test`、`Game`、`main`（顶层总览与聚合快照），以及 `Engine`（聚合快照）与 `EngineRender`（渲染层快照）。渲染层活跃源码位于独立仓库 `SilverEra-Renderer`。
 
 ---
 

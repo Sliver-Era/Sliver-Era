@@ -2,7 +2,7 @@
 
 EngineFoundation 是「白银纪元」分层工程中**拓扑最底层的通用基础层**：向上提供事件总线、对象与对象池、空间分区、配置/资产加载、日志与工具集。本层**不包含任何具体游戏逻辑**，不感知上层存在，也不依赖任何窗口或图形 API。
 
-本层是一个**独立 git 仓库**（目录内含自身 `.git`），源码通过远端 `engine` 分支发布。
+本层是一个**独立 git 仓库**（目录内含自身 `.git`），源码通过远端 `EngineFoundation` 分支发布。
 
 > 本文档依据 2026-11-20 工作区源码重写，替代此前以 `src/core/...` 旧目录结构编写的版本。旧版内容仍可在本分支 git 历史中查阅。
 
@@ -16,11 +16,11 @@ EngineFoundation 是「白银纪元」分层工程中**拓扑最底层的通用�
 | 旧地址 | `https://github.com/yuxingyuzhong/SilverEra.git`（GitHub 重定向到现行地址） |
 | 远端名 | `sliverera` |
 | 本地分支名 | `main` |
-| 远端目标分支 | `engine` |
-| 上游跟踪 | `sliverera/engine` |
-| 推送命令 | `git push sliverera main:engine` |
+| 远端目标分支 | `EngineFoundation` |
+| 上游跟踪 | `sliverera/EngineFoundation` |
+| 推送命令 | `git push sliverera main:EngineFoundation` |
 
-同一远端还承载其余层的分支：`system`（EngineSystem）、`test`（Test）、`game`（Game）、`doc`（工作站文档）、`main`（顶层总览与聚合快照），以及 `Engine` / `EngineFoundation` / `EngineSystem` / `EngineRender` 四个聚合或历史快照分支。本层只维护 `engine` 分支。
+同一远端还承载各层分支：`EngineSystem`（引擎系统层）、`EngineRenderer`（渲染层快照，活跃仓库为 `SilverEra-Renderer`）、`Test`（测试层）、`Game`（游戏层）、`Doc`（工作站文档）、`main`（顶层总览与聚合快照），以及 `Engine`（聚合快照）。本层只维护 `EngineFoundation` 分支。
 
 ---
 

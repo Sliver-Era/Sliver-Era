@@ -2,7 +2,7 @@
 
 本分支（远端 `Engine`）是「白银纪元」引擎侧的**聚合快照**，创建于 2026-11-15：把 `EngineFoundation` 与 `EngineSystem` 两个子层合入 `Engine/` 目录，并提供聚合层构建脚本，便于在一个分支内查看完整的引擎侧源码。
 
-> 本分支**不是活跃开发分支**。当前开发以 `engine`（EngineFoundation）与 `system`（EngineSystem）两个分支为准；渲染层位于独立仓库 `SilverEra-Renderer`。
+> 本分支**不是活跃开发分支**。当前开发以 `EngineFoundation` 与 `EngineSystem` 两个分支为准；渲染层位于独立仓库 `SilverEra-Renderer`。
 
 ---
 
@@ -55,11 +55,11 @@ cmake --build --preset build-Release
 
 | 内容 | 活跃分支／仓库 |
 | --- | --- |
-| EngineFoundation | `engine` 分支（`Engine/EngineFoundation/` 独立仓库） |
-| EngineSystem | `system` 分支（`Engine/EngineSystem/` 独立仓库） |
+| EngineFoundation | `EngineFoundation` 分支（`Engine/EngineFoundation/` 独立仓库） |
+| EngineSystem | `EngineSystem` 分支（`Engine/EngineSystem/` 独立仓库） |
 | 渲染层 | 独立仓库 `SilverEra-Renderer`（`main`） |
-| 测试层 | `test` 分支 |
-| 游戏层 | `game` 分支 |
-| 工作站文档 | `doc` 分支 |
+| 测试层 | `Test` 分支 |
+| 游戏层 | `Game` 分支 |
+| 工作站文档 | `Doc` 分支 |
 
 各层 README 见对应分支根目录；顶层总览见 `main` 分支的 `README.md`。

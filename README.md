@@ -154,6 +154,7 @@ cd ..
 cmake --preset x64-Debug;  cmake --build --preset build-Debug
 
 # 4. EngineRenderer（独立仓库，链接 Foundation + System）
+cd EngineRenderer
 cmake --preset x64-Debug;  cmake --build --preset build-Debug
 
 # 5. Application/Test

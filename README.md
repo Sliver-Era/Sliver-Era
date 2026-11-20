@@ -6,7 +6,7 @@ Test 是「白银纪元」分层工程中的**验证与启动层**。工程按�
 
 本层是**全项目唯一产出可执行文件的层**：`EngineTests.exe` 既是单元测试入口，也是整套工程的启动项。「宿主机制」（把下层组件按由浅到深的范围接在一起、各自产出启动项）已经取消，各层不再各自维护运行入口，可执行文件只由本层产生。
 
-本层承载两件事：一是 **googletest 单元测试体系**（78 个套件 / 1415 个用例，按被测层拆到 `tests/Foundation`、`tests/System`、`tests/Renderer` 三个独立子工程，另有本层主调逻辑自测）；二是**测试模块选择器**（图形操作界面 / 控制台菜单 / 命令行开关三种交互形态），让同一份主入口同时服务「开发期按模块精准复跑」与「CI 一键全量回归」两类场景。
+本层承载两件事：一是 **googletest 单元测试体系**（96 个套件 / 1643 个用例，按被测层拆到 `tests/Foundation`、`tests/System`、`tests/Renderer` 三个独立子工程，另有本层主调逻辑自测）；二是**测试模块选择器**（图形操作界面 / 控制台菜单 / 命令行开关三种交互形态），让同一份主入口同时服务「开发期按模块精准复跑」与「CI 一键全量回归」两类场景。
 
 ---
 
@@ -16,7 +16,7 @@ Test 是「白银纪元」分层工程中的**验证与启动层**。工程按�
 
 | 项 | 值 |
 | --- | --- |
-| 远端仓库地址 | `https://github.com/yuxingyuzhong/SilverEra.git` |
+| 远端仓库地址 | `https://github.com/Sliver-Era/Sliver-Era.git`（旧地址 `yuxingyuzhong/SilverEra` 由 GitHub 重定向） |
 | 远端名（remote） | `sliverera` |
 | 本地分支名 | `test` |
 | 目标推送分支 | `test`（本地与远端同名） |
@@ -80,7 +80,7 @@ EngineFoundation（EngineFoundation.lib，已构建） ──▶ EngineSystem（
 | 特性 | 说明 |
 | --- | --- |
 | 唯一主入口 | `EngineTests.exe` 是全工程的启动项；main 由本层主调提供，不链接 googletest 自带的 `gtest_main`。另有三个薄入口只跑单层用例 |
-| 全量单元测试 | 78 个套件 / 1415 个用例，按被测层拆到 `tests/Foundation`、`tests/System`、`tests/Renderer` 三个独立子工程，外加本层主调逻辑自测 |
+| 全量单元测试 | 96 个套件 / 1643 个用例，按被测层拆到 `tests/Foundation`、`tests/System`、`tests/Renderer` 三个独立子工程，外加本层主调逻辑自测 |
 | 按层独立验证 | 改哪一层就只构建哪个测试子工程：子工程只读 `Engine/版本锁.cmake`、只链同版次静态库，不被其它层未升锁的修改拖垮 |
 | 反射驱动的选择树 | 通过 googletest 反射枚举已注册的套件与用例，运行时建立「套件 → 用例」两层选择树，新增用例自动可见，无需维护名单 |
 | 三种交互形态 | 图形操作界面（SDL3 + Vulkan + Dear ImGui，常驻窗口、同进程多轮跑测）、控制台编号菜单、命令行开关全跑；无图形环境时自动降级 |
@@ -229,7 +229,7 @@ Application/Test/
        → 本层 EngineTests.exe（整体收编三个测试库）
 [启动] EngineTests.exe（可带 --selector=... / --gtest_*）
    ├─ 交互路径（默认 window / console）：
-   │     建立选择模型 → 反射 78 套件 / 1415 用例 → 用户勾选 → 生成过滤串
+   │     建立选择模型 → 反射 96 套件 / 1643 用例 → 用户勾选 → 生成过滤串
    └─ 自动化路径（--gtest_* 透传 / --selector=off）：不建模型、不开窗
 [执行] GTEST_FLAG(filter) = 过滤串 → RUN_ALL_TESTS() → 逐用例 SetUp / 用例体 / TearDown
 [收尾] 交互运行打印提示并等待按键；自动化运行立即返回退出码（0 全过 / 非 0 有失败）
@@ -337,34 +337,38 @@ namespace engine
 
 ## 七、单元测试体系
 
-用例按被测层拆到 **独立测试子工程** `tests/<层>/`（与项目导航的层划分一致），每个子工程都是独立 CMake 工程，只读全链版本锁、只链同版次静态库；本层主调自测留在 `src/单元测试/Test/`。共 **78 个用例源文件**（.cpp）、**78 个套件**、**1415 个用例**。套件名 = googletest 夹具类名。
+用例按被测层拆到 **独立测试子工程** `tests/<层>/`（与项目导航的层划分一致），每个子工程都是独立 CMake 工程，只读全链版本锁、只链同版次静态库；本层主调自测留在 `src/单元测试/Test/`。共 **142 个用例源文件**（.cpp，含各子工程注册锚与测试辅助实现）、**96 个套件**、**1643 个用例**（2026-11-20 构建的 `--gtest_list_tests` 注册口径）。套件名 = googletest 夹具类名。
 
 ### 7.1 规模统计
 
 | 层级 | 路径 | 源文件 | 套件数 | 用例数 |
 | --- | --- | --- | --- | --- |
-| EngineFoundation · 工具 | `tests/Foundation/src/工具/` | 12 | 12 | 275 |
-| EngineFoundation · 核心 | `tests/Foundation/src/核心/` | 8 | 9 | 264 |
-| EngineSystem · 碰撞 | `tests/System/src/碰撞/` | 5 | 4 | 58 |
+| EngineFoundation · 工具 | `tests/Foundation/src/工具/` | 14 | 14 | 295 |
+| EngineFoundation · 核心 | `tests/Foundation/src/核心/` | 9 | 9 | 266 |
+| EngineSystem · 碰撞 | `tests/System/src/碰撞/` | 5 | 5 | 62 |
 | EngineSystem · 场景 | `tests/System/src/场景/` | 1 | 1 | 13 |
-| Renderer | `tests/Renderer/src/` | 50 | 50 | 767 |
-| 测试层（主调自测） | `src/单元测试/Test/` | 2 | 2 | 38 |
-| **合计** | — | **78** | **78** | **1415** |
+| EngineSystem · ECS | `tests/System/src/ECS/` | 5 | 5 | 17 |
+| EngineSystem · 输入 | `tests/System/src/输入/` | 2 | 2 | 34 |
+| Renderer | `tests/Renderer/src/` | 103 | 57 | 909 |
+| 测试层（主调自测） | `src/单元测试/Test/` | 3 | 3 | 47 |
+| **合计** | — | **142** | **96** | **1643** |
 
-最近一次全量回归（`EngineTests.exe --selector=off`，设 `BYJY_RUN_L3=0` 跳过可见窗口用例）为 **1415 例 / 1413 通过 / 2 跳过 / 0 失败**；两个跳过均为四叉树用例对引擎在建缺陷的 `GTEST_SKIP`（见 10.3）。
+最近一次全量回归（2026-11-20，`EngineTests.exe --selector=off`，设 `BYJY_RUN_L3=0` 跳过可见窗口用例）为 **1643 例 / 1641 通过 / 2 跳过 / 0 失败**；两个跳过均为 `Renderer_Visible_Test` 的可见窗口用例，由 L3 门控主动跳过（见 §10.3）。
 
-各子工程也可单独跑：`TestFoundation.exe` 跑 21 套件 / 539 例，`TestSystem.exe` 跑 5 套件 / 71 例，`TestRenderer.exe` 跑 50 套件 / 767 例。
+各子工程也可单独跑：`TestFoundation.exe` 跑 23 套件 / 561 例，`TestSystem.exe` 跑 13 套件 / 126 例，`TestRenderer.exe` 跑 57 套件 / 909 例。
 
 ### 7.2 覆盖内容
 
 | 层级 | 套件（夹具类名） | 被测对象 |
 | --- | --- | --- |
 | 测试层（主调） | `测试选择模型测试`、`退出暂停判定测试` | 本层 `Test_Selection_Model`、`需要等待退出` |
-| EngineFoundation · 工具 | `Binary_Search_Test`、`Engine_Env_Test`、`Number_Allocator_Test`、`Data_Validator_Test`、`Field_Check_Test`、`Hash_Combine_Test`、`Log_Test`、`Mesh_Loader_Test`、`Timer_Test`、`Path_String_Test`、`Path_Check_Test`、`Random_Generator_Test` | EngineFoundation 工具模块组：二分查找、引擎环境、数值分配器、数据校验器、字段校验、哈希组合、日志系统、网格加载器、计时器、路径字符串转换、路径检查、随机数生成器 |
+| EngineFoundation · 工具 | `Binary_Search_Test`、`Engine_Env_Test`、`Number_Allocator_Test`、`Data_Validator_Test`、`Field_Check_Test`、`Hash_Combine_Test`、`Log_Test`、`Mesh_Loader_Test`、`Mtl_Loader_Test`、`Gltf_Loader_Test`、`Timer_Test`、`Path_String_Test`、`Path_Check_Test`、`Random_Generator_Test` | EngineFoundation 工具模块组：二分查找、引擎环境、数值分配器、数据校验器、字段校验、哈希组合、日志系统、网格/材质/glTF 加载器、计时器、路径字符串转换、路径检查、随机数生成器 |
 | EngineFoundation · 核心 | `Event_Test`、`Event_Broker_Test`、`Event_Terminal_Test`、`Quadtree_Test`、`Quadtree_Manager_Test`、`Coord_Type_Test`、`Object_Pool_Test`、`Object_Test`、`Config_Loader_Test` | EngineFoundation 核心模块：事件结构体、事件中转器、事件终端、四叉树、四叉树管理器、坐标类型、对象池、对象基类、配置加载器 |
-| EngineSystem · 碰撞 | `Collider_Test`、`Collider_Move_Test`、`Collision_Region_Test`、`Collision_Proxy_Test` | 系统层碰撞：碰撞体、位移链路、空间边界、碰撞代理 |
+| EngineSystem · 碰撞 | `Collider_Test`、`Collider_Move_Test`、`Collision_Backend_Test`、`Collision_Region_Test`、`Collision_Proxy_Test` | 系统层碰撞：碰撞体、位移链路、碰撞后端、空间边界、碰撞代理 |
 | EngineSystem · 场景 | `EngineSystem_LevelText_Test` | 系统层关卡文本解析与往返 |
-| Renderer | `Renderer_*` 等 50 个套件（初始化、交换链重建、帧、GPU 统计、网格、纹理、采样器、着色器、管线、场景、相机、文字、后处理链、可见窗口等） | 渲染层公共面：设备/平台/交换链/帧/内存/管线/网格/纹理/场景/文字/后处理 |
+| EngineSystem · ECS | `ECS_Entity_Test`、`ECS_Component_Test`、`ECS_View_Test`、`ECS_Command_Test`、`ECS_Lifecycle_Test` | 纯数据 ECS：句柄、组件存取、视图查询、命令缓冲、世界生命周期 |
+| EngineSystem · 输入 | `Input_Focus_Test`、`Input_Chord_Test` | 焦点栈与转移、组合键与映射分发 |
+| Renderer | `Renderer_*`、`Input_*`、`Particle_*`、`Ui_*` 等 57 个套件（初始化、交换链重建、帧、GPU 统计、网格、纹理、采样器、着色器、管线、场景、相机、文字、后处理链、粒子、计算、Hi-Z、Cluster、UI、输入桥、可见窗口等） | 渲染层公共面：设备/平台/交换链/帧/内存/管线/网格/纹理/场景/粒子/文字/UI/后处理 |
 
 > 碰撞用例虽然原先放在 EngineFoundation 目录下，但直接 include 系统层头（`Engine/EngineSystem/src/collision/...`），本轮已归入 `tests/System`，避免 Foundation 子工程被迫依赖系统层。
 
@@ -538,7 +542,7 @@ cmake -S . -B out/build/x64-Debug -G Ninja \
 
 - 分流固化：透传 / `off` / `console` / `window` 四条路径与失败降级均已实现并有回归。
 - 过滤串三态压缩与退出等待三参数判定均有专门用例覆盖。
-- 单元测试体系 78 套件 / 1415 用例（Debug 与 Release 各跑一遍，均为 1413 通过 / 2 跳过 / 0 失败），`ctest` 1/1 通过。
+- 单元测试体系 96 套件 / 1643 用例（当前全量回归 1641 通过 / 2 跳过 / 0 失败）。
 - 产物落层根目录，资源相对路径解析与Game 层一致。
 - 层间契约就位：只链接两层已构建静态库，无源码回退路径。
 
@@ -552,7 +556,7 @@ cmake -S . -B out/build/x64-Debug -G Ninja \
 | 位置 | 现象 |
 | --- | --- |
 | 图形操作界面 | 鼠标点选交互尚未自动化，回归只覆盖「窗口创建失败降级」与「窗口存活」路径，点选本身依赖人工验证；字体候选链全部失败时界面仍可运行，但中文显示为方块（仅影响观感） |
-| 四叉树 | 超大树上（`1ull<<33` 量级边长上限）的范围查询尚未专项验证；`退化树单点查找` 因引擎对中间节点取区块数据抛 `std::bad_variant_access` 而 `GTEST_SKIP`；`退化树创建被拒绝` 因引擎已移除退化解拦截而 `GTEST_SKIP`。两处跳过均为引擎侧在建缺陷，待引擎修复后取消跳过 |
+| 四叉树 | 超大树上（`1ull<<33` 量级边长上限）的范围查询尚未专项验证；退化树相关用例（范围查询、单点查询、配置拒绝）已随四叉树重构恢复为正常执行 |
 | 过滤串生成 | 用例名/套件名若含 `:`、`*`、`?` 等 gtest 过滤串特殊字符，直接拼接会导致过滤串断裂；当前依赖命名规范规避，属已知边界 |
 | 控制台输出捕获 | 日志系统用例不能用 gtest 自带的 `CaptureStdout`（其临时文件路径含中文时会 FATAL），改用自研 `Console_Capture`；新增需要捕获输出的用例须沿用该做法 |
 

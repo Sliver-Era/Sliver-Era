@@ -1,10 +1,10 @@
 # 白银纪元 · Game 层（游戏内容分支）
 
-本分支是「白银纪元」工程中的**游戏内容层分支**（远端分支 `game`），用于承载游戏本体的配置资产、脚本资产与未来的玩法代码。
+本分支是「白银纪元」工程中的**游戏内容层分支**（远端分支 `Game`），用于承载游戏本体的配置资产、脚本资产与未来的玩法代码。
 
 当前状态：**内容骨架／历史快照**。本分支最后一次实质更新为 2026-10-18，内容停留在「`src/` 为空、只有 `assets/` 配置与脚本样本」的骨架阶段；引擎侧此后已完成分层重构（EngineCore 重命名为 EngineFoundation、渲染层拆分独立仓库、ECS/输入/碰撞重写），但本分支的构建骨架**尚未跟随迁移**。
 
-> 本文档如实记录本分支自身状态。若需了解引擎各层的最新架构，请查看 `engine`、`system`、`test` 分支的 README，或顶层 `main` 的总览。
+> 本文档如实记录本分支自身状态。若需了解引擎各层的最新架构，请查看 `EngineFoundation`、`EngineSystem`、`Test` 分支的 README，或顶层 `main` 的总览。
 
 ---
 
@@ -16,20 +16,20 @@
 | 旧地址 | `https://github.com/yuxingyuzhong/SilverEra.git`（GitHub 重定向到现行地址） |
 | 远端名 | `sliverera` |
 | 本地分支名 | `main` |
-| 远端目标分支 | `game` |
-| 上游跟踪 | `sliverera/game` |
-| 推送命令 | `git push sliverera main:game` |
+| 远端目标分支 | `Game` |
+| 上游跟踪 | `sliverera/Game` |
+| 推送命令 | `git push sliverera main:Game` |
 
 同一远端还承载：
 
 | 分支 | 内容 |
 | --- | --- |
-| `engine` | EngineFoundation 层（引擎核心层，活跃） |
-| `system` | EngineSystem 层（引擎系统层，活跃） |
-| `test` | Test 层（测试与全项目唯一可执行入口，活跃） |
+| `EngineFoundation` | EngineFoundation 层（引擎核心层，活跃） |
+| `EngineSystem` | EngineSystem 层（引擎系统层，活跃） |
+| `Test` | Test 层（测试与全项目唯一可执行入口，活跃） |
 | `main` | 顶层总览＋全仓聚合快照 |
-| `doc` | 工作站文档（任务报告、项目导航） |
-| `Engine` / `EngineFoundation` / `EngineSystem` | 聚合或历史快照分支 |
+| `Doc` | 工作站文档（任务报告、项目导航） |
+| `Engine` | Engine 聚合快照 |
 | `EngineRender` | 渲染层快照，由渲染层维护者负责 |
 
 渲染层的活跃源码位于独立仓库 `SilverEra-Renderer`（`main` 分支），不在本远端维护。

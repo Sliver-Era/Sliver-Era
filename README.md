@@ -7,7 +7,7 @@ EngineSystem 是「白银纪元」分层工程中的**运行时系统层**，位
 - **世界数据**：ECS（实体、组件存储、命令缓冲）、场景中立数据（关卡/相机/光照/雾/场景清单）与粒子池；
 - **运行时公共件**：逻辑帧等。
 
-本层是**独立 git 仓库**，源码通过远端 `system` 分支发布；产出静态库 `EngineSystem.lib`。
+本层是**独立 git 仓库**，源码通过远端 `EngineSystem` 分支发布；产出静态库 `EngineSystem.lib`。
 
 > 本文档依据 2026-11-20 工作区源码重写，替代此前以 `src/entity`、`src/prop`、`src/effect` 旧目录结构编写的版本。旧版内容仍可在本分支 git 历史中查阅。
 
@@ -21,11 +21,11 @@ EngineSystem 是「白银纪元」分层工程中的**运行时系统层**，位
 | 旧地址 | `https://github.com/yuxingyuzhong/SilverEra.git`（GitHub 重定向到现行地址） |
 | 远端名 | `sliverera` |
 | 本地分支名 | `main` |
-| 远端目标分支 | `system` |
-| 上游跟踪 | `sliverera/system` |
-| 推送命令 | `git push sliverera main:system` |
+| 远端目标分支 | `EngineSystem` |
+| 上游跟踪 | `sliverera/EngineSystem` |
+| 推送命令 | `git push sliverera main:EngineSystem` |
 
-同一远端还承载 `engine`（EngineFoundation）、`test`（Test）、`game`（Game）、`doc`（工作站文档）、`main`（顶层总览与聚合快照）等分支。本层只维护 `system` 分支。
+同一远端还承载 `EngineFoundation`、`EngineRenderer`、`Test`、`Game`、`Doc`、`main` 与 `Engine` 等分支。本层只维护 `EngineSystem` 分支。
 
 ---
 

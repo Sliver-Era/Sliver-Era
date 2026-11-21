@@ -35,6 +35,8 @@ namespace engine
 
 		//资产槽位（下标 = 资产编号 - 1；空槽表示已卸载，编号不回收）
 		std::vector<std::shared_ptr<const Skeleton_Asset>> assets;
+		//事件命令所用的 ECS 存储（由 store_bind 提供）
+		ECS_Store* store = nullptr;
 		//部件运动事件开关（接入事件中转站后生效）
 		bool event_output = true;
 
@@ -46,6 +48,13 @@ namespace engine
 		void link_evaluate(const Skeleton_Pose& pose, Skeleton_Link& link) const;
 		//部件运动事件发布（Collision/ColliderMotion）
 		void motion_publish(const Skeleton_Link& link);
+		//事件命令处理
+		void event_process(std::shared_ptr<Event> evt);
+		//事件发布
+		bool event_publish(const std::string& tag, const nlohmann::json& payload);
+		//操作结果发布
+		void action_result_publish(const nlohmann::json& config, const std::string& action,
+			bool success);
 
 	public:
 		//事件终端（发布 Collision/ColliderMotion）
@@ -89,6 +98,9 @@ namespace engine
 		bool actor_detach(ECS_Store& store, Entity entity);
 
 		//———— 事件 ————
+
+		//事件命令所用的 ECS 存储绑定（不绑定则仅资产类事件命令可用）
+		void store_bind(ECS_Store& store);
 
 		/*
 		事件中转站接入

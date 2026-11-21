@@ -9,3 +9,5 @@
 #include "Skeleton_Link/骨骼链接.h"
 //获取骨骼系统
 #include "Skeleton_System/骨骼系统.h"
+//获取骨骼事件词汇
+#include "Common/骨骼事件.h"

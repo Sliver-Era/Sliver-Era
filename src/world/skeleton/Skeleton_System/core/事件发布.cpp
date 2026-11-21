@@ -14,21 +14,6 @@ namespace engine
 		acl_key = event_terminal.key().value();
 	}
 
-	//事件中转站接入
-	void Skeleton_System::attach(void)
-	{
-		//若事件中转站接入入口尚未注册（接入入口由事件中转站的持有者注册）
-		if (!event_terminal->check(Port_ID::Broker_Attacher))
-		{
-			logger.error("Skeleton_System::事件中转站接入入口未注册，接入中止");
-			return;
-		}
-
-		//接入事件中转站（本模块只发布，不订阅）
-		if (!event_terminal.attach(module_name, acl_key))
-			logger.error("Skeleton_System::事件中转站接入失败");
-	}
-
 	//部件运动事件开关设置
 	bool Skeleton_System::event_output_set(bool enabled)
 	{

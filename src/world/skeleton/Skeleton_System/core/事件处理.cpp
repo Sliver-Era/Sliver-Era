@@ -124,6 +124,9 @@ namespace engine
 			Event("", "", skeleton_event::category, skeleton_event::bone_local_set),
 			Event("", "", skeleton_event::category, skeleton_event::bone_rotation_set),
 			Event("", "", skeleton_event::category, skeleton_event::pose_reset),
+			Event("", "", skeleton_event::category, skeleton_event::pose_apply),
+			Event("", "", skeleton_event::category, skeleton_event::bone_seek),
+			Event("", "", skeleton_event::category, skeleton_event::bone_bind_get),
 			Event("", "", skeleton_event::category, skeleton_event::event_output),
 			Event("", "", skeleton_event::category, skeleton_event::frame_update)
 		};
@@ -190,7 +193,7 @@ namespace engine
 
 	//操作结果发布
 	void Skeleton_System::action_result_publish(const json& config, const string& action,
-		bool success)
+		bool success, const json& extra)
 	{
 		//结果载荷
 		json payload;
@@ -201,6 +204,9 @@ namespace engine
 		//操作标签与结果
 		payload[skeleton_event::field_action] = action;
 		payload[skeleton_event::field_success] = success;
+		//合并附加字段
+		if (extra.is_object())
+			payload.update(extra);
 		//发布结果
 		event_publish(skeleton_event::action_result, payload);
 	}
@@ -404,6 +410,138 @@ namespace engine
 			}
 			//执行并回告
 			action_result_publish(evt->config, evt->tag, pose_reset(*store, entity));
+			return;
+		}
+
+		//批量姿态写入
+		if (evt->tag == skeleton_event::pose_apply)
+		{
+			//实体句柄
+			Entity entity;
+			if (!entity_read(evt->config, entity))
+			{
+				logger.warn("Skeleton_System::批量姿态指令缺少有效字段(entity)");
+				return;
+			}
+			//骨骼条目数组
+			if (!evt->config.contains(skeleton_event::field_bones) ||
+				!evt->config[skeleton_event::field_bones].is_array() ||
+				evt->config[skeleton_event::field_bones].empty())
+			{
+				logger.warn("Skeleton_System::批量姿态指令缺少有效字段(bones)");
+				return;
+			}
+			//待写入条目
+			vector<Skeleton_Local_Transform> entries;
+			for (const json& item : evt->config[skeleton_event::field_bones])
+			{
+				//条目必须为对象
+				if (!item.is_object())
+				{
+					logger.warn("Skeleton_System::批量姿态条目不是对象");
+					return;
+				}
+				//当前条目
+				Skeleton_Local_Transform entry;
+				//骨骼下标
+				uint64_t bone = 0;
+				if (!number_read(item, skeleton_event::field_bone, bone))
+				{
+					logger.warn("Skeleton_System::批量姿态条目缺少有效字段(bone)");
+					return;
+				}
+				entry.bone = static_cast<uint32_t>(bone);
+				//平移、旋转、缩放（均可选）
+				if (item.contains(skeleton_event::field_translation) &&
+					!number_array_read(item, skeleton_event::field_translation, entry.translation, 3))
+				{
+					logger.warn("Skeleton_System::批量姿态条目字段(translation)非法");
+					return;
+				}
+				if (item.contains(skeleton_event::field_rotation) &&
+					!number_array_read(item, skeleton_event::field_rotation, entry.rotation, 4))
+				{
+					logger.warn("Skeleton_System::批量姿态条目字段(rotation)非法");
+					return;
+				}
+				if (item.contains(skeleton_event::field_scale) &&
+					!number_array_read(item, skeleton_event::field_scale, entry.scale, 3))
+				{
+					logger.warn("Skeleton_System::批量姿态条目字段(scale)非法");
+					return;
+				}
+				//收容条目
+				entries.push_back(entry);
+			}
+			//执行并回告（附加成功条数）
+			uint32_t applied = pose_apply(*store, entity, entries.data(),
+				static_cast<uint32_t>(entries.size()));
+			json extra;
+			extra[skeleton_event::field_applied] = applied;
+			action_result_publish(evt->config, evt->tag,
+				applied == entries.size(), extra);
+			return;
+		}
+
+		//骨骼名解析
+		if (evt->tag == skeleton_event::bone_seek)
+		{
+			//实体与骨骼名
+			Entity entity;
+			string name;
+			if (!entity_read(evt->config, entity) ||
+				!text_read(evt->config, skeleton_event::field_name, name))
+			{
+				logger.warn("Skeleton_System::骨骼名解析指令缺少有效字段(entity/name)");
+				return;
+			}
+			//解析下标
+			int32_t bone = bone_seek(*store, entity, name);
+			//结果载荷
+			json payload;
+			uint64_t request_ID = 0;
+			if (number_read(evt->config, skeleton_event::field_request_ID, request_ID))
+				payload[skeleton_event::field_request_ID] = request_ID;
+			payload[skeleton_event::field_name] = name;
+			payload[skeleton_event::field_bone] = bone;
+			payload[skeleton_event::field_success] = bone >= 0;
+			//发布结果
+			event_publish(skeleton_event::bone_seek_result, payload);
+			return;
+		}
+
+		//绑定姿态读取
+		if (evt->tag == skeleton_event::bone_bind_get)
+		{
+			//实体与骨骼下标
+			Entity entity;
+			uint64_t bone = 0;
+			if (!entity_read(evt->config, entity) ||
+				!number_read(evt->config, skeleton_event::field_bone, bone))
+			{
+				logger.warn("Skeleton_System::绑定姿态指令缺少有效字段(entity/bone)");
+				return;
+			}
+			//读取绑定姿态
+			float translation[3] = {};
+			float rotation[4] = {};
+			float scale[3] = {};
+			bool success = bone_bind_get(*store, entity, static_cast<uint32_t>(bone),
+				translation, rotation, scale);
+			//结果载荷
+			json payload;
+			uint64_t request_ID = 0;
+			if (number_read(evt->config, skeleton_event::field_request_ID, request_ID))
+				payload[skeleton_event::field_request_ID] = request_ID;
+			payload[skeleton_event::field_translation] = json::array({
+				translation[0], translation[1], translation[2] });
+			payload[skeleton_event::field_rotation] = json::array({
+				rotation[0], rotation[1], rotation[2], rotation[3] });
+			payload[skeleton_event::field_scale] = json::array({
+				scale[0], scale[1], scale[2] });
+			payload[skeleton_event::field_success] = success;
+			//发布结果
+			event_publish(skeleton_event::bone_bind_result, payload);
 			return;
 		}
 

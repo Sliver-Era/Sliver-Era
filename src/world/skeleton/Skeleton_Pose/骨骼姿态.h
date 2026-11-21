@@ -7,6 +7,19 @@
 //游戏引擎命名空间
 namespace engine
 {
+	//单骨骼局部变换（供动画等上游系统批量写入）
+	struct Skeleton_Local_Transform
+	{
+		//骨骼下标
+		uint32_t bone = 0;
+		//局部平移
+		float translation[3] = { 0.0f, 0.0f, 0.0f };
+		//局部旋转（x、y、z、w）
+		float rotation[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+		//局部缩放
+		float scale[3] = { 1.0f, 1.0f, 1.0f };
+	};
+
 	/*
 	骨骼姿态（ECS 组件）
 	每演员一份：持有共享骨骼资产的引用、逐骨骼局部变换、世界矩阵与蒙皮矩阵。
@@ -48,6 +61,8 @@ namespace engine
 		bool rotation_set(uint32_t bone, const float rotation[4]);
 		//骨骼局部缩放写入（分量有限且非零）
 		bool scale_set(uint32_t bone, const float scale[3]);
+		//批量局部变换写入（逐条校验，返回成功条数）
+		uint32_t local_batch_set(const Skeleton_Local_Transform* entries, uint32_t count);
 		//骨骼世界矩阵读取（下标越界返回假）
 		bool world_get(uint32_t bone, float out[16]) const;
 	};

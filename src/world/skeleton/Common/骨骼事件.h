@@ -33,6 +33,12 @@ namespace engine
 		inline constexpr const char* bone_rotation_set = "BoneRotationSet";
 		//姿态复位
 		inline constexpr const char* pose_reset = "PoseReset";
+		//批量姿态写入
+		inline constexpr const char* pose_apply = "PoseApply";
+		//骨骼名解析
+		inline constexpr const char* bone_seek = "BoneSeek";
+		//绑定姿态读取
+		inline constexpr const char* bone_bind_get = "BoneBindGet";
 		//运动事件开关
 		inline constexpr const char* event_output = "EventOutput";
 		//帧求值
@@ -44,6 +50,10 @@ namespace engine
 		inline constexpr const char* asset_load_result = "AssetLoadResult";
 		//操作结果
 		inline constexpr const char* action_result = "ActionResult";
+		//骨骼名解析结果
+		inline constexpr const char* bone_seek_result = "BoneSeekResult";
+		//绑定姿态读取结果
+		inline constexpr const char* bone_bind_result = "BoneBindResult";
 
 		// ———— 载荷字段名 ————
 
@@ -73,5 +83,11 @@ namespace engine
 		inline constexpr const char* field_action = "action";
 		//操作结果
 		inline constexpr const char* field_success = "success";
+		//批量骨骼条目
+		inline constexpr const char* field_bones = "bones";
+		//骨骼名
+		inline constexpr const char* field_name = "name";
+		//成功应用条数
+		inline constexpr const char* field_applied = "applied";
 	}
 }

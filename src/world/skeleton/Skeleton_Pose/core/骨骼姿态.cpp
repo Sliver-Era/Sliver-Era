@@ -221,6 +221,24 @@ namespace engine
 		return true;
 	}
 
+	//批量局部变换写入
+	uint32_t Skeleton_Pose::local_batch_set(const Skeleton_Local_Transform* entries, uint32_t count)
+	{
+		//空入参
+		if (!entries || count == 0)
+			return 0;
+		//成功条数
+		uint32_t applied = 0;
+		//逐条写入（非法条目跳过）
+		for (uint32_t index = 0; index < count; index++)
+		{
+			const Skeleton_Local_Transform& entry = entries[index];
+			if (local_set(entry.bone, entry.translation, entry.rotation, entry.scale))
+				applied++;
+		}
+		return applied;
+	}
+
 	//骨骼世界矩阵读取
 	bool Skeleton_Pose::world_get(uint32_t bone, float out[16]) const
 	{

@@ -48,6 +48,63 @@ namespace engine
 		return true;
 	}
 
+	//批量姿态写入
+	uint32_t Skeleton_System::pose_apply(ECS_Store& store, Entity entity,
+		const Skeleton_Local_Transform* entries, uint32_t count)
+	{
+		//入参检查
+		if (!entries || count == 0)
+			return 0;
+		//获取姿态
+		Skeleton_Pose* pose = store.component_get<Skeleton_Pose>(entity);
+		//姿态缺失
+		if (!pose)
+			return 0;
+		//批量写入
+		return pose->local_batch_set(entries, count);
+	}
+
+	//骨骼名解析
+	int32_t Skeleton_System::bone_seek(const ECS_Store& store, Entity entity,
+		const std::string& name) const
+	{
+		//获取姿态
+		const Skeleton_Pose* pose = store.component_get<Skeleton_Pose>(entity);
+		//姿态或资产缺失
+		if (!pose || !pose->asset)
+			return -1;
+		//查骨骼下标
+		return pose->asset->bone_seek(name);
+	}
+
+	//绑定姿态读取
+	bool Skeleton_System::bone_bind_get(const ECS_Store& store, Entity entity, uint32_t bone,
+		float translation[3], float rotation[4], float scale[3]) const
+	{
+		//入参检查
+		if (!translation || !rotation || !scale)
+			return false;
+		//获取姿态
+		const Skeleton_Pose* pose = store.component_get<Skeleton_Pose>(entity);
+		//姿态或资产缺失
+		if (!pose || !pose->asset)
+			return false;
+		//目标骨骼
+		const Skeleton_Bone* target = pose->asset->bone_get(bone);
+		//下标越界
+		if (!target)
+			return false;
+		//写入绑定姿态
+		for (uint32_t index = 0; index < 3; index++)
+		{
+			translation[index] = target->bind_translation[index];
+			scale[index] = target->bind_scale[index];
+		}
+		for (uint32_t index = 0; index < 4; index++)
+			rotation[index] = target->bind_rotation[index];
+		return true;
+	}
+
 	//骨骼世界矩阵查询
 	bool Skeleton_System::pose_matrix_get(const ECS_Store& store, Entity entity, uint32_t bone,
 		float out[16]) const

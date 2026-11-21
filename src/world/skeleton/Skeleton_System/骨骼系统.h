@@ -52,9 +52,9 @@ namespace engine
 		void event_process(std::shared_ptr<Event> evt);
 		//事件发布
 		bool event_publish(const std::string& tag, const nlohmann::json& payload);
-		//操作结果发布
+		//操作结果发布（extra 为附加字段）
 		void action_result_publish(const nlohmann::json& config, const std::string& action,
-			bool success);
+			bool success, const nlohmann::json& extra = nlohmann::json());
 
 	public:
 		//事件终端（发布 Collision/ColliderMotion）
@@ -123,6 +123,9 @@ namespace engine
 			const float rotation[4]);
 		//姿态复位到绑定姿态
 		bool pose_reset(ECS_Store& store, Entity entity);
+		//批量姿态写入（返回成功条数；供动画等上游系统一次写入多骨骼）
+		uint32_t pose_apply(ECS_Store& store, Entity entity,
+			const Skeleton_Local_Transform* entries, uint32_t count);
 
 		//———— 帧求值 ————
 
@@ -131,6 +134,11 @@ namespace engine
 
 		//———— 查询 ————
 
+		//骨骼名解析（未挂载或骨骼名不存在返回 -1；供动画轨道绑定）
+		int32_t bone_seek(const ECS_Store& store, Entity entity, const std::string& name) const;
+		//绑定姿态读取（供动画系统取绑定基准）
+		bool bone_bind_get(const ECS_Store& store, Entity entity, uint32_t bone,
+			float translation[3], float rotation[4], float scale[3]) const;
 		//骨骼世界矩阵查询（演员根局部空间）
 		bool pose_matrix_get(const ECS_Store& store, Entity entity, uint32_t bone,
 			float out[16]) const;

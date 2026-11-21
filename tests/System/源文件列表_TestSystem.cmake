@@ -37,6 +37,7 @@ target_sources(TestSystem PRIVATE
     "src/输入/输入焦点测试.cpp"
     "src/输入/输入组合测试.cpp"
     "src/骨骼/蒙皮求值测试.cpp"
+    "src/骨骼/骨骼事件测试.cpp"
     "src/骨骼/骨骼姿态测试.cpp"
     "src/骨骼/骨骼系统测试.cpp"
     "src/骨骼/骨骼资产测试.cpp"

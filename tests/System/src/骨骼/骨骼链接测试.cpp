@@ -22,6 +22,9 @@ TEST_F(Skeleton_Test, 挂载首帧不产生部件运动)
 
 	//首帧求值无运动量
 	skeleton.frame_update(store);
+	engine::Skeleton_Link* link = store.component_get<engine::Skeleton_Link>(entity);
+	ASSERT_NE(link, nullptr);
+	EXPECT_FALSE(link->root_motion.active);
 	const engine::Skeleton_Part_Motion* motions = nullptr;
 	uint32_t count = 0;
 	ASSERT_TRUE(skeleton.part_motions_get(store, entity, motions, count));
@@ -30,7 +33,7 @@ TEST_F(Skeleton_Test, 挂载首帧不产生部件运动)
 }
 
 //根骨骼平移
-TEST_F(Skeleton_Test, 根骨骼平移为两个部件产生平移增量)
+TEST_F(Skeleton_Test, 根骨骼平移只产生整体运动量)
 {
 	//登记资产并挂载
 	engine::Skeleton_Asset asset;
@@ -48,19 +51,20 @@ TEST_F(Skeleton_Test, 根骨骼平移为两个部件产生平移增量)
 	ASSERT_TRUE(skeleton.bone_local_set(store, entity, 0, translation, rotation, scale));
 	skeleton.frame_update(store);
 
-	//两条部件运动均为 X=1 平移
+	//根平移由整体运动承担，部件相对根骨骼不变
+	engine::Skeleton_Link* link = store.component_get<engine::Skeleton_Link>(entity);
+	ASSERT_NE(link, nullptr);
+	EXPECT_TRUE(link->root_motion.active);
+	EXPECT_TRUE(skeleton_float_near(link->root_motion.translation[0], 1.0f));
+	EXPECT_TRUE(skeleton_float_near(link->root_motion.translation[1], 0.0f));
+	EXPECT_TRUE(skeleton_float_near(link->root_motion.translation[2], 0.0f));
+	EXPECT_TRUE(skeleton_float_near(std::abs(link->root_motion.rotation[3]), 1.0f, 1e-5f));
+
+	//部件运动量为空
 	const engine::Skeleton_Part_Motion* motions = nullptr;
 	uint32_t count = 0;
 	ASSERT_TRUE(skeleton.part_motions_get(store, entity, motions, count));
-	ASSERT_EQ(count, 2u);
-	for (uint32_t index = 0; index < count; index++)
-	{
-		EXPECT_TRUE(skeleton_float_near(motions[index].translation[0], 1.0f));
-		EXPECT_TRUE(skeleton_float_near(motions[index].translation[1], 0.0f));
-		EXPECT_TRUE(skeleton_float_near(motions[index].translation[2], 0.0f));
-		//旋转近似单位
-		EXPECT_TRUE(skeleton_float_near(std::abs(motions[index].rotation[3]), 1.0f, 1e-5f));
-	}
+	EXPECT_EQ(count, 0u);
 }
 
 //无变化帧
@@ -118,7 +122,7 @@ TEST_F(Skeleton_Test, 子骨骼旋转产生旋转增量)
 	EXPECT_EQ(motions[0].part, 1);
 	//旋转增量 90 度（半角 45 度）
 	EXPECT_TRUE(skeleton_float_near(motions[0].rotation[3], 0.7071068f, 1e-4f));
-	//部件偏移随之产生的平移增量
+	//部件原点在碰撞体局部空间产生的平移增量
 	EXPECT_TRUE(skeleton_float_near(motions[0].translation[0], -0.5f));
 	EXPECT_TRUE(skeleton_float_near(motions[0].translation[1], -0.5f));
 }

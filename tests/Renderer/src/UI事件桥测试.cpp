@@ -14,6 +14,11 @@ UI 事件桥测试（L1 无 GPU）
 //获取 UI 控件树与事件桥
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
 #include "Engine/EngineRenderer/src/render/UI/UI事件桥.h"
+//UI 域内协议与总线（网关翻译用例）
+#include "Engine/EngineRenderer/src/render/UI/common/UI事件协议.h"
+#include "Engine/EngineRenderer/src/render/UI/core/UI本地总线.h"
+//中转站协议词汇（订阅登记）
+#include "Engine/EngineFoundation/src/event/Common/事件协议.h"
 #include "测试辅助/渲染测试辅助.h"
 
 //游戏引擎命名空间
@@ -416,4 +421,68 @@ TEST_F(Ui_Event_Bridge_Test, 焦点切到按钮关闭文本模式)
 	EXPECT_FALSE(bridge.system_text_mode());
 	EXPECT_TRUE(ui.focused_get(button));
 	EXPECT_FALSE(ui.focused_get(text_box));
+}
+
+//域内点击经网关翻译为对外命令，且 UI 域内事件不进入事件总线
+TEST_F(Ui_Event_Bridge_Test, 域内点击翻译为对外命令)
+{
+	//外部观察者：同时订阅 UI/Click 与 Input/Command
+	uint64_t observer_key = 9527;
+	uint32_t ui_clicks = 0;
+	uint32_t commands = 0;
+	std::string last_command{};
+	broker.attach("观察者", observer_key,
+		[&ui_clicks, &commands, &last_command](std::shared_ptr<Event> evt)
+		{
+			if (!evt)
+				return;
+			//域内事件若真的上了总线，这里会看到
+			if (evt->category == ui_event::category && evt->tag == ui_event::click)
+				++ui_clicks;
+			//对外命令
+			if (evt->category == input_event::category && evt->tag == input_event::command)
+			{
+				++commands;
+				last_command = evt->config.value("command", std::string{});
+			}
+		});
+	//登记两条订阅（UI/Click 即使登记也不应收到，因为域内事件不发总线）
+	nlohmann::json items = nlohmann::json::array();
+	for (const auto& pair : { std::pair<const char*, const char*>{ ui_event::category, ui_event::click },
+		std::pair<const char*, const char*>{ input_event::category, input_event::command } })
+	{
+		nlohmann::json item = nlohmann::json::object();
+		item[event_protocol::field_category] = pair.first;
+		item[event_protocol::field_tag] = pair.second;
+		items.push_back(item);
+	}
+	auto add = std::make_shared<Event>("", "", event_protocol::subscribed_events, event_protocol::add);
+	add->config[event_protocol::field_object] = "观察者";
+	add->config[event_protocol::field_acl_key] = observer_key;
+	add->config[event_protocol::field_subscribed_events] = std::move(items);
+	broker.receive(add);
+
+	//按钮绑定命令并发布域内点击
+	Ui_Handle button = ui.button_create(ui.root_get(), Ui_Rect{ 10.0f, 10.0f, 120.0f, 30.0f }, "打开");
+	ASSERT_NE(button, 0u);
+	ui.command_bind("Open", button);
+	//绑定域内总线（幂等）
+	bridge.text_route_prepare(ui);
+	nlohmann::json config = nlohmann::json::object();
+	config[ui_event::field_handle] = button;
+	ASSERT_TRUE(ui.bus_get().publish(ui_event::click, config));
+	ui.bus_get().frame_flush();
+
+	//对外命令被广播一次；域内点击没有上总线
+	EXPECT_EQ(commands, 1u);
+	EXPECT_EQ(last_command, std::string{ "Open" });
+	EXPECT_EQ(ui_clicks, 0u);
+
+	//网关自身产物不回译（带来源标记的点击不再产生命令）
+	nlohmann::json gateway_click = nlohmann::json::object();
+	gateway_click[ui_event::field_handle] = button;
+	gateway_click[ui_event::field_origin] = ui_event::origin_gateway;
+	ASSERT_TRUE(ui.bus_get().publish(ui_event::click, gateway_click));
+	ui.bus_get().frame_flush();
+	EXPECT_EQ(commands, 1u);
 }

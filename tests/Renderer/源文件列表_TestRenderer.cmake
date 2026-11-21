@@ -23,6 +23,7 @@
 #
 target_sources(TestRenderer PRIVATE
     "src/UI事件桥测试.cpp"
+    "src/UI局域网测试.cpp"
     "src/注册锚.cpp"
     "src/渲染Alpha覆盖测试.cpp"
     "src/渲染Cluster记录与分簇测试.cpp"

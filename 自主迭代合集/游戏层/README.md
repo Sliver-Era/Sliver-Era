@@ -13,4 +13,21 @@
 
 ## 当前状态
 
-前置工作阶段：工作区构建系统与引擎版本锁尚在初始化，尚未开始第 1 轮。
+前置工作已完成：工作区本地仓库、引擎分层构建系统与六条版本锁已就位，Debug / Release 双配置构建与运行验证通过；尚未开始第 1 轮。
+
+## 工程信息
+
+- 工作区：`Application/Game/Sliver-Era`
+- 引擎依赖：`Engine/cmake/对外接口.cmake`（聚合面）＋ `Engine/EngineRenderer/cmake/对外接口.cmake`（渲染层）
+- 版本锁：`Engine/版本锁.cmake`，并由工作区 `cmake/引擎版本锁.cmake` 复核；当前值为
+  - EngineFoundation：Debug `50e8d22be2f8` / Release `1e5ac2f94d4d`
+  - EngineSystem：Debug `7949c936f810` / Release `42a7fce2ae2c`
+  - EngineRenderer：Debug `0fc5a3d4197a` / Release `4acda0869c5c`
+
+## 构建前提（本机）
+
+1. `cmake` / `ninja` 不在 PATH：使用 `D:\ViusalStudioCommunity2026\Common7\IDE\CommonExtensions\Microsoft\CMake\` 下的可执行文件。
+2. 必须先激活 VS 开发环境：`Import-Module D:\ViusalStudioCommunity2026\Common7\Tools\Microsoft.VisualStudio.DevShell.dll; Enter-VsDevShell -VsInstallPath D:\ViusalStudioCommunity2026 -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'`。
+3. `TMP` / `TEMP` 必须指向纯 ASCII 目录（如 `D:\agent\tmp`），否则 `cl.exe` 请求调试信息时报 `D8050`。
+4. 构建命令：`cmake -S . -B out/build/x64-Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug` 后 `cmake --build out/build/x64-Debug`；Release 同理换目录与配置。
+

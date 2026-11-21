@@ -220,3 +220,86 @@ TEST_F(Renderer_Animation_Assembly_Test, 多演员独立区间)
 	EXPECT_FLOAT_EQ(matrix[12], 0.0f);
 	engine::level_bridge_unload(renderer, scene);
 }
+
+//演员片段淡入：中间权重混合，到时长后只留目标片段
+TEST_F(Renderer_Animation_Assembly_Test, 演员片段淡入与结束)
+{
+	write_text(std::string(TEST_DIR) + "level.txt", assets_write(true));
+	//第二片段：根平移 100 → 110
+	write_text(std::string(TEST_DIR) + "run.anim",
+		R"({"name":"run","duration":1.0,"tracks":[{"bone":"root","channel":"translation",
+			"keys":[{"time":0.0,"value":[100,0,0]},{"time":1.0,"value":[110,0,0]}]}]})");
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	engine::Level_Data level;
+	engine::Asset_Scene scene;
+	ASSERT_TRUE(engine::level_bridge_load(renderer, level, scene, std::string(TEST_DIR) + "level.txt"));
+	ASSERT_EQ(scene.actors.size(), 1u);
+
+	//加载第二片段并启动 1 秒淡入
+	std::shared_ptr<const engine::Animation_Clip> run;
+	ASSERT_TRUE(renderer.animation().clip_load(std::string(TEST_DIR) + "run.anim", run));
+	ASSERT_TRUE(engine::level_bridge_animation_transition(scene, "甲", run, 1.0f));
+	EXPECT_EQ(scene.actors[0].blend_weight, 0.0f);
+
+	//推进 0.5 秒：walk(5) 与 run(105) 取中 → 根世界 55，调色板平移 54
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.5f), 1u);
+	EXPECT_FLOAT_EQ(scene.actors[0].blend_weight, 0.5f);
+	float matrix[16] = {};
+	palette_read(renderer, scene.actors[0].palette_offset, 0, matrix);
+	EXPECT_FLOAT_EQ(matrix[12], 54.0f);
+
+	//再推进 0.6 秒：权重到 1，源片段清空；run 时间回绕到 0.1 → 根世界 101，调色板平移 100
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.6f), 1u);
+	EXPECT_EQ(scene.actors[0].blend_from, nullptr);
+	palette_read(renderer, scene.actors[0].palette_offset, 0, matrix);
+	EXPECT_FLOAT_EQ(matrix[12], 100.0f);
+	engine::level_bridge_unload(renderer, scene);
+}
+
+//零时长切换：立即替换片段且不保留过渡源
+TEST_F(Renderer_Animation_Assembly_Test, 零时长立即切换)
+{
+	write_text(std::string(TEST_DIR) + "level.txt", assets_write(true));
+	write_text(std::string(TEST_DIR) + "run.anim",
+		R"({"name":"run","duration":1.0,"tracks":[{"bone":"root","channel":"translation",
+			"keys":[{"time":0.0,"value":[100,0,0]},{"time":1.0,"value":[110,0,0]}]}]})");
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	engine::Level_Data level;
+	engine::Asset_Scene scene;
+	ASSERT_TRUE(engine::level_bridge_load(renderer, level, scene, std::string(TEST_DIR) + "level.txt"));
+	std::shared_ptr<const engine::Animation_Clip> run;
+	ASSERT_TRUE(renderer.animation().clip_load(std::string(TEST_DIR) + "run.anim", run));
+	ASSERT_TRUE(engine::level_bridge_animation_transition(scene, "甲", run, 0.0f));
+	EXPECT_EQ(scene.actors[0].blend_from, nullptr);
+	//推进 0.25 秒：run 时间 0.25 → 根世界 102.5，调色板平移 101.5
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.25f), 1u);
+	float matrix[16] = {};
+	palette_read(renderer, scene.actors[0].palette_offset, 0, matrix);
+	EXPECT_FLOAT_EQ(matrix[12], 101.5f);
+	engine::level_bridge_unload(renderer, scene);
+}
+
+//非法切换：未知演员、空片段、非有限时长均拒绝且不改动状态
+TEST_F(Renderer_Animation_Assembly_Test, 非法切换拒绝)
+{
+	write_text(std::string(TEST_DIR) + "level.txt", assets_write(true));
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	engine::Level_Data level;
+	engine::Asset_Scene scene;
+	ASSERT_TRUE(engine::level_bridge_load(renderer, level, scene, std::string(TEST_DIR) + "level.txt"));
+	std::shared_ptr<const engine::Animation_Clip> 原片段 = scene.actors[0].clip;
+	//未知演员
+	EXPECT_FALSE(engine::level_bridge_animation_transition(scene, "乙", 原片段, 1.0f));
+	//空片段
+	EXPECT_FALSE(engine::level_bridge_animation_transition(scene, "甲", nullptr, 1.0f));
+	//非有限时长
+	EXPECT_FALSE(engine::level_bridge_animation_transition(scene, "甲", 原片段,
+		std::numeric_limits<float>::infinity()));
+	//状态未变
+	EXPECT_EQ(scene.actors[0].clip, 原片段);
+	EXPECT_EQ(scene.actors[0].blend_from, nullptr);
+	engine::level_bridge_unload(renderer, scene);
+}

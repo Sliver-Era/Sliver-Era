@@ -336,3 +336,106 @@ TEST_F(Renderer_Animation_Assembly_Test, 演员事件区间查询)
 	EXPECT_TRUE(unknown.empty());
 	engine::level_bridge_unload(renderer, scene);
 }
+
+//暂停：时间与调色板保持不动
+TEST_F(Renderer_Animation_Assembly_Test, 暂停保持当前姿态)
+{
+	write_text(std::string(TEST_DIR) + "level.txt", assets_write(true));
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	engine::Level_Data level;
+	engine::Asset_Scene scene;
+	ASSERT_TRUE(engine::level_bridge_load(renderer, level, scene, std::string(TEST_DIR) + "level.txt"));
+
+	//先推进 0.5 秒：根世界 5，调色板平移 4
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.5f), 1u);
+	float matrix[16] = {};
+	palette_read(renderer, scene.actors[0].palette_offset, 0, matrix);
+	EXPECT_FLOAT_EQ(matrix[12], 4.0f);
+	//暂停后再推进：时间与画面不变
+	ASSERT_TRUE(engine::level_bridge_animation_pause(scene, "甲", true));
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.5f), 1u);
+	EXPECT_FLOAT_EQ(scene.actors[0].time_seconds, 0.5f);
+	palette_read(renderer, scene.actors[0].palette_offset, 0, matrix);
+	EXPECT_FLOAT_EQ(matrix[12], 4.0f);
+	//恢复后可继续推进
+	ASSERT_TRUE(engine::level_bridge_animation_pause(scene, "甲", false));
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.25f), 1u);
+	EXPECT_FLOAT_EQ(scene.actors[0].time_seconds, 0.75f);
+	engine::level_bridge_unload(renderer, scene);
+}
+
+//变速：倍率缩放推进；倍率 0 等价暂停
+TEST_F(Renderer_Animation_Assembly_Test, 变速推进)
+{
+	write_text(std::string(TEST_DIR) + "level.txt", assets_write(true));
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	engine::Level_Data level;
+	engine::Asset_Scene scene;
+	ASSERT_TRUE(engine::level_bridge_load(renderer, level, scene, std::string(TEST_DIR) + "level.txt"));
+
+	//2 倍速：0.25 秒步长推进 0.5 秒
+	ASSERT_TRUE(engine::level_bridge_animation_speed_set(scene, "甲", 2.0f));
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.25f), 1u);
+	EXPECT_FLOAT_EQ(scene.actors[0].time_seconds, 0.5f);
+	//倍率 0：时间停止
+	ASSERT_TRUE(engine::level_bridge_animation_speed_set(scene, "甲", 0.0f));
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.5f), 1u);
+	EXPECT_FLOAT_EQ(scene.actors[0].time_seconds, 0.5f);
+	engine::level_bridge_unload(renderer, scene);
+}
+
+//时间跳转：循环回绕，调色板随新时间更新
+TEST_F(Renderer_Animation_Assembly_Test, 时间跳转与回绕)
+{
+	write_text(std::string(TEST_DIR) + "level.txt", assets_write(true));
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	engine::Level_Data level;
+	engine::Asset_Scene scene;
+	ASSERT_TRUE(engine::level_bridge_load(renderer, level, scene, std::string(TEST_DIR) + "level.txt"));
+
+	//跳到 0.75 秒：根世界 7.5，调色板平移 6.5
+	ASSERT_TRUE(engine::level_bridge_animation_time_set(scene, "甲", 0.75f));
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.0f), 1u);
+	float matrix[16] = {};
+	palette_read(renderer, scene.actors[0].palette_offset, 0, matrix);
+	EXPECT_FLOAT_EQ(matrix[12], 6.5f);
+	//跳 1.25 秒（循环）：回绕到 0.25 → 根世界 2.5，调色板平移 1.5
+	ASSERT_TRUE(engine::level_bridge_animation_time_set(scene, "甲", 1.25f));
+	EXPECT_FLOAT_EQ(scene.actors[0].time_seconds, 0.25f);
+	ASSERT_EQ(engine::level_bridge_animation_update(renderer, scene, 0.0f), 1u);
+	palette_read(renderer, scene.actors[0].palette_offset, 0, matrix);
+	EXPECT_FLOAT_EQ(matrix[12], 1.5f);
+	engine::level_bridge_unload(renderer, scene);
+}
+
+//非法播放控制：未知演员、非有限或越界参数均拒绝且不改状态
+TEST_F(Renderer_Animation_Assembly_Test, 非法播放控制拒绝)
+{
+	write_text(std::string(TEST_DIR) + "level.txt", assets_write(true));
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	engine::Level_Data level;
+	engine::Asset_Scene scene;
+	ASSERT_TRUE(engine::level_bridge_load(renderer, level, scene, std::string(TEST_DIR) + "level.txt"));
+
+	//未知演员
+	EXPECT_FALSE(engine::level_bridge_animation_pause(scene, "乙", true));
+	EXPECT_FALSE(engine::level_bridge_animation_speed_set(scene, "乙", 1.0f));
+	EXPECT_FALSE(engine::level_bridge_animation_time_set(scene, "乙", 0.5f));
+	//非有限 / 越界倍率
+	EXPECT_FALSE(engine::level_bridge_animation_speed_set(scene, "甲",
+		std::numeric_limits<float>::quiet_NaN()));
+	EXPECT_FALSE(engine::level_bridge_animation_speed_set(scene, "甲", -1.0f));
+	EXPECT_FALSE(engine::level_bridge_animation_speed_set(scene, "甲", 9.0f));
+	//非有限时间
+	EXPECT_FALSE(engine::level_bridge_animation_time_set(scene, "甲",
+		std::numeric_limits<float>::infinity()));
+	//状态未变
+	EXPECT_FLOAT_EQ(scene.actors[0].speed, 1.0f);
+	EXPECT_FALSE(scene.actors[0].paused);
+	EXPECT_FLOAT_EQ(scene.actors[0].time_seconds, 0.0f);
+	engine::level_bridge_unload(renderer, scene);
+}

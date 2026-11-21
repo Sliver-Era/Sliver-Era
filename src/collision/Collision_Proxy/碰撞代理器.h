@@ -77,8 +77,10 @@ namespace engine
 		bool collider_unload(const uint64_t collider_ID,const std::string& region);
 		//碰撞体转移 
 		bool collider_transfer(const uint64_t collider_ID, const std::string& region);
-		//碰撞体镜像
+		//碰撞体镜像（保留旧签名；新编号由重载输出）
 		bool collider_mirror(const uint64_t collider_ID, const std::string& region);
+		//碰撞体镜像（在目标空间构建新编号，经出参返回）
+		bool collider_mirror(const uint64_t collider_ID, const std::string& region, uint64_t& mirror_ID);
 		//碰撞体设置 —— 检测方式重载
 		bool collider_set(const uint64_t collider_ID, const Detection_Mode& vector);
 		//碰撞体设置 —— 豁免标记重载

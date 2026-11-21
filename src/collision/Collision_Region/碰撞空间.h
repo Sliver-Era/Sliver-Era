@@ -95,6 +95,9 @@ namespace engine
 		bool collider_part_count_get(uint64_t collider_ID, uint32_t& receiver) const;
 		//碰撞体子部件编号存在性检查
 		bool collider_part_exists(uint64_t collider_ID, uint16_t part_ID) const;
+		//碰撞体配置读取(检测方式与豁免标记；编号不存在时返回false)
+		bool collider_config_get(uint64_t collider_ID, Detection_Mode& mode,
+			uint64_t& exemption_flag) const;
 		//运动量设置(仅由载荷事件更新；未收到新事件时沿用本次设置)
 		bool collider_motion_set(uint64_t collider_ID, const Motion_Event& event);
 		//碰撞体位移频率设置(作用频率与生效计时随碰撞体保存于本空间，登记时重新起算生效计时)

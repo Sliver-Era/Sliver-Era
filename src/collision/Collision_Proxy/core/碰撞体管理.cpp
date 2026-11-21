@@ -33,6 +33,30 @@ namespace engine
 	//碰撞体转移
 	bool Collision_Proxy::collider_transfer(const uint64_t collider_ID, const string& region)
 	{
+		//查找运动登记
+		auto motion_it = motion_records.find(collider_ID);
+		//若登记含旋转或部件运动，则源碰撞体必须已配置离散步长
+		if (motion_it != motion_records.end() &&
+			(!motion_it->second.event.body.rotation.identity_check() ||
+				!motion_it->second.event.parts.empty()))
+		{
+			//归属空间与离散步长
+			string owner;
+			uint32_t step_length = 0;
+			//读取源空间内的离散步长
+			if (backend.collider_owner_seek(collider_ID, owner))
+			{
+				Collision_Region* source = backend.region_seek(owner);
+				if (source && source->collider_step_length_get(collider_ID, step_length) &&
+					step_length == 0)
+				{
+					logger.warn("Collision_Proxy::碰撞体({})含旋转或部件运动但离散步长为零，转移拒绝",
+						collider_ID);
+					return false;
+				}
+			}
+		}
+
 		//在空间间转移碰撞体
 		if (!backend.collider_transfer(collider_ID, region))
 			return false;
@@ -43,10 +67,19 @@ namespace engine
 		return true;
 	}
 
-	//碰撞体镜像
+	//碰撞体镜像（保留旧签名）
 	bool Collision_Proxy::collider_mirror(const uint64_t collider_ID, const string& region)
 	{
-		return backend.collider_mirror(collider_ID, region);
+		//新编号（旧签名不输出）
+		uint64_t mirror_ID = 0;
+		return collider_mirror(collider_ID, region, mirror_ID);
+	}
+
+	//碰撞体镜像（输出新编号）
+	bool Collision_Proxy::collider_mirror(const uint64_t collider_ID, const string& region,
+		uint64_t& mirror_ID)
+	{
+		return backend.collider_mirror(collider_ID, region, mirror_ID);
 	}
 
 	//碰撞体设置 —— 检测方式重载

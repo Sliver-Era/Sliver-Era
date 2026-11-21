@@ -79,8 +79,16 @@ namespace engine
 			return false;
 		}
 
-		//取源碰撞体的几何配置
+		//源配置快照（几何 ＋ 检测方式 ＋ 豁免标记）
 		json geometry = source->collider_geometry(collider_ID);
+		Detection_Mode detection_mode;
+		uint64_t exemption_flag = 0;
+		//若无法读取源配置则转移中止
+		if (!source->collider_config_get(collider_ID, detection_mode, exemption_flag))
+		{
+			logger.warn("Proxy_Backend::碰撞体({})源配置读取失败，转移中止", collider_ID);
+			return false;
+		}
 
 		//在目标空间内按原编号接管（接管失败时源空间尚未改动）
 		if (!target->collider_adopt(collider_ID))
@@ -97,27 +105,40 @@ namespace engine
 			return false;
 		}
 
+		//在目标空间内按原编号重建几何体
+		if (!geometry.is_null() && !geometry.empty())
+		{
+			geometry["collider_ID"] = collider_ID;
+			if (!target->collider_set(geometry))
+			{
+				logger.warn("Proxy_Backend::碰撞体({})几何体在目标空间({})重建失败，回滚转移",
+					collider_ID, region);
+				//移除目标空间内的占位碰撞体
+				target->collider_unload(collider_ID);
+				//在源空间内恢复碰撞体与配置
+				if (source->collider_adopt(collider_ID))
+				{
+					source->collider_set(geometry);
+					source->collider_set(collider_ID, detection_mode);
+					source->collider_set(collider_ID, exemption_flag);
+				}
+				return false;
+			}
+		}
+
+		//回填检测方式与豁免标记
+		target->collider_set(collider_ID, detection_mode);
+		target->collider_set(collider_ID, exemption_flag);
+
 		//更新编号归属
 		collider_mapping_unlink(collider_ID, owner);
 		collider_mapping_link(collider_ID, region);
-
-		//无几何配置时仅转移编号登记（尚未设置几何体的占位碰撞体）
-		if (geometry.is_null() || geometry.empty())
-			return true;
-
-		//在目标空间内按原编号重建几何体
-		geometry["collider_ID"] = collider_ID;
-		if (!target->collider_set(geometry))
-		{
-			logger.warn("Proxy_Backend::碰撞体({})几何体在目标空间({})重建失败", collider_ID, region);
-			return false;
-		}
-
 		return true;
 	}
 
 	//碰撞体镜像
-	bool Proxy_Backend::collider_mirror(const uint64_t collider_ID, const string& region)
+	bool Proxy_Backend::collider_mirror(const uint64_t collider_ID, const string& region,
+		uint64_t& mirror_ID)
 	{
 		//查找目标碰撞空间
 		Collision_Region* target = region_seek(region);
@@ -146,26 +167,40 @@ namespace engine
 			return false;
 		}
 
-		//取源碰撞体的几何配置
+		//源配置快照（几何 ＋ 检测方式 ＋ 豁免标记；运动不复制）
 		json geometry = source->collider_geometry(collider_ID);
-
-		//在目标空间内构建全新编号的碰撞体
-		uint64_t mirror_ID = 0;
-		if (!collider_build(region, mirror_ID))
-			return false;
-
-		//无几何配置时镜像得到的是占位碰撞体
-		if (geometry.is_null() || geometry.empty())
-			return true;
-
-		//按新编号写入几何配置
-		geometry["collider_ID"] = mirror_ID;
-		if (!target->collider_set(geometry))
+		Detection_Mode detection_mode;
+		uint64_t exemption_flag = 0;
+		//若无法读取源配置则镜像中止
+		if (!source->collider_config_get(collider_ID, detection_mode, exemption_flag))
 		{
-			logger.warn("Proxy_Backend::镜像碰撞体({})几何体构建失败", mirror_ID);
+			logger.warn("Proxy_Backend::碰撞体({})源配置读取失败，镜像中止", collider_ID);
 			return false;
 		}
 
+		//在目标空间内构建全新编号的碰撞体
+		uint64_t new_ID = 0;
+		if (!collider_build(region, new_ID))
+			return false;
+
+		//按新编号重建几何体
+		if (!geometry.is_null() && !geometry.empty())
+		{
+			geometry["collider_ID"] = new_ID;
+			if (!target->collider_set(geometry))
+			{
+				logger.warn("Proxy_Backend::镜像碰撞体({})几何体构建失败，回滚镜像", new_ID);
+				//移除目标空间内的占位碰撞体
+				collider_unload(new_ID, region);
+				return false;
+			}
+		}
+
+		//回填检测方式与豁免标记
+		target->collider_set(new_ID, detection_mode);
+		target->collider_set(new_ID, exemption_flag);
+		//输出新编号
+		mirror_ID = new_ID;
 		return true;
 	}
 

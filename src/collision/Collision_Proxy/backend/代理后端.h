@@ -42,8 +42,8 @@ namespace engine
 		bool collider_unload(uint64_t collider_ID, const std::string& region);
 		//碰撞体转移
 		bool collider_transfer(uint64_t collider_ID, const std::string& region);
-		//碰撞体镜像
-		bool collider_mirror(uint64_t collider_ID, const std::string& region);
+		//碰撞体镜像（在目标空间构建新编号，经出参返回）
+		bool collider_mirror(uint64_t collider_ID, const std::string& region, uint64_t& mirror_ID);
 		//碰撞体设置分发（对所有持有该编号的空间生效）
 		bool collider_set_dispatch(uint64_t collider_ID,
 			const std::function<bool(Collision_Region&)>& setter) const;

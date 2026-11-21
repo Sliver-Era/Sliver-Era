@@ -335,9 +335,23 @@ namespace engine
 			//碰撞体转移
 			else if (evt->tag == collision_event::collider_transfer)
 				collider_transfer(collider_ID, region);
-			//碰撞体镜像
+			//碰撞体镜像（事件路径回告新编号）
 			else if (evt->tag == collision_event::collider_mirror)
-				collider_mirror(collider_ID, region);
+			{
+				//镜像新编号
+				uint64_t mirror_ID = 0;
+				//镜像成功后发布构建结果
+				if (collider_mirror(collider_ID, region, mirror_ID))
+				{
+					//结果载荷
+					json payload;
+					//写入空间名称与新编号
+					payload[collision_event::field_region] = region;
+					payload[collision_event::field_collider_ID] = mirror_ID;
+					//发布新编号
+					event_publish(collision_event::collider_build_result, payload);
+				}
+			}
 			//碰撞体设置
 			else
 				collider_config_apply(region, collider_ID, evt->config);

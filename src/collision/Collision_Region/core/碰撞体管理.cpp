@@ -331,6 +331,22 @@ namespace engine
 		return it->second.backend->part_exists(part_ID);
 	}
 
+	//碰撞体配置读取(检测方式与豁免标记；编号不存在时返回false)
+	bool Collision_Region::collider_config_get(uint64_t collider_ID, Detection_Mode& mode,
+		uint64_t& exemption_flag) const
+	{
+		//查找目标碰撞体
+		auto it = mapping.find(collider_ID);
+		//若目标碰撞体不存在
+		if (it == mapping.end())
+			return false;
+
+		//写入检测方式与豁免标记
+		mode = it->second.detection_mode;
+		exemption_flag = it->second.exemption_flag;
+		return true;
+	}
+
 	//碰撞体包含性检测
 	bool Collision_Region::contains(uint64_t collider_ID) const
 	{

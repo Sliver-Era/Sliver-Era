@@ -30,13 +30,28 @@ namespace engine
 
 	/*
 	单帧部件运动量（中立数据）
-	相对上一帧的平移与旋转增量，坐标轴为演员根局部空间；
+	相对上一帧的平移与旋转增量，坐标轴为碰撞体局部空间（演员根局部空间）；
 	调用方将其转投碰撞系统（Collision/ColliderMotion 的 parts 项）。
 	*/
 	struct Skeleton_Part_Motion
 	{
 		//子部件编号
 		uint16_t part = 0;
+		//平移增量
+		float translation[3] = { 0.0f, 0.0f, 0.0f };
+		//旋转增量（x、y、z、w）
+		float rotation[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	};
+
+	/*
+	单帧根部整体运动量
+	根骨骼相对上一帧的增量，坐标轴为演员根局部空间；
+	调用方将其转投碰撞系统（Collision/ColliderMotion 的 motion 项）。
+	*/
+	struct Skeleton_Root_Motion
+	{
+		//是否存在有效增量
+		bool active = false;
 		//平移增量
 		float translation[3] = { 0.0f, 0.0f, 0.0f };
 		//旋转增量（x、y、z、w）
@@ -54,10 +69,20 @@ namespace engine
 		uint32_t owner = 0;
 		//目标碰撞体编号（0 表示未绑定）
 		uint64_t collider_ID = 0;
+		//根骨骼下标（资产中第一个无父骨骼的骨骼）
+		uint32_t root_bone = 0;
 		//逐部件绑定
 		std::vector<Skeleton_Part_Link> links;
-		//上一帧部件世界矩阵（每链接 16 项，列主序）
+		//上一帧部件局部矩阵（每链接 16 项，列主序；相对根骨骼）
 		std::vector<float> previous_matrix;
+		//上一帧根骨骼世界矩阵（列主序）
+		float previous_root[16] = {
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f };
+		//本帧根部整体运动量
+		Skeleton_Root_Motion root_motion;
 		//本帧部件运动量（相对上一帧的增量）
 		std::vector<Skeleton_Part_Motion> motions;
 

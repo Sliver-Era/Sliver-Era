@@ -108,6 +108,8 @@ namespace engine
 				}
 				//求值部件运动
 				link_evaluate(*pose, link);
+				//发布运动事件（未接入中转站时由发送通道缺失静默失败）
+				motion_publish(link);
 			});
 	}
 }

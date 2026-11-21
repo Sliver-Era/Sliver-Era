@@ -75,6 +75,34 @@ namespace engine
 			out[3] = input[3] / length;
 		}
 
+		//四元数共轭（单位四元数即逆）
+		inline void bone_quaternion_conjugate(const float input[4], float out[4])
+		{
+			out[0] = -input[0];
+			out[1] = -input[1];
+			out[2] = -input[2];
+			out[3] = input[3];
+		}
+
+		//四元数乘法（Hamilton 积）
+		inline void bone_quaternion_multiply(const float left[4], const float right[4], float out[4])
+		{
+			//结果分量
+			float x = left[3] * right[0] + left[0] * right[3]
+				+ left[1] * right[2] - left[2] * right[1];
+			float y = left[3] * right[1] - left[0] * right[2]
+				+ left[1] * right[3] + left[2] * right[0];
+			float z = left[3] * right[2] + left[0] * right[1]
+				- left[1] * right[0] + left[2] * right[3];
+			float w = left[3] * right[3] - left[0] * right[0]
+				- left[1] * right[1] - left[2] * right[2];
+			//写入结果
+			out[0] = x;
+			out[1] = y;
+			out[2] = z;
+			out[3] = w;
+		}
+
 		//变换矩阵构建（列主序，先缩放、再旋转、最后平移）
 		inline void bone_matrix_from_transform(const float translation[3], const float rotation[4],
 			const float scale[3], float out[16])

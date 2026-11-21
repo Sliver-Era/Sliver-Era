@@ -57,7 +57,29 @@ namespace engine
 			return false;
 		}
 
-		//首帧基准矩阵
+		//根骨骼（资产保证下标 0 为无父骨骼）
+		root_bone = 0;
+		for (uint32_t index = 0; index < count; index++)
+		{
+			if (asset.bone_get(index)->parent < 0)
+			{
+				root_bone = index;
+				break;
+			}
+		}
+
+		//根骨骼世界矩阵与逆矩阵
+		float root_matrix[16] = {};
+		for (uint32_t element = 0; element < 16; element++)
+			root_matrix[element] = pose.world_matrix[static_cast<uint64_t>(root_bone) * 16 + element];
+		float root_inverse[16] = {};
+		if (!detail::bone_matrix_inverse(root_matrix, root_inverse))
+			detail::bone_matrix_identity(root_inverse);
+		//首帧根部基准
+		for (uint32_t element = 0; element < 16; element++)
+			previous_root[element] = root_matrix[element];
+
+		//首帧部件局部基准矩阵（相对根骨骼）
 		previous_matrix.assign(links.size() * 16, 0.0f);
 		for (uint64_t index = 0; index < links.size(); index++)
 		{
@@ -66,10 +88,15 @@ namespace engine
 			//相对变换矩阵
 			float offset[16] = {};
 			detail::bone_matrix_from_transform(link.translation, link.rotation, link.scale, offset);
-			//部件世界矩阵 = 骨骼世界矩阵 × 相对变换
-			detail::bone_matrix_multiply(&pose.world_matrix[static_cast<uint64_t>(link.bone) * 16],
-				offset, &previous_matrix[index * 16]);
+			//骨骼相对根骨骼的局部矩阵
+			float bone_local[16] = {};
+			detail::bone_matrix_multiply(root_inverse,
+				&pose.world_matrix[static_cast<uint64_t>(link.bone) * 16], bone_local);
+			//部件局部矩阵 = 骨骼局部矩阵 × 相对变换
+			detail::bone_matrix_multiply(bone_local, offset, &previous_matrix[index * 16]);
 		}
+		//首帧无根运动
+		root_motion = Skeleton_Root_Motion();
 
 		//预留运动量容量
 		motions.reserve(links.size());

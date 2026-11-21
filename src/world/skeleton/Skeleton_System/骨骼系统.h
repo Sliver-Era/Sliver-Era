@@ -9,6 +9,8 @@
 #include "Engine/EngineSystem/src/world/skeleton/Skeleton_Pose/骨骼姿态.h"
 //获取骨骼链接
 #include "Engine/EngineSystem/src/world/skeleton/Skeleton_Link/骨骼链接.h"
+//获取事件系统运行包
+#include "Engine/EngineFoundation/src/event/事件系统运行包.h"
 
 //游戏引擎命名空间
 namespace engine
@@ -28,8 +30,13 @@ namespace engine
 	class Skeleton_System
 	{
 	private:
+		//模块名称（事件发送者标识）
+		inline static const std::string module_name = "Skeleton_System";
+
 		//资产槽位（下标 = 资产编号 - 1；空槽表示已卸载，编号不回收）
 		std::vector<std::shared_ptr<const Skeleton_Asset>> assets;
+		//部件运动事件开关（接入事件中转站后生效）
+		bool event_output = true;
 
 		//姿态求值（单演员；写世界矩阵）
 		bool pose_evaluate(Skeleton_Pose& pose) const;
@@ -37,10 +44,19 @@ namespace engine
 		bool skin_evaluate(Skeleton_Pose& pose) const;
 		//部件运动求值（单演员；写本帧运动量）
 		void link_evaluate(const Skeleton_Pose& pose, Skeleton_Link& link) const;
+		//部件运动事件发布（Collision/ColliderMotion）
+		void motion_publish(const Skeleton_Link& link);
 
 	public:
-		//默认构造
-		Skeleton_System(void) = default;
+		//事件终端（发布 Collision/ColliderMotion）
+		Event_Terminal event_terminal;
+	private:
+		//事件发送权限密钥
+		int64_t acl_key = 0;
+
+	public:
+		//构造函数（生成事件权限密钥）
+		Skeleton_System(void);
 		//默认析构
 		~Skeleton_System(void) = default;
 		//禁止拷贝
@@ -71,6 +87,19 @@ namespace engine
 			uint64_t collider_ID = 0);
 		//演员卸载（移除姿态与链接组件；实体本身不销毁）
 		bool actor_detach(ECS_Store& store, Entity entity);
+
+		//———— 事件 ————
+
+		/*
+		事件中转站接入
+		接入后 frame_update 会把本帧根部/部件运动量以 Collision/ColliderMotion 事件发布；
+		事件载荷与碰撞模块的运动登记格式一致，部件运动要求碰撞体已配置非零离散步长。
+		*/
+		void attach(void);
+		//部件运动事件开关设置
+		bool event_output_set(bool enabled);
+		//部件运动事件开关读取
+		bool event_output_get(void) const;
 
 		//———— 姿态写入 ————
 

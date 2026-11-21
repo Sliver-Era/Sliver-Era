@@ -204,6 +204,7 @@ target_sources(EngineSystem PRIVATE
     "src/world/skeleton/Skeleton_Asset/core/骨骼资产.cpp"
     "src/world/skeleton/Skeleton_Link/core/骨骼链接.cpp"
     "src/world/skeleton/Skeleton_Pose/core/骨骼姿态.cpp"
+    "src/world/skeleton/Skeleton_System/core/事件发布.cpp"
     "src/world/skeleton/Skeleton_System/core/姿态查询.cpp"
     "src/world/skeleton/Skeleton_System/core/姿态求值.cpp"
     "src/world/skeleton/Skeleton_System/core/挂载管理.cpp"

@@ -1,96 +1,112 @@
 #pragma once
 //预编译头
 #include "Engine/EngineFoundation/common/前置头文件包含.h"
-//获取预定义对象类型
-#include "../Object/对象.h"
 //获取数值分配器
-#include "Engine/EngineFoundation/src/detail/class/Number_Pool/数值分配器.h"
+#include "Engine/EngineFoundation/src/detail/class/Number_Pool/数值池.h"
 //获取二分查找算法
 #include "Engine/EngineFoundation/src/detail/methods/二分查找.h"
 
 namespace engine
 {
-	//对象排列顺序 
+	//对象排列顺序
 	enum class Object_Order
 	{
 		Unorder,
 		Sorted
 	};
-	//默认对象定位投影器 —— 以对象ID作为定位键
-	struct Default_Projector
-	{
-		template <typename T>
-		uint64_t operator()(const T& object) const
-		{
-			return object.ID();
-		}
-	};
 
-	//对象池 —— 模板需从对象中派生
-	//Key为对象定位键类型，投影器与比较器均为运行期可替换的调用对象
+	//对象池 —— 模板参数 T 为任意可默认构造、可移动的类型
+	//Key 为对象定位键类型，定位键由构造时注入的投影器给出可写引用
+	//对象编号不由对象池分配，构建时必须提供定位键，由对象池写入对象
 	template <typename T, typename Key = uint64_t>
-		requires std::is_base_of_v<Object, T>
 	class Object_Pool
 	{
 	private:
-		//对象记录
-		struct Object_Record
-		{
-			//对象ID
-			uint64_t ID = 0;
-			//对象索引
-			uint64_t index = 0;
-		};
+		//索引池
+		Number_Pool<uint64_t> index_pool;
 
-		//ID分配器
-		Number_Pool<uint64_t> ID_allocator;
-		//索引分配器
-		Number_Pool<uint64_t> index_allocator;
-
-		//ID分配起点
-		uint64_t min_ID = 1;
-		//有效索引起点
+		//有效索引起点 —— [min_valid_index, objects.size()) 为有效区
 		uint64_t min_valid_index = 0;
 		//对象集合
 		std::vector<T> objects;
 
-		//对象定位投影器(运行期可替换)
-		std::function<Key(const T&)> projector;
+		//对象定位投影器(返回对象内定位键字段的可写引用)
+		std::function<Key&(T&)> projector;
 		//对象定位方式标记
 		bool is_sorted = false;
 		//对象映射
 		std::unordered_map<Key, uint64_t> mapping;
 		//投影键比较方式(默认升序，运行期可替换)
-		std::function<bool(const Key&, const Key&)> compare = std::less<Key>{};
+		std::function<bool(const Key&, const Key&)> compare = std::ranges::less{};
 
-		//分配器初始化
-		void pool_init(void)
+		//定位键读取 —— 常量上下文
+		const Key& key_get(const T& object) const
 		{
-			//设置后进先出机制分配回收ID
-			ID_allocator.set(Allocate_Order::LIFO);
-			index_allocator.set(Allocate_Order::LIFO);
-			//为非法实体预留ID
-			ID_allocator.set(min_ID);
-			//显示指定起始索引
-			index_allocator.set(0);
+			//投影器需要可写引用，常量上下文下转为非常量引用后读取
+			return projector(const_cast<T&>(object));
+		}
+		//槽位构建 —— 分配槽位、写入定位键并登记映射
+		uint64_t slot_build(const Key& key, T&& object)
+		{
+			//分配新对象索引
+			std::optional<uint64_t> object_index = index_pool.get();
+			//若索引分配失败
+			if (!object_index.has_value())
+			{
+				logger.error("Object_Pool::索引分配失败");
+				return (std::numeric_limits<uint64_t>::max)();
+			}
+			//获取新对象索引
+			uint64_t slot_index = object_index.value();
+			//若槽位不足则直接创建新对象
+			if (slot_index >= objects.size())
+				objects.push_back(std::move(object));
+			//若获得旧槽位则销毁旧对象并原地重建新对象
+			else
+			{
+				//析构旧对象
+				std::destroy_at(&objects[slot_index]);
+				//在旧槽位原地构造新对象
+				std::construct_at(&objects[slot_index], std::move(object));
+			}
+
+			//若当前存在无效区间
+			if (min_valid_index > 0)
+			{
+				//将新对象交换至无效区边界并收缩无效区
+				std::swap(objects[slot_index], objects[--min_valid_index]);
+				//更新新对象索引
+				slot_index = min_valid_index;
+			}
+
+			//写入定位键，保证映射与对象内键字段一致
+			projector(objects[slot_index]) = key;
+			//若为哈希定位模式则记录索引映射
+			if (!is_sorted)
+				mapping.insert_or_assign(key, slot_index);
+
+			return slot_index;
+		}
+		//定位键集合收集 —— 供批量构建判重
+		std::unordered_set<Key> keys_collect(void) const
+		{
+			//定位键集合
+			std::unordered_set<Key> keys{};
+			//遍历有效区收集定位键
+			for (uint64_t index = min_valid_index; index < objects.size(); index++)
+				keys.insert(key_get(objects[index]));
+			return keys;
 		}
 
 	public:
-		//默认构造函数 —— 仅在键可由对象ID转换时可用（默认按ID定位）
-		Object_Pool()
-			requires std::is_convertible_v<uint64_t, Key>
+		//构造函数 —— 必须注入键投影器
+		explicit Object_Pool(std::function<Key&(T&)> proj)
 		{
-			//初始化分配器
-			pool_init();
-			//默认以对象ID为定位键
-			projector = Default_Projector{};
-		}
-		//带投影器构造函数 —— 自定义键类型或需要外部注入投影器时使用
-		explicit Object_Pool(std::function<Key(const T&)> proj)
-		{
-			//初始化分配器
-			pool_init();
-			//记录外部投影器
+			//设置后进先出机制分配回收索引
+			index_pool.set(Num_Reuse_Order::LIFO);
+			//显示指定起始索引
+			index_pool.set(0);
+			//记录键投影器
 			projector = std::move(proj);
 		}
 		//析构函数
@@ -107,14 +123,10 @@ namespace engine
 				//标记回到稳定模式
 				is_sorted = false;
 				//重建映射
-				for (uint64_t rebuild_index = 0; rebuild_index < objects.size(); rebuild_index++)
-				{
-					//若对象合法则建立映射
-					if (objects[rebuild_index].is_valid)
-						mapping.insert({ projector(objects[rebuild_index]), rebuild_index });
-				}
+				for (uint64_t rebuild_index = min_valid_index; rebuild_index < objects.size(); rebuild_index++)
+					mapping.insert({ key_get(objects[rebuild_index]), rebuild_index });
 				//重置比较方式
-				compare = std::less<Key>{};
+				compare = std::ranges::less{};
 			}
 			//若为排序模式设置
 			else if (mode == Object_Order::Sorted)
@@ -127,10 +139,9 @@ namespace engine
 					//清空映射
 					mapping.clear();
 				}
-
 				//记录排序方式(未指定则按升序)
 				compare = cmp ? std::move(cmp)
-					: std::function<bool(const Key&, const Key&)>(std::less<Key>{});
+					: std::function<bool(const Key&, const Key&)>(std::ranges::less{});
 				//重排序对象
 				sort();
 			}
@@ -159,7 +170,8 @@ namespace engine
 			{
 				//获取目标对象索引
 				std::optional<uint64_t> object_index = detail::binary_search
-				(begin(), end(), key, compare, projector);
+				(begin(), end(), key, compare,
+					[this](const T& object) -> const Key& { return key_get(object); });
 				//若返回索引有效
 				if (object_index.has_value())
 					return begin() + object_index.value();
@@ -175,63 +187,69 @@ namespace engine
 			return const_cast<Object_Pool*>(this)->find(key);
 		}
 		//对象添加 —— 单对象重载
-		uint64_t build(T object = {})
+		uint64_t build(const Key& key, T object = {})
 		{
-			//构造单元素对象集合
-			std::vector<T> object_set{};
-			object_set.push_back(std::move(object));
-			//调用多对象重载
-			return build(std::move(object_set)).front();
-		}
-		//对象添加 —— 多对象重载
-		std::vector<uint64_t> build(std::vector<T> object_set)
-		{
-			//ID存储缓冲
-			std::vector<uint64_t> buffer{};
-			//构建对象
-			for (uint64_t build_time = 0; build_time < object_set.size(); build_time++)
+			//若定位键已存在
+			if (find(key) != objects.end())
 			{
-				//分配新对象索引
-				uint64_t object_index = index_allocator.get();
-				//若槽位不足则直接创建新对象
-				if (object_index >= objects.size())
-					objects.push_back(std::move(object_set[build_time]));
-				//若获得旧槽位则销毁旧对象并原地重建新对象
-				else
+				logger.warn("Object_Pool::定位键已存在: {}", key);
+				return (std::numeric_limits<uint64_t>::max)();
+			}
+			//构建目标对象
+			uint64_t object_index = slot_build(key, std::move(object));
+			//若槽位分配失败
+			if (object_index == (std::numeric_limits<uint64_t>::max)())
+				return object_index;
+			//若为排序模式则重排序对象
+			if (is_sorted)
+				sort();
+			return object_index;
+		}
+		//对象添加 —— 多对象重载(仅提供定位键)
+		std::vector<uint64_t> build(const std::vector<Key>& keys)
+		{
+			//构造默认实参集合并转调带实参重载
+			return build(keys, std::vector<T>(keys.size()));
+		}
+		//对象添加 —— 多对象重载(同步提供定位键与实参)
+		std::vector<uint64_t> build(const std::vector<Key>& keys, std::vector<T> object_set)
+		{
+			//若定位键与实参数量不一致
+			if (keys.size() != object_set.size())
+				logger.warn("Object_Pool::批量构建键与实参数量不一致: {} / {}", keys.size(), object_set.size());
+
+			//槽位索引缓冲
+			std::vector<uint64_t> buffer{};
+			//既有定位键集合
+			std::unordered_set<Key> exist_keys = keys_collect();
+			//取两者较小规模，避免越界
+			uint64_t count = static_cast<uint64_t>(std::min(keys.size(), object_set.size()));
+			//构建对象
+			for (uint64_t time = 0; time < count; time++)
+			{
+				//获取当前定位键
+				const Key& key = keys[time];
+				//若定位键重复则略过
+				if (exist_keys.count(key))
 				{
-					//析构旧对象
-					std::destroy_at(&objects[object_index]);
-					//在旧槽位原地构造新对象
-					std::construct_at(&objects[object_index], std::move(object_set[build_time]));
+					logger.warn("Object_Pool::定位键已存在: {}", key);
+					continue;
 				}
-
-				//若当前存在无效区间
-				if (min_valid_index > 0)
-				{
-					//将新对象交换至无效区边界并收缩无效区
-					std::swap(objects[object_index], objects[--min_valid_index]);
-					//更新新对象索引
-					object_index = min_valid_index;
-				}
-
-				//获取新对象
-				auto& new_object = objects[object_index];
-				//分配对象ID
-				new_object.object_ID = (ID_allocator.get());
-				//缓冲对象ID
-				buffer.push_back(new_object.ID());
-				//设置记录有效
-				new_object.is_valid = true ;
-
-				//若为哈希定位模式则记录索引映射
-				if (!is_sorted)
-					mapping.insert_or_assign(projector(new_object), object_index);
+				//登记本次构建的定位键
+				exist_keys.insert(key);
+				//构建目标对象
+				uint64_t object_index = slot_build(key, std::move(object_set[time]));
+				//若槽位分配失败则终止批量构建
+				if (object_index == (std::numeric_limits<uint64_t>::max)())
+					break;
+				//记录对象索引
+				buffer.push_back(object_index);
 			}
 			//若为排序模式则重排序对象
 			if (is_sorted)
 				sort();
 
-			//返回对象ID集合
+			//返回对象索引集合
 			return buffer;
 		}
 		//对象排序
@@ -242,7 +260,8 @@ namespace engine
 				return false;
 			//若为排序模式则进行重排序
 			else
-				std::ranges::sort(begin(), end(), compare, projector);
+				std::ranges::sort(begin(), end(), compare,
+					[this](const T& object) -> const Key& { return key_get(object); });
 
 			return true;
 		}
@@ -254,18 +273,11 @@ namespace engine
 			//若目标对象不存在则返回卸载失败
 			if (it == objects.end())
 				return false;
-			//记录目标对象索引与ID
+			//记录目标对象索引
 			uint64_t target_index = static_cast<uint64_t>(it - objects.begin());
-			uint64_t target_ID = it->ID();
 			//若为哈希定位模式则卸载索引映射
 			if (!is_sorted)
 				mapping.erase(key);
-			//回收目标对象ID
-			ID_allocator.recycle(target_ID);
-			//设置预留无效ID
-			objects[target_index].object_ID = min_ID - 1;
-			//设置目标对象记录不合法
-			objects[target_index].is_valid = false;
 			//若目标不在无效区边界则交换到边界
 			if (target_index != min_valid_index)
 			{
@@ -273,10 +285,10 @@ namespace engine
 				std::swap(objects[target_index], objects[min_valid_index]);
 				//若为哈希定位模式则同步更新被交换有效对象映射索引
 				if (!is_sorted)
-					mapping.insert_or_assign(projector(objects[target_index]), target_index);
+					mapping.insert_or_assign(key_get(objects[target_index]), target_index);
 			}
 			//回收目标对象索引
-			index_allocator.recycle(min_valid_index);
+			index_pool.recycle(min_valid_index);
 			//更新有效索引起点
 			min_valid_index++;
 			//若当前为排序模式则重排序对象集合
@@ -297,15 +309,14 @@ namespace engine
 		{
 			//去重哈希容器
 			std::unordered_set<Key> removed_keys;
-			//对象记录集合
-			std::vector<Object_Record> records{};
-			//收集目标卸载对象信息
-			for (const auto& key : keys)
+			//目标对象索引集合
+			std::vector<uint64_t> records{};
+			//收集目标卸载对象索引
+			for (const Key& key : keys)
 			{
 				//若出现重复键则略过
 				if (removed_keys.count(key))
 					continue;
-
 				//记录当前查找键
 				removed_keys.insert(key);
 				//获取目标对象迭代器
@@ -316,45 +327,37 @@ namespace engine
 					logger.warn("Object_Pool::目标对象不存在: {}", key);
 					continue;
 				}
-				//记录目标对象信息
-				records.push_back({ it->ID(),static_cast<uint64_t>(it - objects.begin())});
+				//记录目标对象索引
+				records.push_back(static_cast<uint64_t>(it - objects.begin()));
 				//若当前为哈希定位模式则卸载索引映射
-				if(!is_sorted)
+				if (!is_sorted)
 					mapping.erase(key);
 			}
 
 			//升序排列索引防止失效
-			std::ranges::sort(records,std::ranges::less(),&Object_Record::index);
+			std::ranges::sort(records);
 
 			//逐个卸载目标对象
-			for (const Object_Record& record : records)
+			for (const uint64_t& record_index : records)
 			{
-				//获取目标对象
-				auto& object = objects[record.index];
-				//回收目标对象ID
-				ID_allocator.recycle(record.ID);
-				//设置预留无效ID
-				object.object_ID = min_ID - 1;
-				//设置目标对象记录不合法
-				object.is_valid = false;
-
 				//若目标不在无效区边界则交换到边界
-				if (record.index != min_valid_index)
+				if (record_index != min_valid_index)
 				{
-					std::swap(object, objects[min_valid_index]);
+					//交换目标与无效区边界对象
+					std::swap(objects[record_index], objects[min_valid_index]);
 					//若为哈希定位模式则同步更新被交换有效对象映射索引
 					if (!is_sorted)
-						mapping.insert_or_assign(projector(object), record.index);
+						mapping.insert_or_assign(key_get(objects[record_index]), record_index);
 				}
 				//回收目标对象索引
-				index_allocator.recycle(min_valid_index);
+				index_pool.recycle(min_valid_index);
 				//更新有效索引起点
 				min_valid_index++;
 			}
 
 			//若当前为排序模式则重排序对象集合
 			if (is_sorted)
-			    sort();
+				sort();
 		}
 
 		//对象清除
@@ -363,19 +366,12 @@ namespace engine
 			//清空所有对象
 			objects.clear();
 
-			//清空所有ID记录
-			ID_allocator.reset();
-			//恢复后进先出分配机制
-			ID_allocator.set(Allocate_Order::LIFO);
-			//恢复保留非法ID
-			ID_allocator.set(min_ID);
-
 			//清空所有索引记录
-			index_allocator.reset();
+			index_pool.reset();
 			//恢复后进先出分配机制
-			index_allocator.set(Allocate_Order::LIFO);
+			index_pool.set(Num_Reuse_Order::LIFO);
 			//恢复显式指定起始索引
-			index_allocator.set(0);
+			index_pool.set(0);
 			//重置有效索引起点
 			min_valid_index = 0;
 
@@ -392,16 +388,9 @@ namespace engine
 				return false;
 			else
 			{
-				//若对象池为空则预创建非法对象
+				//若对象池为空则预创建对象槽位
 				for (uint64_t time = 0; time < num; time++)
-				{
-					//构建新对象槽位
 					objects.push_back({});
-					//设置无效ID
-					objects.back().object_ID = min_ID - 1;
-					//设置对象非法
-					objects.back().is_valid = false;
-				}
 				//将预留槽位划入无效区
 				min_valid_index = num;
 				//返回槽位分配成功
@@ -416,7 +405,7 @@ namespace engine
 		//合法对象数量获取
 		uint64_t size(void) const
 		{
-			return ID_allocator.counts();
+			return objects.size() - min_valid_index;
 		}
 
 		//有效元素首迭代器获取 —— 非常量重载

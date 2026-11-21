@@ -36,9 +36,8 @@ target_sources(EngineFoundation PRIVATE
     "src/loader/config/Config_Loader/core/路由文件操作.cpp"
     "src/loader/config/Config_Loader/core/配置加载.cpp"
     "src/log/Logging_Config_Bridge/core/日志配置桥接.cpp"
-    "src/object/Object_Pool/core/对象池实例化.cpp"
-    "src/spatial/partition/Quadtree/core/四叉树实例化.cpp"
-    "src/spatial/partition/Quadtree_Manager/core/四叉树管理器实例化.cpp"
+    
+    
     "src/time/Timer/core/计时器.cpp"
 )
 
@@ -46,7 +45,7 @@ target_sources(EngineFoundation PRIVATE
 # 使头文件改名 / 迁移时 VS 也能改写引用
 target_sources(EngineFoundation PRIVATE
     "common/前置头文件包含.h"
-    "src/detail/class/Number_Pool/数值分配器.h"
+    "src/detail/class/Number_Pool/数值池.h"
     "src/detail/class/Random_Generator/随机数生成器.h"
     "src/detail/methods/json字段可用性校验.h"
     "src/detail/methods/package/数据校验工具.h"
@@ -90,7 +89,6 @@ target_sources(EngineFoundation PRIVATE
     "src/log/Stream_Sink/输出目标.h"
     "src/log/Stream_Tree/流节点树.h"
     "src/log/日志系统运行包.h"
-    "src/object/Object/对象.h"
     "src/object/Object_Pool/对象池.h"
     "src/object/对象系统运行包.h"
     "src/spatial/math/坐标类型.h"

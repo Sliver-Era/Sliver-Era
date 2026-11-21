@@ -54,6 +54,15 @@ function(byjy_ceshi_zhunbei)
         if(EXISTS "${_wrapper}" AND _powershell)
             set(CMAKE_CXX_LINKER_LAUNCHER
                 "${_powershell};-NoProfile;-ExecutionPolicy;Bypass;-File;${_wrapper}" PARENT_SCOPE)
+            # 归档响应文件同样无 BOM，lib.exe 按 ANSI 解读中文对象名会报 LNK1181；
+            # 与主层共用归档包装脚本，且必须在 project() 之后设置。
+            set(_ar_wrapper "${BYJY_PROJECT_ROOT}/Engine/EngineFoundation/cmake/ar_rsp_bom.ps1")
+            if(EXISTS "${_ar_wrapper}")
+                set(CMAKE_CXX_CREATE_STATIC_LIBRARY
+                    "${_powershell} -NoProfile -ExecutionPolicy Bypass -File ${_ar_wrapper} <CMAKE_AR> /nologo <LINK_FLAGS> /out:<TARGET> <OBJECTS> " PARENT_SCOPE)
+            else()
+                message(WARNING "未找到归档包装器，中文对象名的归档可能报 LNK1181：${_ar_wrapper}")
+            endif()
         else()
             message(WARNING "未找到链接包装器或 PowerShell，中文对象名的链接可能报 LNK1104：${_wrapper}")
         endif()

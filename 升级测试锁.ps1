@@ -69,7 +69,7 @@ $text = Get-Content $lockFile -Raw -Encoding UTF8
 foreach ($layer in $layers) {
     foreach ($cfg in $configs) {
         $new = $resolved["${layer}_${cfg}"]
-        $pattern = 'set\(BYJY_LOCK_{0}_{1}\s+"[^"]*"\)' -f [regex]::Escape($layer), $cfg
+        $pattern = '(?m)^set\(BYJY_LOCK_{0}_{1}\s+"[^"]*"\)' -f [regex]::Escape($layer), $cfg
         $found = [regex]::Match($text, $pattern)
         if ($found.Success) {
             $old = [regex]::Match($found.Value, '"([^"]*)"').Groups[1].Value

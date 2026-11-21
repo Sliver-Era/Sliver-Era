@@ -119,3 +119,41 @@ TEST_F(Renderer_Animation_Sample_Test, 旋转插值归一化)
 	//两分量近似相等
 	EXPECT_NEAR(value[2], value[3], 1e-5f);
 }
+
+//平滑插值：中点仍为均值，四分点按 smoothstep 偏移
+TEST_F(Renderer_Animation_Sample_Test, 平滑插值权重)
+{
+	engine::Animation_Track track = linear_track();
+	track.interpolation = engine::Animation_Interpolation::Smooth;
+	float value[4] = {};
+	//中点：smoothstep(0.5) = 0.5，仍为均值 5
+	ASSERT_TRUE(engine::animation_track_sample(track, 0.5f, 1.0f, false, value));
+	EXPECT_FLOAT_EQ(value[0], 5.0f);
+	//四分点：smoothstep(0.25) = 0.15625 → 1.5625
+	ASSERT_TRUE(engine::animation_track_sample(track, 0.25f, 1.0f, false, value));
+	EXPECT_NEAR(value[0], 1.5625f, 1e-5f);
+	//四分之三点：smoothstep(0.75) = 0.84375 → 8.4375
+	ASSERT_TRUE(engine::animation_track_sample(track, 0.75f, 1.0f, false, value));
+	EXPECT_NEAR(value[0], 8.4375f, 1e-5f);
+	//端点保持原值
+	ASSERT_TRUE(engine::animation_track_sample(track, 0.0f, 1.0f, false, value));
+	EXPECT_FLOAT_EQ(value[0], 0.0f);
+	ASSERT_TRUE(engine::animation_track_sample(track, 1.0f, 1.0f, false, value));
+	EXPECT_FLOAT_EQ(value[0], 10.0f);
+}
+
+//平滑插值不改变阶跃语义与越界夹紧
+TEST_F(Renderer_Animation_Sample_Test, 平滑插值边界)
+{
+	engine::Animation_Track track = linear_track();
+	track.interpolation = engine::Animation_Interpolation::Smooth;
+	float value[4] = {};
+	//越界取首末帧
+	ASSERT_TRUE(engine::animation_track_sample(track, -1.0f, 1.0f, false, value));
+	EXPECT_FLOAT_EQ(value[0], 0.0f);
+	ASSERT_TRUE(engine::animation_track_sample(track, 2.0f, 1.0f, false, value));
+	EXPECT_FLOAT_EQ(value[0], 10.0f);
+	//循环回绕到 0.25
+	ASSERT_TRUE(engine::animation_track_sample(track, 1.25f, 1.0f, true, value));
+	EXPECT_NEAR(value[0], 1.5625f, 1e-5f);
+}

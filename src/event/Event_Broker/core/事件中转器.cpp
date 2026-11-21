@@ -108,7 +108,8 @@ namespace engine
         vector<uint64_t> acl_keys = acl_set[{ evt->category, evt->tag }];
         //获取该事件分类满订阅者列表
         acl_keys.insert(acl_keys.end(),
-            acl_set[{ evt->category, event_protocol::all }].begin(), acl_set[{ evt->category, event_protocol::all }].end());
+            acl_set[{ evt->category, event_protocol::all }].begin(), 
+            acl_set[{ evt->category, event_protocol::all }].end());
 
         //发送事件
         for (int send_time = 0; send_time < acl_keys.size(); send_time++)

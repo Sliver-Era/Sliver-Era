@@ -18,6 +18,12 @@ namespace engine
 
 		//在目标空间内构建碰撞体
 		collider_ID = target->collider_build();
+		//若编号分配失败（0 为空间边界保留编号）
+		if (collider_ID == 0)
+		{
+			logger.error("Proxy_Backend::碰撞体编号分配失败");
+			return false;
+		}
 		//登记编号归属
 		collider_mapping_link(collider_ID, region);
 		return true;

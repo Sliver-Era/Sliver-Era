@@ -86,8 +86,18 @@ namespace engine
 			}
 		}
 
-		//从对象池分配新对象
-		const uint64_t ID = objects.build(Input_Object{});
+		//分配对象编号
+		std::optional<uint64_t> allocation = id_pool.get();
+		//若编号分配失败
+		if (!allocation.has_value())
+		{
+			logger.error("Input_Manager::对象编号分配失败");
+			return;
+		}
+		//记录对象编号
+		const uint64_t ID = allocation.value();
+		//从对象池构建新对象（编号由对象池写入对象）
+		objects.build(ID, Input_Object{});
 		//获取新对象
 		Input_Object* object = object_find(ID);
 		//若对象创建失败
@@ -214,7 +224,7 @@ namespace engine
 		injected_rebuild(name);
 		listening_rebuild(name);
 		//同步对象能力给焦点系统
-		object_state_notify(object->ID());
+		object_state_notify(object->id);
 
 		logger.info("Input_Manager::对象 {} 已重载", name);
 	}
@@ -261,7 +271,7 @@ namespace engine
 		injected_rebuild(name);
 		listening_rebuild(name);
 		//同步对象能力给焦点系统
-		object_state_notify(object->ID());
+		object_state_notify(object->id);
 	}
 
 	//后代收集（先子后父）
@@ -324,6 +334,8 @@ namespace engine
 		name_index.erase(it);
 		//从对象池卸载
 		objects.unload(ID);
+		//回收对象编号
+		id_pool.recycle(ID);
 
 		//子对象移除可能让此前被压制的注入键重新生效
 		if (!host.empty())

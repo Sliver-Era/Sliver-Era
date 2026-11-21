@@ -3,6 +3,8 @@
 #include "Engine/EngineSystem/common/前置头文件包含.h"
 //获取对象池
 #include "Engine/EngineFoundation/src/object/Object_Pool/对象池.h"
+//获取数值池
+#include "Engine/EngineFoundation/src/detail/class/Number_Pool/数值池.h"
 //获取事件终端
 #include "Engine/EngineFoundation/src/event/Event_Terminal/事件终端.h"
 //获取事件类型
@@ -35,8 +37,13 @@ namespace engine
 		//接入标记
 		bool attached = false;
 
-		//映射对象池
-		Object_Pool<Input_Object> objects{};
+		//对象编号分配器
+		Number_Pool<uint64_t> id_pool;
+		//映射对象池（以对象编号为定位键）
+		Object_Pool<Input_Object> objects
+		{
+			[](Input_Object& object) -> uint64_t& { return object.id; }
+		};
 		//对象名 → 对象编号
 		std::unordered_map<std::string, uint64_t> name_index{};
 		//宿主名 → 子对象名集合（按注册顺序）

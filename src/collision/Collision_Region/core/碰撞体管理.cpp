@@ -17,10 +17,28 @@ namespace engine
 	uint64_t Collision_Region::collider_build(void)
 	{
 		//分配碰撞体编号
-		uint64_t collider_ID = ID_allocator.get();
+		std::optional<uint64_t> allocation = ID_allocator.get();
+		//若编号分配失败
+		if (!allocation.has_value())
+		{
+			logger.error("Collision_Region::碰撞体编号分配失败");
+			return 0;
+		}
+		//记录碰撞体编号
+		uint64_t collider_ID = allocation.value();
 		//跳过已被接管的编号（空间间转移会占用本空间的编号）
 		while (mapping.count(collider_ID))
-			collider_ID = ID_allocator.get();
+		{
+			//重新分配编号
+			allocation = ID_allocator.get();
+			//若编号分配失败
+			if (!allocation.has_value())
+			{
+				logger.error("Collision_Region::碰撞体编号分配失败");
+				return 0;
+			}
+			collider_ID = allocation.value();
+		}
 
 		//登记碰撞体
 		Collider& collider = mapping[collider_ID];

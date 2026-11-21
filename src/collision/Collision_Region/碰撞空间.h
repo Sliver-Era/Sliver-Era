@@ -11,8 +11,8 @@
 #include "../Collider/碰撞体.h"
 //获取碰撞空间后端
 #include "backend/空间后端.h"
-//获取数值分配器
-#include "Engine/EngineFoundation/src/detail/class/Number_Pool/数值分配器.h"
+//获取数值池
+#include "Engine/EngineFoundation/src/detail/class/Number_Pool/数值池.h"
 
 namespace engine
 {

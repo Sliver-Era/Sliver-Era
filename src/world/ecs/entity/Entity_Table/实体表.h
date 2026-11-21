@@ -1,8 +1,8 @@
 #pragma once
 //预编译头
 #include "Engine/EngineSystem/common/前置头文件包含.h"
-//获取数值分配器
-#include "Engine/EngineFoundation/src/detail/class/Number_Pool/数值分配器.h"
+//获取数值池
+#include "Engine/EngineFoundation/src/detail/class/Number_Pool/数值池.h"
 //获取实体句柄
 #include "../Entity/实体.h"
 

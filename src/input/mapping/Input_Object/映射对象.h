@@ -1,8 +1,6 @@
 #pragma once
 //预编译头
 #include "Engine/EngineSystem/common/前置头文件包含.h"
-//获取对象基类
-#include "Engine/EngineFoundation/src/object/Object/对象.h"
 //获取事件终端
 #include "Engine/EngineFoundation/src/event/Event_Terminal/事件终端.h"
 //获取输入类型
@@ -17,11 +15,13 @@ namespace engine
 	自身映射表由创建/重载事件写入，注入映射（added_keys）单独存储，
 	监听表只允许引用宿主自身映射表的键位。
 	*/
-	class Input_Object : public Object
+	class Input_Object
 	{
 		//输入管理器友元
 		friend class Input_Manager;
 	public:
+		//对象编号（对象池定位键，由输入管理器分配并写入）
+		uint64_t id = 0;
 		//事件终端
 		Event_Terminal event_terminal;
 	private:

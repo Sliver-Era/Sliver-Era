@@ -3,16 +3,13 @@
 #include "Engine/EngineSystem/common/前置头文件包含.h"
 //获取对象池
 #include "Engine/EngineFoundation/src/object/Object_Pool/对象池.h"
-//获取对象基类
-#include "Engine/EngineFoundation/src/object/Object/对象.h"
 
 //游戏引擎命名空间
 namespace engine
 {
-	//组件类型约束 —— 派生 Object、含可赋值的 owner 字段、可移动
+	//组件类型约束 —— 含可赋值的 owner 字段、可移动
 	template <typename C>
 	concept Component_Type =
-		std::is_base_of_v<Object, C> &&
 		std::is_move_constructible_v<C> &&
 		requires(C& component, const uint32_t& index)
 	{
@@ -48,8 +45,7 @@ namespace engine
 	public:
 		//构造函数
 		explicit Component_Storage_Impl(const uint32_t& mask_bit)
-			: pool(std::function<uint32_t(const C&)>(
-				[](const C& component) { return component.owner; }))
+			: pool([](C& component) -> uint32_t& { return component.owner; })
 			, bit(mask_bit)
 		{}
 		//组件查找 —— 非常量重载
@@ -76,10 +72,8 @@ namespace engine
 			//若目标实体已有同类组件
 			if (find(entity_index) != nullptr)
 				return nullptr;
-			//记录归属实体
-			component.owner = entity_index;
-			//构建组件
-			pool.build(std::move(component));
+			//构建组件（归属实体的定位键由对象池写入）
+			pool.build(entity_index, std::move(component));
 			//返回新增组件
 			return find(entity_index);
 		}

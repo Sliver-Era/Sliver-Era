@@ -1,4 +1,6 @@
 #include "../局部命名空间使用.h"
+//获取日志系统
+#include "Engine/EngineFoundation/src/log/日志系统运行包.h"
 
 //游戏引擎命名空间
 namespace engine
@@ -13,8 +15,16 @@ namespace engine
 	//实体创建
 	Entity Entity_Table::entity_create(void)
 	{
+		//分配可用槽位
+		std::optional<uint32_t> allocation = index_allocator.get();
+		//若槽位分配失败
+		if (!allocation.has_value())
+		{
+			logger.error("Entity_Table::槽位分配失败");
+			return Entity{};
+		}
 		//获取可用槽位
-		uint32_t index = index_allocator.get();
+		uint32_t index = allocation.value();
 		//若槽位不足则扩展到目标槽位（槽位 0 预留，故需覆盖 index 本身）
 		while (index >= records.size())
 			records.push_back({});

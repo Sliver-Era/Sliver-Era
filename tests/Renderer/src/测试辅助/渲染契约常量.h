@@ -16,9 +16,9 @@ namespace byjy_render_test
 	//每实例上传步长（模型矩阵 16 ＋ 材质 4 ＋ 卡通 4 ＋ 暗部色调 4 ＋ PBR 特性 4 浮点 = 128 字节；第 777 轮 112→128）
 	inline constexpr uint64_t INSTANCE_STRIDE_BYTES = 128;
 
-	//初始化后的默认资源计数（默认白纹理 ＋ 默认天空盒 = 2；默认场景 ＋ 外扩描边 ＋ 两条原生 UI 管线 = 4；方向光与聚光阴影目标 = 2）
+	//初始化后的默认资源计数（默认白纹理 ＋ 默认天空盒 = 2；默认场景 ＋ 外扩描边 ＋ 两条原生 UI 管线 ＋ 蒙皮场景管线 = 5；方向光与聚光阴影目标 = 2）
 	inline constexpr uint32_t DEFAULT_TEXTURE_COUNT = 2;
-	inline constexpr uint32_t DEFAULT_PIPELINE_COUNT = 4;
+	inline constexpr uint32_t DEFAULT_PIPELINE_COUNT = 5;
 	inline constexpr uint32_t DEFAULT_RENDER_TARGET_COUNT = 2;
 
 	//前向光照槽上限（点光与聚光共用）

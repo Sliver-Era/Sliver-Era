@@ -19,7 +19,7 @@
 
 - 工作区：`Application/Game/Sliver-Era`
 - 引擎依赖：`Engine/cmake/对外接口.cmake`（聚合面）＋ `Engine/EngineRenderer/cmake/对外接口.cmake`（渲染层）
-- 版本锁：`Engine/版本锁.cmake`，并由工作区 `cmake/引擎版本锁.cmake` 复核；当前值为
+- 版本锁：工作区 `cmake/引擎版本锁.cmake` 固定六条哈希，构建期直接解析到 `Engine/版本缓存/<层>/x64-<配置>/<哈希>/` 的冻结副本；`Engine/版本锁.cmake` 漂移只输出提示，不影响本作构建。当前值为
   - EngineFoundation：Debug `50e8d22be2f8` / Release `1e5ac2f94d4d`
   - EngineSystem：Debug `7949c936f810` / Release `42a7fce2ae2c`
   - EngineRenderer：Debug `0fc5a3d4197a` / Release `4acda0869c5c`

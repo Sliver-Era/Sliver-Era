@@ -791,3 +791,41 @@ TEST(EngineSystem_LevelText_Test, 关卡随机往返)
 		expect_roundtrip(level, name.c_str());
 	}
 }
+
+//骨架 / 动画声明：往返一致，重复声明与缺路径被拒绝（方向十 · 收敛轮 861）
+TEST(EngineSystem_LevelText_Test, 关卡演员声明往返与非法拒绝)
+{
+	//构造含两个演员的关卡
+	engine::Level_Data level;
+	level.name = "演员关卡";
+	engine::Level_Actor first;
+	first.名称 = "hero";
+	first.骨架 = "assets/hero.skeleton";
+	first.动画 = "assets/hero_walk.anim";
+	engine::Level_Actor second;
+	second.名称 = "enemy";
+	second.动画 = "assets/enemy_idle.anim";
+	level.actors = { first, second };
+	ASSERT_TRUE(engine::level_text_write(level, level_utf8("演员.level")));
+
+	//读回逐字段一致
+	engine::Level_Data loaded;
+	ASSERT_TRUE(engine::level_text_read(level_utf8("演员.level"), loaded));
+	ASSERT_EQ(loaded.actors.size(), 2u);
+	EXPECT_EQ(loaded.actors[0].名称, "hero");
+	EXPECT_EQ(loaded.actors[0].骨架, "assets/hero.skeleton");
+	EXPECT_EQ(loaded.actors[0].动画, "assets/hero_walk.anim");
+	EXPECT_EQ(loaded.actors[1].名称, "enemy");
+	EXPECT_TRUE(loaded.actors[1].骨架.empty());
+	EXPECT_EQ(loaded.actors[1].动画, "assets/enemy_idle.anim");
+
+	//同一演员重复声明同一字段
+	write_text(level_wide("重复演员.level"),
+		"level 重复\nskeleton hero a.json\nskeleton hero b.json\n");
+	engine::Level_Data rejected;
+	EXPECT_FALSE(engine::level_text_read(level_utf8("重复演员.level"), rejected));
+
+	//缺路径
+	write_text(level_wide("缺路径演员.level"), "level 缺路径\nanim hero\n");
+	EXPECT_FALSE(engine::level_text_read(level_utf8("缺路径演员.level"), rejected));
+}

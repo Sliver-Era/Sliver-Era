@@ -39,6 +39,29 @@ namespace
 		return item;
 	}
 
+	//构建骨骼模块事件
+	std::shared_ptr<engine::Event> skeleton_module_event(const std::string& tag,
+		const nlohmann::json& config)
+	{
+		return std::make_shared<engine::Event>("", "", "Skeleton", tag, config);
+	}
+
+	//查找指定标签的结果事件
+	bool skeleton_result_find(const std::vector<std::shared_ptr<engine::Event>>& events,
+		const std::string& tag, std::shared_ptr<engine::Event>& receiver)
+	{
+		//逐条检查
+		for (const std::shared_ptr<engine::Event>& evt : events)
+		{
+			if (evt->category == "Skeleton" && evt->tag == tag)
+			{
+				receiver = evt;
+				return true;
+			}
+		}
+		return false;
+	}
+
 	//碰撞结果中是否包含指定碰撞对
 	bool skeleton_pair_found(const std::vector<engine::Collision_Detail>& details,
 		const uint64_t first, const uint64_t second)
@@ -309,4 +332,120 @@ TEST_F(Skeleton_Test, 子骨骼旋转事件驱动部件碰撞)
 		proxy.region_detect("部件空间");
 	ASSERT_TRUE(moved.has_value());
 	EXPECT_TRUE(skeleton_pair_found(*moved, collider_A, collider_B));
+}
+
+//事件命令：资产、演员与姿态全链路
+TEST_F(Skeleton_Test, 事件命令驱动资产演员与姿态)
+{
+	//捕获发送事件与接入入口
+	std::vector<std::shared_ptr<engine::Event>> sent;
+	std::function<void(std::shared_ptr<engine::Event>)> entry;
+	skeleton.event_terminal->bind(engine::Port_ID::Evt_Sender,
+		[&sent](std::shared_ptr<engine::Event> evt) { sent.push_back(evt); });
+	skeleton.event_terminal->bind(engine::Port_ID::Broker_Attacher,
+		[&entry](auto&&, auto&&, auto&& event_entry) { entry = event_entry; });
+	//绑定存储并接入
+	skeleton.store_bind(store);
+	skeleton.attach();
+	ASSERT_TRUE(static_cast<bool>(entry));
+	//排除接入时的订阅登记事件
+	sent.clear();
+
+	//经事件加载资产
+	std::string path = skeleton_asset_write("事件命令资产.json", skeleton_two_bone_json());
+	nlohmann::json load_config;
+	load_config["path"] = path;
+	load_config["request_ID"] = 7;
+	entry(skeleton_module_event("AssetLoad", load_config));
+
+	//资产加载结果
+	std::shared_ptr<engine::Event> load_result;
+	ASSERT_TRUE(skeleton_result_find(sent, "AssetLoadResult", load_result));
+	EXPECT_TRUE(load_result->config["success"].get<bool>());
+	EXPECT_EQ(load_result->config["request_ID"].get<uint64_t>(), 7u);
+	const uint32_t asset_ID = load_result->config["asset_ID"].get<uint32_t>();
+	ASSERT_NE(asset_ID, 0u);
+
+	//经事件挂载演员
+	engine::Entity entity = store.entity_create();
+	nlohmann::json attach_config;
+	attach_config["entity"] = entity.value;
+	attach_config["asset_ID"] = asset_ID;
+	attach_config["collider_ID"] = 600;
+	sent.clear();
+	entry(skeleton_module_event("Attach", attach_config));
+	ASSERT_NE(store.component_get<engine::Skeleton_Pose>(entity), nullptr);
+	ASSERT_NE(store.component_get<engine::Skeleton_Link>(entity), nullptr);
+
+	//经事件写入姿态并求值
+	nlohmann::json set_config;
+	set_config["entity"] = entity.value;
+	set_config["bone"] = 0;
+	set_config["translation"] = nlohmann::json::array({ 2.0, 0.0, 0.0 });
+	set_config["rotation"] = nlohmann::json::array({ 0.0, 0.0, 0.0, 1.0 });
+	entry(skeleton_module_event("BoneLocalSet", set_config));
+	nlohmann::json update_config;
+	update_config["request_ID"] = 9;
+	entry(skeleton_module_event("FrameUpdate", update_config));
+
+	//世界矩阵已更新
+	float world[16] = {};
+	ASSERT_TRUE(skeleton.pose_matrix_get(store, entity, 0, world));
+	EXPECT_TRUE(skeleton_float_near(world[12], 2.0f));
+
+	//经事件关闭运动输出
+	nlohmann::json output_config;
+	output_config["enabled"] = false;
+	entry(skeleton_module_event("EventOutput", output_config));
+
+	//经事件复位并求值，不应产生运动事件
+	nlohmann::json reset_config;
+	reset_config["entity"] = entity.value;
+	sent.clear();
+	entry(skeleton_module_event("PoseReset", reset_config));
+	entry(skeleton_module_event("FrameUpdate", nlohmann::json::object()));
+	//不应出现运动事件
+	bool motion_found = false;
+	for (const std::shared_ptr<engine::Event>& evt : sent)
+	{
+		if (evt->category == "Collision" && evt->tag == "ColliderMotion")
+			motion_found = true;
+	}
+	EXPECT_FALSE(motion_found);
+
+	//经事件卸载演员
+	nlohmann::json detach_config;
+	detach_config["entity"] = entity.value;
+	entry(skeleton_module_event("Detach", detach_config));
+	EXPECT_EQ(store.component_get<engine::Skeleton_Pose>(entity), nullptr);
+	EXPECT_EQ(store.component_get<engine::Skeleton_Link>(entity), nullptr);
+}
+
+//事件命令：未绑定存储时演员指令回告失败
+TEST_F(Skeleton_Test, 未绑定存储时演员指令回告失败)
+{
+	//捕获发送事件与接入入口
+	std::vector<std::shared_ptr<engine::Event>> sent;
+	std::function<void(std::shared_ptr<engine::Event>)> entry;
+	skeleton.event_terminal->bind(engine::Port_ID::Evt_Sender,
+		[&sent](std::shared_ptr<engine::Event> evt) { sent.push_back(evt); });
+	skeleton.event_terminal->bind(engine::Port_ID::Broker_Attacher,
+		[&entry](auto&&, auto&&, auto&& event_entry) { entry = event_entry; });
+	//只接入，不绑定存储
+	skeleton.attach();
+	ASSERT_TRUE(static_cast<bool>(entry));
+	sent.clear();
+
+	//演员挂载指令
+	nlohmann::json attach_config;
+	attach_config["entity"] = store.entity_create().value;
+	attach_config["asset_ID"] = 1;
+	attach_config["request_ID"] = 11;
+	entry(skeleton_module_event("Attach", attach_config));
+
+	//回告失败
+	std::shared_ptr<engine::Event> result;
+	ASSERT_TRUE(skeleton_result_find(sent, "ActionResult", result));
+	EXPECT_FALSE(result->config["success"].get<bool>());
+	EXPECT_EQ(result->config["request_ID"].get<uint64_t>(), 11u);
 }

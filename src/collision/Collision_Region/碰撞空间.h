@@ -31,11 +31,6 @@ namespace engine
 		Region_Backend backend{};
 		//碰撞体映射
 		std::unordered_map<uint64_t, Collider> mapping;
-		/*
-		运动事件读取回调（返回false表示该编号尚无运动事件）
-		由碰撞代理器注入，用于在更新碰撞体位置时重读最新运动事件。
-		*/
-		std::function<bool(uint64_t, Motion_Event&)> motion_reader;
 		//跨越状态记录（键为碰撞体编号，记录上一次判定所得的跨越状态）
 		std::unordered_map<uint64_t, Cross_State> cross_states;
 		//跨越状态失效集合（几何重建等变更后须强制重算）
@@ -100,8 +95,8 @@ namespace engine
 		bool collider_part_count_get(uint64_t collider_ID, uint32_t& receiver) const;
 		//碰撞体子部件编号存在性检查
 		bool collider_part_exists(uint64_t collider_ID, uint16_t part_ID) const;
-		//运动事件读取回调注入(由碰撞代理器注入)
-		void motion_reader_set(std::function<bool(uint64_t, Motion_Event&)> reader);
+		//运动量设置(仅由载荷事件更新；未收到新事件时沿用本次设置)
+		bool collider_motion_set(uint64_t collider_ID, const Motion_Event& event);
 		//碰撞体位移频率设置(作用频率与生效计时随碰撞体保存于本空间，登记时重新起算生效计时)
 		bool collider_frequency_set(uint64_t collider_ID, uint64_t frequency);
 

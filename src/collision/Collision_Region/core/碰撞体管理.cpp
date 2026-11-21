@@ -236,6 +236,27 @@ namespace engine
 		return true;
 	}
 
+	//运动量设置(仅由载荷事件更新；未收到新事件时沿用本次设置)
+	bool Collision_Region::collider_motion_set(uint64_t collider_ID, const Motion_Event& event)
+	{
+		//查找目标碰撞体
+		Collider* target = collider_seek(collider_ID);
+		//若目标碰撞体不存在
+		if (!target)
+		{
+			logger.warn("Collision_Region::待设置运动的碰撞体({})不存在", collider_ID);
+			return false;
+		}
+
+		//写入整体运动与部件运动总量
+		target->motion = event.body;
+		target->part_motions = event.parts;
+		//清零本帧施加量(待下次检测按作用频率重新拆分)
+		target->motion_step = Motion();
+		target->part_motion_steps.clear();
+		return true;
+	}
+
 	//碰撞体查询
 	bool Collision_Region::collider_find(uint64_t collider_id) const
 	{

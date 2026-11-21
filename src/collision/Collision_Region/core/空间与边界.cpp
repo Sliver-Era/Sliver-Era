@@ -47,12 +47,6 @@ namespace engine
 		return is_active;
 	}
 
-	//运动事件读取回调注入(由碰撞代理器注入)
-	void Collision_Region::motion_reader_set(std::function<bool(uint64_t, Motion_Event&)> reader)
-	{
-		motion_reader = std::move(reader);
-	}
-
 	//边界构建
 	bool Collision_Region::boundary_build(const string& mesh_path)
 	{

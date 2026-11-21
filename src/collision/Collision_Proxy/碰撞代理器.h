@@ -7,6 +7,8 @@
 #include "Engine/EngineSystem/common/runtime/逻辑帧.h"
 //获取自有几何类型
 #include "../Common/几何类型.h"
+//获取运动量类型
+#include "../Common/运动类型.h"
 //获取碰撞空间系统运行包
 #include "../碰撞系统运行包.h"
 //获取碰撞代理后端
@@ -23,10 +25,19 @@ namespace engine
 		//模块名称（事件中转站登记名与事件发送者标识）
 		inline static const std::string module_name = "Collision_Proxy";
 
+		//运动登记（解析后的运动事件与作用频率，仅随新载荷事件更新）
+		struct Motion_Record
+		{
+			//运动事件（整体运动 ＋ 部件运动）
+			Motion_Event event;
+			//运动作用频率
+			uint64_t frequency = 0;
+		};
+
 		//空间与编号编排后端
 		Proxy_Backend backend;
-		//运动事件保存（键为碰撞体编号，同编号的新事件覆盖旧事件）
-		std::unordered_map<uint64_t, nlohmann::json> motion_events;
+		//运动登记保存（键为碰撞体编号，同编号的新事件覆盖旧事件）
+		std::unordered_map<uint64_t, Motion_Record> motion_records;
 		//简略碰撞结果事件开关（键为空间名称；未登记时默认开启）
 		std::unordered_map<std::string, bool> event_output;
 	public:
@@ -83,10 +94,14 @@ namespace engine
 		void collider_config_apply(const std::string& region, uint64_t collider_ID,
 			const nlohmann::json& config);
 
-		//运动事件登记（保存运动事件配置，同编号的新事件覆盖旧事件）
+		//运动事件登记（解析后保存，并下发到持有该编号的碰撞空间）
 		void motion_register(const nlohmann::json& config);
-		//运动量查询（供碰撞空间在更新位置时读取最新运动事件）
-		bool motion_seek(const uint64_t collider_ID, Motion_Event& receiver) const;
+		//运动量下发（把已登记的运动量写入碰撞空间）
+		void motion_apply(const uint64_t collider_ID) const;
+		//运动频率下发（把已登记的作用频率写入碰撞空间）
+		void motion_frequency_apply(const uint64_t collider_ID) const;
+		//运动登记清除（丢弃登记并清空碰撞空间内的运动）
+		void motion_clear(const uint64_t collider_ID);
 
 		//事件发布
 		bool event_publish(const std::string& tag, const nlohmann::json& payload);

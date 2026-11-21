@@ -201,37 +201,80 @@ namespace engine
 			frequency = 0;
 		}
 
-		//保存运动事件（同编号的新事件覆盖旧事件，待生效帧重读）
-		motion_events[collider_ID] = config;
-		//下发作用频率（频率与生效计时随碰撞体保存于碰撞空间，并重新起算生效计时）
-		backend.collider_set_dispatch(collider_ID, [collider_ID, frequency](
+		//运动登记（仅随新载荷事件更新）
+		Motion_Record record;
+		//写入整体运动
+		record.event.body = motion;
+		//写入部件运动
+		record.event.parts = std::move(parts);
+		//写入作用频率
+		record.frequency = frequency;
+		//保存运动登记（同编号的新事件覆盖旧事件）
+		motion_records[collider_ID] = std::move(record);
+
+		//已保存的运动登记（下发期间保持有效）
+		const Motion_Record& saved = motion_records[collider_ID];
+		//下发到持有该编号的碰撞空间
+		backend.collider_set_dispatch(collider_ID, [collider_ID, &saved](
 			Collision_Region& region)
+			{
+				//先设置作用频率（重新起算生效计时并清零本帧施加量）
+				bool frequency_set = region.collider_frequency_set(collider_ID, saved.frequency);
+				//再写入运动量
+				bool motion_set = region.collider_motion_set(collider_ID, saved.event);
+				return frequency_set && motion_set;
+			});
+	}
+
+	//运动量下发（把已登记的运动量写入碰撞空间）
+	void Collision_Proxy::motion_apply(const uint64_t collider_ID) const
+	{
+		//查找运动登记
+		auto it = motion_records.find(collider_ID);
+		//未登记时无需下发
+		if (it == motion_records.end())
+			return;
+
+		//已登记的运动事件
+		const Motion_Event& event = it->second.event;
+		//下发到持有该编号的碰撞空间
+		backend.collider_set_dispatch(collider_ID, [collider_ID, &event](Collision_Region& region)
+			{
+				return region.collider_motion_set(collider_ID, event);
+			});
+	}
+
+	//运动频率下发（把已登记的作用频率写入碰撞空间）
+	void Collision_Proxy::motion_frequency_apply(const uint64_t collider_ID) const
+	{
+		//查找运动登记
+		auto it = motion_records.find(collider_ID);
+		//未登记时无需下发
+		if (it == motion_records.end())
+			return;
+
+		//已登记的作用频率
+		const uint64_t frequency = it->second.frequency;
+		//下发到持有该编号的碰撞空间
+		backend.collider_set_dispatch(collider_ID, [collider_ID, frequency](Collision_Region& region)
 			{
 				return region.collider_frequency_set(collider_ID, frequency);
 			});
 	}
 
-	//运动量查询（供碰撞空间在更新位置时读取最新运动事件）
-	bool Collision_Proxy::motion_seek(const uint64_t collider_ID, Motion_Event& receiver) const
+	//运动登记清除（丢弃登记并清空碰撞空间内的运动）
+	void Collision_Proxy::motion_clear(const uint64_t collider_ID)
 	{
-		//查找该编号的运动事件
-		auto it = motion_events.find(collider_ID);
-		//若该编号尚无运动事件
-		if (it == motion_events.end())
-			return false;
-
-		//运动事件
-		Motion_Event event;
-		//读取整体运动（缺省为零运动）
-		if (it->second.contains(collision_event::field_motion) &&
-			!motion_read(it->second[collision_event::field_motion], event.body))
-			return false;
-		//读取部件运动
-		if (it->second.contains(collision_event::field_parts) &&
-			!parts_read(it->second[collision_event::field_parts], event.parts))
-			return false;
-
-		receiver = std::move(event);
-		return true;
+		//丢弃运动登记
+		motion_records.erase(collider_ID);
+		//下发空运动并清零作用频率
+		backend.collider_set_dispatch(collider_ID, [collider_ID](Collision_Region& region)
+			{
+				//清零作用频率（同时清零本帧施加量）
+				bool frequency_clear = region.collider_frequency_set(collider_ID, 0);
+				//写入空运动
+				bool motion_reset = region.collider_motion_set(collider_ID, Motion_Event());
+				return frequency_clear && motion_reset;
+			});
 	}
 }

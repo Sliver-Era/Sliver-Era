@@ -26,35 +26,19 @@ namespace engine
 		uint64_t frame_rate = Logics::logic_frames_get();
 
 		//---------- 运动生效门控：按逻辑帧间隔决定本帧是否施加运动 ----------
-		for (auto& [collider_ID, collider] : mapping)
+		for (auto& record : mapping)
 		{
+			//本记录内的碰撞体
+			Collider& collider = record.second;
 			//运动作用频率
 			uint64_t frequency = collider.motion_frequency;
 			/*
-			未配置频率或帧率不可用时按旧行为处理
-			即每次检测都重读最新运动事件并施加全量运动。
+			未配置频率或帧率不可用时每次检测施加全量运动
+			运动量只由新载荷事件写入，未收到新事件时沿用上次运动。
 			*/
 			if (frequency == 0 || frame_rate == 0)
 			{
-				//运动事件读取回调已注入时重读最新运动事件
-				if (motion_reader)
-				{
-					//运动事件
-					Motion_Event event;
-					//若该编号存在运动事件则重读事件配置内的整体与部件运动
-					if (motion_reader(collider_ID, event))
-					{
-						collider.motion = event.body;
-						collider.part_motions = std::move(event.parts);
-					}
-					//无运动事件即停止运动（事件被撤销后不得沿用旧运动）
-					else
-					{
-						collider.motion = Motion();
-						collider.part_motions.clear();
-					}
-				}
-				//本帧施加量即运动量本身
+				//本帧施加量即已登记的运动总量
 				collider.motion_step = collider.motion;
 				//部件运动直接按周期总量施加
 				collider.part_motion_steps = collider.part_motions;
@@ -63,7 +47,7 @@ namespace engine
 
 			//帧间隔（逻辑帧率按因数整除作用频率）
 			uint64_t interval = frame_rate / frequency;
-			//未达帧间隔时对运动量不做任何操作（含不重读外界的运动更新）
+			//未达帧间隔时本帧不施加运动
 			if (frame_now - collider.motion_frame < interval)
 			{
 				collider.motion_step = Motion();
@@ -73,24 +57,6 @@ namespace engine
 
 			//记录本次生效的逻辑帧序号
 			collider.motion_frame = frame_now;
-			//生效帧重读运动事件（暂存的最新配置至此生效）
-			if (motion_reader)
-			{
-				//运动事件
-				Motion_Event event;
-				//若该编号存在运动事件则重读事件配置内的整体与部件运动
-				if (motion_reader(collider_ID, event))
-				{
-					collider.motion = event.body;
-					collider.part_motions = std::move(event.parts);
-				}
-				//无运动事件即停止运动（事件被撤销后不得沿用旧运动）
-				else
-				{
-					collider.motion = Motion();
-					collider.part_motions.clear();
-				}
-			}
 			//本帧施加量为一个周期总运动的作用频率分之一
 			collider.motion_step = collider.motion / static_cast<Scalar>(frequency);
 			//部件运动同样按作用频率拆分

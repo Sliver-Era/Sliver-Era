@@ -23,9 +23,6 @@ namespace engine
 		Proxy_Backend(const Proxy_Backend&) = delete;
 		Proxy_Backend& operator=(const Proxy_Backend&) = delete;
 
-		//运动读取回调绑定（新建空间时自动注入）
-		void motion_reader_bind(std::function<bool(uint64_t, Motion_Event&)> reader);
-
 		//碰撞空间构建
 		bool region_build(const std::string& region);
 		//碰撞空间卸载
@@ -61,8 +58,6 @@ namespace engine
 		编号由各碰撞空间自行分配，同一编号可被不同空间分别持有，故使用多重映射。
 		*/
 		std::unordered_multimap<uint64_t, std::string> collider_mapping;
-		//运动事件读取回调
-		std::function<bool(uint64_t, Motion_Event&)> motion_reader;
 
 		//碰撞体编号登记
 		void collider_mapping_link(const uint64_t collider_ID, const std::string& region);

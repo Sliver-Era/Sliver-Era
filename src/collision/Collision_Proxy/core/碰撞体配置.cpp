@@ -58,33 +58,29 @@ namespace engine
 				if (target->collider_set(geometry))
 				{
 					/*
-					按子部件编号保留运动登记
+					按子部件编号裁剪运动登记
 					几何重建后已消失的子部件编号不再有效，仅保留仍存在的编号；
 					整体运动不受几何重建影响。
 					*/
-					auto motion_it = motion_events.find(collider_ID);
-					if (motion_it != motion_events.end() &&
-						motion_it->second.contains(collision_event::field_parts) &&
-						motion_it->second[collision_event::field_parts].is_array())
+					auto motion_it = motion_records.find(collider_ID);
+					if (motion_it != motion_records.end())
 					{
-						//保留的部件运动条目
-						nlohmann::json kept = nlohmann::json::array();
-						//逐条检查子部件编号
-						for (const nlohmann::json& item : motion_it->second[collision_event::field_parts])
+						//保留的部件运动
+						std::vector<Part_Motion> kept;
+						//预留容量
+						kept.reserve(motion_it->second.event.parts.size());
+						//逐个检查子部件编号
+						for (const Part_Motion& part_motion : motion_it->second.event.parts)
 						{
-							//子部件编号
-							uint64_t part = 0;
-							//无法读取或编号不存在则丢弃
-							if (!number_read(item, collision_event::field_part, part) ||
-								!target->collider_part_exists(collider_ID,
-									static_cast<uint16_t>(part)))
-								continue;
-							//保留该条目
-							kept.push_back(item);
+							//子部件仍存在则保留
+							if (target->collider_part_exists(collider_ID, part_motion.part))
+								kept.push_back(part_motion);
 						}
-						//写回保留结果
-						motion_it->second[collision_event::field_parts] = std::move(kept);
+						//写回裁剪结果
+						motion_it->second.event.parts = std::move(kept);
 					}
+					//把运动登记重新下发（部件集合与重建后的几何对齐）
+					motion_apply(collider_ID);
 				}
 				else
 					logger.warn("Collision_Proxy::碰撞体({})几何体设置失败", collider_ID);
@@ -118,16 +114,17 @@ namespace engine
 				*/
 				if (detection_mode.step_length == 0)
 				{
-					//运动事件
-					Motion_Event motion_event;
+					//查找运动登记
+					auto motion_it = motion_records.find(collider_ID);
 					//若登记存在且含旋转或部件运动
-					if (motion_seek(collider_ID, motion_event) &&
-						(!motion_event.body.rotation.identity_check() ||
-							!motion_event.parts.empty()))
+					if (motion_it != motion_records.end() &&
+						(!motion_it->second.event.body.rotation.identity_check() ||
+							!motion_it->second.event.parts.empty()))
 					{
 						logger.warn("Collision_Proxy::碰撞体({})离散步长归零，已清除含旋转或部件运动的登记",
 							collider_ID);
-						motion_events.erase(collider_ID);
+						//丢弃登记并清空碰撞空间内的运动
+						motion_clear(collider_ID);
 					}
 				}
 			}

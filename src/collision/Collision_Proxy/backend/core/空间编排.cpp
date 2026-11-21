@@ -12,12 +12,6 @@ namespace engine
 	//析构函数
 	Proxy_Backend::~Proxy_Backend() = default;
 
-	//运动读取回调绑定
-	void Proxy_Backend::motion_reader_bind(std::function<bool(uint64_t, Motion_Event&)> reader)
-	{
-		motion_reader = std::move(reader);
-	}
-
 	//碰撞空间构建
 	bool Proxy_Backend::region_build(const string& region)
 	{
@@ -37,9 +31,6 @@ namespace engine
 			return false;
 		}
 
-		//注入运动读取回调（碰撞空间更新位置时向代理后端重读运动事件）
-		if (motion_reader)
-			regions[region]->motion_reader_set(motion_reader);
 		return true;
 	}
 

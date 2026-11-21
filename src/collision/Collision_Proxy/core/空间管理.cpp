@@ -8,11 +8,6 @@ namespace engine
 	{
 		//生成事件发送权限密钥
 		acl_key = event_terminal.key().value();
-		//绑定运动读取回调（碰撞空间更新位置时向本代理器重读运动事件）
-		backend.motion_reader_bind([this](const uint64_t collider_ID, Motion_Event& receiver)
-			{
-				return this->motion_seek(collider_ID, receiver);
-			});
 	}
 
 	//碰撞空间构建
@@ -24,11 +19,22 @@ namespace engine
 	//碰撞空间卸载
 	bool Collision_Proxy::region_unload(const string& region)
 	{
+		//卸载前登记该空间持有的碰撞体编号
+		vector<uint64_t> collider_IDs = backend.region_colliders(region);
 		//卸载碰撞空间
 		if (!backend.region_unload(region))
 			return false;
 		//清空该空间的结果事件开关登记
 		event_output.erase(region);
+		//丢弃已无空间持有的运动登记（避免编号回收后被新碰撞体继承）
+		for (const uint64_t collider_ID : collider_IDs)
+		{
+			//归属空间名称
+			string owner;
+			//若该编号已无任何空间持有则丢弃运动登记
+			if (!backend.collider_owner_seek(collider_ID, owner))
+				motion_records.erase(collider_ID);
+		}
 		return true;
 	}
 

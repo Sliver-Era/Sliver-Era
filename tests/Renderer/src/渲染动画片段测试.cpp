@@ -37,6 +37,68 @@ TEST_F(Renderer_Animation_Clip_Test, 空片段不合法)
 	EXPECT_FALSE(engine::animation_clip_valid(clip));
 }
 
+//事件合法性：负时间 / 空名 / 时间倒序均拒绝
+TEST_F(Renderer_Animation_Clip_Test, 事件合法性)
+{
+	engine::Animation_Clip clip;
+	clip.duration = 1.0f;
+	clip.tracks.push_back(translation_track());
+	//空事件表合法
+	EXPECT_TRUE(engine::animation_events_valid(clip));
+	//正常两项
+	clip.events = { { 0.25f, "step" }, { 0.25f, "sound" } };
+	EXPECT_TRUE(engine::animation_events_valid(clip));
+	EXPECT_TRUE(engine::animation_clip_valid(clip));
+	//负时间
+	clip.events = { { -0.1f, "step" } };
+	EXPECT_FALSE(engine::animation_events_valid(clip));
+	EXPECT_FALSE(engine::animation_clip_valid(clip));
+	//空名称
+	clip.events = { { 0.1f, "" } };
+	EXPECT_FALSE(engine::animation_events_valid(clip));
+	//时间倒序
+	clip.events = { { 0.5f, "a" }, { 0.2f, "b" } };
+	EXPECT_FALSE(engine::animation_events_valid(clip));
+}
+
+//非循环区间收集：左闭右开
+TEST_F(Renderer_Animation_Clip_Test, 事件区间收集非循环)
+{
+	engine::Animation_Clip clip;
+	clip.duration = 1.0f;
+	clip.tracks.push_back(translation_track());
+	clip.events = { { 0.1f, "a" }, { 0.5f, "b" }, { 0.9f, "c" } };
+	std::vector<const engine::Animation_Event*> hits;
+	ASSERT_TRUE(engine::animation_events_collect(clip, 0.1f, 0.9f, false, hits));
+	ASSERT_EQ(hits.size(), 2u);
+	EXPECT_EQ(hits[0]->name, "a");
+	EXPECT_EQ(hits[1]->name, "b");
+	//空区间与逆序区间拒绝
+	std::vector<const engine::Animation_Event*> none;
+	EXPECT_FALSE(engine::animation_events_collect(clip, 0.5f, 0.5f, false, none));
+	EXPECT_FALSE(engine::animation_events_collect(clip, 0.8f, 0.2f, false, none));
+	EXPECT_TRUE(none.empty());
+}
+
+//循环区间收集：跨末尾按「尾段 → 头段」
+TEST_F(Renderer_Animation_Clip_Test, 事件区间收集循环回绕)
+{
+	engine::Animation_Clip clip;
+	clip.duration = 1.0f;
+	clip.tracks.push_back(translation_track());
+	clip.events = { { 0.05f, "head" }, { 0.5f, "mid" }, { 0.95f, "tail" } };
+	std::vector<const engine::Animation_Event*> hits;
+	//0.9 → 1.1：先 0.95（tail），再回绕到 0.05（head）
+	ASSERT_TRUE(engine::animation_events_collect(clip, 0.9f, 1.1f, true, hits));
+	ASSERT_EQ(hits.size(), 2u);
+	EXPECT_EQ(hits[0]->name, "tail");
+	EXPECT_EQ(hits[1]->name, "head");
+	//区间长于整段：全部事件按序命中一次
+	std::vector<const engine::Animation_Event*> all;
+	ASSERT_TRUE(engine::animation_events_collect(clip, 0.0f, 2.0f, true, all));
+	EXPECT_EQ(all.size(), 3u);
+}
+
 //轨道按骨骼名与通道查找，错名或错通道返回空
 TEST_F(Renderer_Animation_Clip_Test, 轨道按骨骼名与通道查找)
 {

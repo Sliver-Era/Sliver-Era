@@ -303,3 +303,36 @@ TEST_F(Renderer_Animation_Assembly_Test, 非法切换拒绝)
 	EXPECT_EQ(scene.actors[0].blend_from, nullptr);
 	engine::level_bridge_unload(renderer, scene);
 }
+
+//演员事件查询：循环跨末尾按尾段 → 头段，未知演员与无事件片段返回假
+TEST_F(Renderer_Animation_Assembly_Test, 演员事件区间查询)
+{
+	//带事件的片段（根平移 0 → 10，事件在 0.05 与 0.95）
+	write_text(std::string(TEST_DIR) + "skeleton.json", skeleton_json());
+	write_text(std::string(TEST_DIR) + "event.anim",
+		R"({"name":"evt","duration":1.0,"tracks":[{"bone":"root","channel":"translation",
+			"keys":[{"time":0.0,"value":[0,0,0]},{"time":1.0,"value":[10,0,0]}]}],
+			"events":[{"time":0.05,"name":"开场"},{"time":0.95,"name":"收束"}]})");
+	write_text(std::string(TEST_DIR) + "level.txt",
+		"level 事件\ncamera position 0 1 3\nskeleton 甲 skeleton.json\nanim 甲 event.anim\n");
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	engine::Level_Data level;
+	engine::Asset_Scene scene;
+	ASSERT_TRUE(engine::level_bridge_load(renderer, level, scene, std::string(TEST_DIR) + "level.txt"));
+	ASSERT_EQ(scene.actors.size(), 1u);
+	ASSERT_NE(scene.actors[0].clip, nullptr);
+	ASSERT_EQ(scene.actors[0].clip->events.size(), 2u);
+
+	//0.9 → 1.1 循环：先收束（0.95），再开场（0.05）
+	std::vector<std::string> names;
+	ASSERT_TRUE(engine::level_bridge_animation_events(scene, "甲", 0.9f, 1.1f, true, names));
+	ASSERT_EQ(names.size(), 2u);
+	EXPECT_EQ(names[0], "收束");
+	EXPECT_EQ(names[1], "开场");
+	//未知演员
+	std::vector<std::string> unknown;
+	EXPECT_FALSE(engine::level_bridge_animation_events(scene, "乙", 0.0f, 1.0f, false, unknown));
+	EXPECT_TRUE(unknown.empty());
+	engine::level_bridge_unload(renderer, scene);
+}

@@ -201,6 +201,14 @@ target_sources(EngineSystem PRIVATE
     "src/world/ecs/command/Command_Buffer/core/命令缓冲.cpp"
     "src/world/ecs/entity/Entity_Table/core/实体表.cpp"
     "src/world/ecs/storage/Store/core/存储.cpp"
+    "src/world/skeleton/Skeleton_Asset/core/骨骼资产.cpp"
+    "src/world/skeleton/Skeleton_Link/core/骨骼链接.cpp"
+    "src/world/skeleton/Skeleton_Pose/core/骨骼姿态.cpp"
+    "src/world/skeleton/Skeleton_System/core/姿态查询.cpp"
+    "src/world/skeleton/Skeleton_System/core/姿态求值.cpp"
+    "src/world/skeleton/Skeleton_System/core/挂载管理.cpp"
+    "src/world/skeleton/Skeleton_System/core/资产登记.cpp"
+    "src/world/skeleton/Skeleton_System/core/部件驱动.cpp"
 )
 
 # 头文件不参与编译，只为让 IDE 建立文件索引；同样经 target_sources 列出，
@@ -256,4 +264,14 @@ target_sources(EngineSystem PRIVATE
     "src/world/ecs/storage/Component/组件存储.h"
     "src/world/ecs/storage/Store/存储.h"
     "src/world/ecs/storage/Store/局部命名空间使用.h"
+    "src/world/skeleton/Common/骨骼数学.h"
+    "src/world/skeleton/Skeleton_Asset/局部命名空间使用.h"
+    "src/world/skeleton/Skeleton_Asset/骨骼资产.h"
+    "src/world/skeleton/Skeleton_Link/局部命名空间使用.h"
+    "src/world/skeleton/Skeleton_Link/骨骼链接.h"
+    "src/world/skeleton/Skeleton_Pose/局部命名空间使用.h"
+    "src/world/skeleton/Skeleton_Pose/骨骼姿态.h"
+    "src/world/skeleton/Skeleton_System/局部命名空间使用.h"
+    "src/world/skeleton/Skeleton_System/骨骼系统.h"
+    "src/world/skeleton/骨骼系统运行包.h"
 )

@@ -82,6 +82,193 @@ TEST_F(Collision_Proxy_Test, 碰撞体镜像与转移)
 	EXPECT_FALSE(proxy.collider_transfer(*source_ID + 100, "空间乙"));
 }
 
+//碰撞代理器：转移携带检测方式与豁免标记
+TEST_F(Collision_Proxy_Test, 转移携带检测方式与豁免标记)
+{
+	//已发送事件集合
+	std::vector<std::shared_ptr<engine::Event>> sent;
+	//接入入口接到的接收通道
+	std::function<void(std::shared_ptr<engine::Event>)> entry;
+
+	//注册发送通道与接入入口
+	proxy.event_terminal->bind(engine::Port_ID::Evt_Sender,
+		[&sent](std::shared_ptr<engine::Event> evt) { sent.push_back(evt); });
+	proxy.event_terminal->bind(engine::Port_ID::Broker_Attacher,
+		[&entry](auto&&, auto&&, auto&& event_entry) { entry = event_entry; });
+	proxy.attach();
+	ASSERT_TRUE(static_cast<bool>(entry));
+	sent.clear();
+
+	//构建源空间与目标空间
+	ASSERT_TRUE(proxy.region_build("转移源"));
+	ASSERT_TRUE(proxy.region_build("转移目标"));
+
+	//源碰撞体：原点盒体
+	std::optional<uint64_t> source_ID = proxy.collider_build("转移源");
+	ASSERT_TRUE(source_ID.has_value());
+	nlohmann::json set_source = collider_payload("转移源", *source_ID);
+	set_source["geometry"] = box_config(*source_ID, 0.0);
+	set_source["geometry"].erase("collider_ID");
+	entry(make_event("ColliderSet", set_source));
+
+	//源碰撞体启用扫掠并设置豁免组
+	engine::Detection_Mode swept_mode;
+	swept_mode.is_swept_volume = true;
+	swept_mode.step_length = 1;
+	ASSERT_TRUE(proxy.collider_set(*source_ID, swept_mode));
+	ASSERT_TRUE(proxy.collider_set(*source_ID, static_cast<uint64_t>(5)));
+
+	//目标空间先占用编号一再释放，确保转移接管的编号一可用
+	std::optional<uint64_t> placeholder = proxy.collider_build("转移目标");
+	ASSERT_TRUE(placeholder.has_value());
+	//目标静态碰撞体（编号二，位于正四，豁免组零）
+	std::optional<uint64_t> static_ID = proxy.collider_build("转移目标");
+	ASSERT_TRUE(static_ID.has_value());
+	nlohmann::json set_static = collider_payload("转移目标", *static_ID);
+	set_static["geometry"] = box_config(*static_ID, 4.0);
+	set_static["geometry"].erase("collider_ID");
+	entry(make_event("ColliderSet", set_static));
+	//目标同组碰撞体（编号三，位于原点，豁免组五）
+	std::optional<uint64_t> exempt_ID = proxy.collider_build("转移目标");
+	ASSERT_TRUE(exempt_ID.has_value());
+	nlohmann::json set_exempt = collider_payload("转移目标", *exempt_ID);
+	set_exempt["geometry"] = box_config(*exempt_ID, 0.0);
+	set_exempt["geometry"].erase("collider_ID");
+	entry(make_event("ColliderSet", set_exempt));
+	ASSERT_TRUE(proxy.collider_set(*exempt_ID, static_cast<uint64_t>(5)));
+	//释放占位编号
+	ASSERT_TRUE(proxy.collider_unload(*placeholder, "转移目标"));
+
+	//登记一次纯平移运动（向右推进十单位）
+	nlohmann::json motion = collider_payload("转移源", *source_ID);
+	motion["motion"] = nlohmann::json::object();
+	motion["motion"]["translation"] = nlohmann::json::array({ 10.0, 0.0, 0.0 });
+	entry(make_event("ColliderMotion", motion));
+
+	//转移到目标空间
+	ASSERT_TRUE(proxy.collider_transfer(*source_ID, "转移目标"));
+	ASSERT_TRUE(proxy.region_state_set("转移目标", true));
+
+	//检测：扫掠只命中静态碰撞体，同豁免组碰撞被跳过
+	std::optional<std::vector<engine::Collision_Detail>> detected =
+		proxy.region_detect("转移目标");
+	ASSERT_TRUE(detected.has_value());
+	ASSERT_EQ(detected->size(), 1u);
+	//碰撞对为源编号与静态编号
+	EXPECT_EQ((*detected)[0].collider_A, *source_ID);
+	EXPECT_EQ((*detected)[0].collider_B, *static_ID);
+	//扫掠命中比例应小于一（检测方式随转移保留）
+	ASSERT_FALSE((*detected)[0].contacts.empty());
+	EXPECT_GT((*detected)[0].contacts[0].fraction, 0.0f);
+	EXPECT_LT((*detected)[0].contacts[0].fraction, 1.0f);
+}
+
+//碰撞代理器：镜像携带检测方式与豁免标记并返回新编号
+TEST_F(Collision_Proxy_Test, 镜像携带检测方式与豁免标记并返回新编号)
+{
+	//已发送事件集合
+	std::vector<std::shared_ptr<engine::Event>> sent;
+	//接入入口接到的接收通道
+	std::function<void(std::shared_ptr<engine::Event>)> entry;
+
+	//注册发送通道与接入入口
+	proxy.event_terminal->bind(engine::Port_ID::Evt_Sender,
+		[&sent](std::shared_ptr<engine::Event> evt) { sent.push_back(evt); });
+	proxy.event_terminal->bind(engine::Port_ID::Broker_Attacher,
+		[&entry](auto&&, auto&&, auto&& event_entry) { entry = event_entry; });
+	proxy.attach();
+	ASSERT_TRUE(static_cast<bool>(entry));
+	sent.clear();
+
+	//构建空间
+	ASSERT_TRUE(proxy.region_build("镜像空间"));
+
+	//源碰撞体：原点盒体，扫掠 ＋ 豁免组九
+	std::optional<uint64_t> source_ID = proxy.collider_build("镜像空间");
+	ASSERT_TRUE(source_ID.has_value());
+	nlohmann::json set_source = collider_payload("镜像空间", *source_ID);
+	set_source["geometry"] = box_config(*source_ID, 0.0);
+	set_source["geometry"].erase("collider_ID");
+	entry(make_event("ColliderSet", set_source));
+	engine::Detection_Mode swept_mode;
+	swept_mode.is_swept_volume = true;
+	swept_mode.step_length = 1;
+	ASSERT_TRUE(proxy.collider_set(*source_ID, swept_mode));
+	ASSERT_TRUE(proxy.collider_set(*source_ID, static_cast<uint64_t>(9)));
+	//源运动：向右推进十单位
+	nlohmann::json motion = collider_payload("镜像空间", *source_ID);
+	motion["motion"] = nlohmann::json::object();
+	motion["motion"]["translation"] = nlohmann::json::array({ 10.0, 0.0, 0.0 });
+	entry(make_event("ColliderMotion", motion));
+
+	//扫掠目标（编号二，位于正四，豁免组零）
+	std::optional<uint64_t> sweep_target = proxy.collider_build("镜像空间");
+	ASSERT_TRUE(sweep_target.has_value());
+	nlohmann::json set_sweep = collider_payload("镜像空间", *sweep_target);
+	set_sweep["geometry"] = box_config(*sweep_target, 4.0);
+	set_sweep["geometry"].erase("collider_ID");
+	entry(make_event("ColliderSet", set_sweep));
+
+	//镜像上方同组碰撞体（编号三，右上，豁免组九）
+	std::optional<uint64_t> exempt_ID = proxy.collider_build("镜像空间");
+	ASSERT_TRUE(exempt_ID.has_value());
+	nlohmann::json set_exempt = collider_payload("镜像空间", *exempt_ID);
+	set_exempt["geometry"] = box_config(*exempt_ID, 0.0);
+	set_exempt["geometry"]["position"] = nlohmann::json::array({ 1.5, 5.0, 0.0 });
+	set_exempt["geometry"].erase("collider_ID");
+	entry(make_event("ColliderSet", set_exempt));
+	ASSERT_TRUE(proxy.collider_set(*exempt_ID, static_cast<uint64_t>(9)));
+
+	//镜像上方异组碰撞体（编号四，左上，豁免组零）
+	std::optional<uint64_t> plain_ID = proxy.collider_build("镜像空间");
+	ASSERT_TRUE(plain_ID.has_value());
+	nlohmann::json set_plain = collider_payload("镜像空间", *plain_ID);
+	set_plain["geometry"] = box_config(*plain_ID, 0.0);
+	set_plain["geometry"]["position"] = nlohmann::json::array({ -1.5, 5.0, 0.0 });
+	set_plain["geometry"].erase("collider_ID");
+	entry(make_event("ColliderSet", set_plain));
+
+	//镜像并取得新编号
+	uint64_t mirror_ID = 0;
+	ASSERT_TRUE(proxy.collider_mirror(*source_ID, "镜像空间", mirror_ID));
+	EXPECT_NE(mirror_ID, *source_ID);
+	EXPECT_GT(mirror_ID, *plain_ID);
+
+	//镜像无运动登记，经新事件给镜像登记部件运动（需离散步长，随镜像保留）
+	nlohmann::json mirror_motion = collider_payload("镜像空间", mirror_ID);
+	mirror_motion["parts"] = nlohmann::json::array();
+	nlohmann::json part_item = nlohmann::json::object();
+	part_item["part"] = 0u;
+	part_item["translation"] = nlohmann::json::array({ 0.0, 5.0, 0.0 });
+	mirror_motion["parts"].push_back(part_item);
+	entry(make_event("ColliderMotion", mirror_motion));
+
+	//激活并检测
+	ASSERT_TRUE(proxy.region_state_set("镜像空间", true));
+	std::optional<std::vector<engine::Collision_Detail>> detected =
+		proxy.region_detect("镜像空间");
+	ASSERT_TRUE(detected.has_value());
+
+	//期望两对：源扫掠命中静态体；镜像上移命中异组体；同组体被豁免
+	ASSERT_EQ(detected->size(), 2u);
+	//逐条检查碰撞对
+	bool source_pair = false;
+	bool mirror_pair = false;
+	for (const engine::Collision_Detail& detail : *detected)
+	{
+		//源与扫掠目标的碰撞对
+		if (detail.collider_A == *source_ID && detail.collider_B == *sweep_target)
+			source_pair = true;
+		//镜像与异组体的碰撞对
+		if (detail.collider_A == *plain_ID && detail.collider_B == mirror_ID)
+			mirror_pair = true;
+		//镜像与同组体的碰撞对应被豁免
+		EXPECT_FALSE(detail.collider_A == *exempt_ID && detail.collider_B == mirror_ID);
+	}
+	EXPECT_TRUE(source_pair);
+	EXPECT_TRUE(mirror_pair);
+}
+
 //碰撞代理器：未注册中转站接入入口时不执行接入且不崩溃
 TEST_F(Collision_Proxy_Test, 未注册接入入口时不接入)
 {

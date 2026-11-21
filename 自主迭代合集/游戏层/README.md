@@ -18,10 +18,10 @@
 ## 工程信息
 
 - 工作区：`Application/Game/Sliver-Era`
-- 目录结构：`src/`（源码）｜`external/`（第三方库副本）｜`cmake/`（接入下层与版本锁）
-- external 内容：`Json`、`bullet3`、`Lua`、`Sol2`、`SDL3`、`VulkanMemoryAllocator`、`vulkan`（含 SDK 头与 `vulkan-1.lib`），均以项目内副本＋相对路径接入
-- 引擎依赖：`Engine/cmake/对外接口.cmake`（聚合面）＋ `Engine/EngineRenderer/cmake/对外接口.cmake`（渲染层）；Engine 属第一方层，两份配置合计约 1 GB，因此不复制进 `external/`，按版本缓存锁定接入
-- 版本锁：工作区 `cmake/引擎版本锁.cmake` 固定六条哈希，构建期直接解析到 `Engine/版本缓存/<层>/x64-<配置>/<哈希>/` 的冻结副本；`Engine/版本锁.cmake` 漂移只输出提示，不影响本作构建。当前值为
+- 目录结构：`src/`（源码）｜`external/Engine/{x64-Debug,x64-Release}`（引擎外部依赖）｜`cmake/`（接入下层与版本锁）
+- external 内容：每个配置下含 `include/`（三层头快照合并）、`lib/`（EngineFoundation / EngineSystem / EngineRenderer 静态库）、`shaders/`；两份配置合计约 1.05 GB
+- 引擎依赖：`external/Engine` 为锁定版本的物理副本；配置期读取副本内版次锚点，与 `cmake/引擎版本锁.cmake` 记录的六条哈希逐项核对，不一致直接报错
+- 版本锁：工作区 `cmake/引擎版本锁.cmake` 记录副本来源；`Engine/版本锁.cmake` 漂移不影响本作，只有重新导出 external 副本时才更新。当前值为
   - EngineFoundation：Debug `50e8d22be2f8` / Release `1e5ac2f94d4d`
   - EngineSystem：Debug `7949c936f810` / Release `42a7fce2ae2c`
   - EngineRenderer：Debug `0fc5a3d4197a` / Release `4acda0869c5c`

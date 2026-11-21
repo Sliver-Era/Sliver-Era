@@ -8,6 +8,7 @@
 
 #include "测试辅助/渲染测试辅助.h"
 #include "Engine/EngineRenderer/src/render/Animation/动画数据.h"
+#include "Engine/EngineRenderer/src/render/Animation/动画应用.h"
 
 using namespace byjy_render_test;
 
@@ -228,6 +229,140 @@ TEST_F(Renderer_Animation_ZeroDiff_Test, 性能基线八演员三十二骨骼)
 	const double total_ms = std::chrono::duration<double, std::milli>(end - start).count();
 	std::cout << "[动画基线] 8 演员 × 32 骨骼：" << (total_ms / frame_count) << " ms/帧（"
 		<< frame_count << " 帧）" << std::endl;
+	renderer.resource().mesh_unload(handle);
+}
+
+//构造链式骨架（每骨骼父下标为前一根）
+static engine::Animation_Skeleton chain_skeleton(uint32_t count)
+{
+	engine::Animation_Skeleton skeleton;
+	for (uint32_t index = 0; index < count; ++index)
+	{
+		engine::Animation_Bone bone;
+		bone.name = "b" + std::to_string(index);
+		bone.parent = index == 0 ? -1 : static_cast<int32_t>(index - 1);
+		skeleton.bones.push_back(bone);
+	}
+	return skeleton;
+}
+
+//构造只驱动根骨骼的定长平移片段
+static engine::Animation_Clip offset_clip(float offset)
+{
+	engine::Animation_Clip clip;
+	clip.duration = 1.0f;
+	engine::Animation_Track track;
+	track.bone = "b0";
+	track.channel = engine::Animation_Channel::Translation;
+	track.keys = {
+		{ 0.0f, { offset, 0.0f, 0.0f, 0.0f } },
+		{ 1.0f, { offset, 0.0f, 0.0f, 0.0f } },
+	};
+	clip.tracks.push_back(track);
+	return clip;
+}
+
+//混合端点退化：权重 0 / 1 的调色板与单片段写入逐分量一致
+TEST_F(Renderer_Animation_ZeroDiff_Test, 混合端点与单片段等价)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	const engine::Animation_Skeleton skeleton = chain_skeleton(4);
+	const engine::Animation_Clip first = offset_clip(2.0f);
+	const engine::Animation_Clip second = offset_clip(9.0f);
+
+	//单片段基准
+	uint32_t single = UINT32_MAX;
+	ASSERT_TRUE(renderer.animation().actor_create(4, single));
+	ASSERT_TRUE(renderer.animation().actor_clip_write(single, first, skeleton, 0.5f, false));
+	float reference[16] = {};
+	ASSERT_TRUE(renderer.resource().animation_palette_readback(reference, 1, single));
+	renderer.animation().actor_destroy(single);
+
+	//权重 0：与 first 一致
+	uint32_t blended = UINT32_MAX;
+	ASSERT_TRUE(renderer.animation().actor_create(4, blended));
+	ASSERT_TRUE(renderer.animation().actor_blend_write(blended, first, second, skeleton, 0.5f, 0.5f, 0.0f, false));
+	float matrix[16] = {};
+	ASSERT_TRUE(renderer.resource().animation_palette_readback(matrix, 1, blended));
+	EXPECT_EQ(std::memcmp(reference, matrix, sizeof(matrix)), 0);
+	//权重 1：与 second 一致
+	ASSERT_TRUE(renderer.animation().actor_blend_write(blended, first, second, skeleton, 0.5f, 0.5f, 1.0f, false));
+	ASSERT_TRUE(renderer.resource().animation_palette_readback(matrix, 1, blended));
+	EXPECT_FLOAT_EQ(matrix[12], 9.0f);
+	renderer.animation().actor_destroy(blended);
+}
+
+//混合路径性能基线：8 演员 × 32 骨骼 × 30 帧（不做硬阈值断言）
+TEST_F(Renderer_Animation_ZeroDiff_Test, 混合路径性能基线)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	const engine::Animation_Skeleton skeleton = chain_skeleton(32);
+	const engine::Animation_Clip first = offset_clip(1.0f);
+	const engine::Animation_Clip second = offset_clip(3.0f);
+	uint32_t offsets[8] = {};
+	for (uint32_t index = 0; index < 8; ++index)
+		ASSERT_TRUE(renderer.animation().actor_create(32, offsets[index]));
+
+	const uint32_t frame_count = 30;
+	const auto start = std::chrono::steady_clock::now();
+	for (uint32_t frame = 0; frame < frame_count; ++frame)
+	{
+		const float weight = static_cast<float>(frame % 10) / 9.0f;
+		const float time = static_cast<float>(frame) / frame_count;
+		for (uint32_t index = 0; index < 8; ++index)
+			ASSERT_TRUE(renderer.animation().actor_blend_write(offsets[index], first, second, skeleton,
+				time, time, weight, true));
+	}
+	const auto end = std::chrono::steady_clock::now();
+	const double total_ms = std::chrono::duration<double, std::milli>(end - start).count();
+	std::cout << "[动画混合基线] 8 演员 × 32 骨骼：" << (total_ms / frame_count) << " ms/帧（"
+		<< frame_count << " 帧）" << std::endl;
+	for (uint32_t offset : offsets)
+		renderer.animation().actor_destroy(offset);
+}
+
+//大场景静态守卫：64 演员区间占用后静态画面逐通道不变
+TEST_F(Renderer_Animation_ZeroDiff_Test, 大场景静态零差异)
+{
+	//无回读能力则跳过
+	{
+		engine::Renderer probe;
+		ASSERT_TRUE(probe.init(hidden_config()));
+		if (!probe.compute().readback_supported())
+			GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+	}
+
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	renderer.resource().texture_bind_set(0);
+	engine::Mesh_Handle handle = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load(handle, triangle_data()));
+	//基准帧
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> baseline(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(baseline.data(), static_cast<uint32_t>(baseline.size())));
+
+	//占用 64 个演员区间（每段 4 条）并写入非平凡矩阵
+	uint32_t offsets[64] = {};
+	for (uint32_t index = 0; index < 64; ++index)
+		ASSERT_TRUE(renderer.resource().animation_palette_allocate(4, offsets[index]));
+	float matrix[16] = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.5f, 0.25f, 0.0f, 1.0f };
+	for (uint32_t index = 0; index < 64; ++index)
+		ASSERT_TRUE(renderer.resource().animation_palette_upload(matrix, 1, offsets[index]));
+
+	//再画静态三角形：不得读取调色板
+	ASSERT_TRUE(renderer.resource().mesh_draw(handle, nullptr));
+	std::vector<uint8_t> tested(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(tested.data(), static_cast<uint32_t>(tested.size())));
+	EXPECT_LE(max_channel_diff(baseline, tested), 2);
+	for (uint32_t index = 0; index < 64; ++index)
+		renderer.resource().animation_palette_release(offsets[index]);
 	renderer.resource().mesh_unload(handle);
 }
 

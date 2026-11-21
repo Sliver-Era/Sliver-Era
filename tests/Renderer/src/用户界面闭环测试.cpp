@@ -11,6 +11,9 @@
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
 //获取原生 UI 控件树
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
+//UI 域内协议与总线（事件观测）
+#include "Engine/EngineRenderer/src/render/UI/common/UI事件协议.h"
+#include "Engine/EngineRenderer/src/render/UI/core/UI本地总线.h"
 //获取帧输入聚合器（公共扩展头，含 SDL3）
 #include "Engine/EngineRenderer/src/render/Input/输入聚合.h"
 #include "测试辅助/渲染测试辅助.h"
@@ -120,52 +123,6 @@ namespace
 		return event;
 	}
 
-	//点击回调计数
-	struct Click_Counter
-	{
-		//触发次数
-		uint32_t count = 0;
-	};
-
-	//按钮点击回调
-	void on_click(Ui_Handle, void* user)
-	{
-		static_cast<Click_Counter*>(user)->count += 1;
-	}
-
-	//复选框切换计数
-	struct Toggle_Counter
-	{
-		//触发次数
-		uint32_t count = 0;
-		//最近一次状态
-		bool last = false;
-	};
-
-	//复选框切换回调
-	void on_toggle(Ui_Handle, bool checked, void* user)
-	{
-		Toggle_Counter* counter = static_cast<Toggle_Counter*>(user);
-		counter->count += 1;
-		counter->last = checked;
-	}
-
-	//滑动条取值变化计数
-	struct Value_Counter
-	{
-		//变化次数
-		uint32_t count = 0;
-		//最近一次取值
-		float last = 0.0f;
-	};
-
-	//滑动条取值回调
-	void on_value(Ui_Handle, float value, void* user)
-	{
-		Value_Counter* counter = static_cast<Value_Counter*>(user);
-		counter->count += 1;
-		counter->last = value;
-	}
 }
 
 //面板与按钮绘制：控件矩形内像素不再是清屏色
@@ -209,10 +166,19 @@ TEST(User_Interface_Test, 悬停与点击)
 	Input_Aggregator* input = renderer.ui().input_aggregator();
 	ASSERT_NE(input, nullptr);
 
-	//按钮与点击计数
-	Click_Counter counter{};
-	Ui_Handle button = ui->button_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 100.0f, 30.0f }, "OK", on_click, &counter);
+	//按钮（点击观测走域内总线）
+	Ui_Handle button = ui->button_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 100.0f, 30.0f }, "OK");
 	ASSERT_NE(button, 0u);
+	//订阅域内点击事件
+	uint32_t clicks = 0;
+	Ui_Handle clicked_handle = 0;
+	ui->bus_get().subscribe("闭环观察者", [&clicks, &clicked_handle](const std::string& tag, const nlohmann::json& config)
+		{
+			if (tag != ui_event::click)
+				return;
+			++clicks;
+			clicked_handle = config.value(ui_event::field_handle, static_cast<Ui_Handle>(0));
+		});
 
 	//指针移到按钮中心并推进一帧
 	SDL_Event motion = mouse_motion(60.0f, 35.0f);
@@ -228,7 +194,8 @@ TEST(User_Interface_Test, 悬停与点击)
 	input->event_feed(&up);
 	ASSERT_TRUE(renderer.frame_render());
 
-	EXPECT_EQ(counter.count, 1u) << "点击回调应触发一次";
+	EXPECT_EQ(clicks, 1u) << "域内点击事件应发布一次";
+	EXPECT_EQ(clicked_handle, button);
 	EXPECT_TRUE(ui->clicked_consume(button)) << "单击标记应在同帧可消费";
 	//再次消费应为假
 	EXPECT_FALSE(ui->clicked_consume(button));
@@ -313,11 +280,20 @@ TEST(User_Interface_Test, 复选框点击切换)
 	ASSERT_NE(ui, nullptr);
 	ASSERT_NE(input, nullptr);
 
-	//复选框与切换计数
-	Toggle_Counter counter{};
+	//复选框（切换观测走域内总线）
 	Ui_Handle checkbox = ui->checkbox_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 120.0f, 24.0f },
-		"Enable", false, on_toggle, &counter);
+		"Enable", false);
 	ASSERT_NE(checkbox, 0u);
+	//订阅域内切换事件
+	uint32_t toggles = 0;
+	bool last_checked = false;
+	ui->bus_get().subscribe("闭环观察者", [&toggles, &last_checked](const std::string& tag, const nlohmann::json& config)
+		{
+			if (tag != ui_event::toggle)
+				return;
+			++toggles;
+			last_checked = config.value(ui_event::field_checked, false);
+		});
 
 	//点击方框区域（左侧 20×20）
 	SDL_Event motion = mouse_motion(28.0f, 32.0f);
@@ -329,8 +305,8 @@ TEST(User_Interface_Test, 复选框点击切换)
 	ASSERT_TRUE(renderer.frame_render());
 
 	EXPECT_TRUE(ui->checked_get(checkbox)) << "点击应切换为选中";
-	EXPECT_EQ(counter.count, 1u);
-	EXPECT_TRUE(counter.last);
+	EXPECT_EQ(toggles, 1u);
+	EXPECT_TRUE(last_checked);
 }
 
 //滑动条：按下与拖拽更新取值并触发回调
@@ -343,11 +319,19 @@ TEST(User_Interface_Test, 滑动条拖拽)
 	ASSERT_NE(ui, nullptr);
 	ASSERT_NE(input, nullptr);
 
-	//滑动条：x = 20，宽 200，初值 0
-	Value_Counter counter{};
-	Ui_Handle slider = ui->slider_create(ui->root_get(), Ui_Rect{ 20.0f, 30.0f, 200.0f, 20.0f },
-		0.0f, on_value, &counter);
+	//滑动条：x = 20，宽 200，初值 0（取值观测走域内总线）
+	Ui_Handle slider = ui->slider_create(ui->root_get(), Ui_Rect{ 20.0f, 30.0f, 200.0f, 20.0f }, 0.0f);
 	ASSERT_NE(slider, 0u);
+	//订阅域内取值事件
+	uint32_t values = 0;
+	float last_value = -1.0f;
+	ui->bus_get().subscribe("闭环观察者", [&values, &last_value](const std::string& tag, const nlohmann::json& config)
+		{
+			if (tag != ui_event::value)
+				return;
+			++values;
+			last_value = config.value(ui_event::field_value, -1.0f);
+		});
 
 	//在 25% 处按下
 	SDL_Event motion = mouse_motion(70.0f, 40.0f);
@@ -365,8 +349,8 @@ TEST(User_Interface_Test, 滑动条拖拽)
 	ASSERT_TRUE(renderer.frame_render());
 	ASSERT_TRUE(ui->value_get(slider, value));
 	EXPECT_NEAR(value, 0.75f, 0.02f);
-	EXPECT_GE(counter.count, 1u);
-	EXPECT_NEAR(counter.last, value, 0.02f);
+	EXPECT_GE(values, 1u);
+	EXPECT_NEAR(last_value, value, 0.02f);
 
 	//抬起结束拖拽
 	SDL_Event up = mouse_button(false, 170.0f, 40.0f);

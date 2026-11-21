@@ -160,10 +160,8 @@ TEST_F(Ui_Local_Bus_Test, 点击按钮发布域内事件)
 			++events;
 			event_handle = config.value(engine::ui_event::field_handle, static_cast<engine::Ui_Handle>(0));
 		});
-	//记录本地回调
-	int callbacks = 0;
-	engine::Ui_Handle button = ui.button_create(ui.root_get(), engine::Ui_Rect{ 10.0f, 10.0f, 120.0f, 30.0f },
-		"确定", [](engine::Ui_Handle, void* user) { ++(*static_cast<int*>(user)); }, &callbacks);
+	//创建按钮（点击观测走域内总线，不用回调）
+	engine::Ui_Handle button = ui.button_create(ui.root_get(), engine::Ui_Rect{ 10.0f, 10.0f, 120.0f, 30.0f }, "确定");
 	ASSERT_NE(button, 0u);
 
 	//按下帧
@@ -176,10 +174,9 @@ TEST_F(Ui_Local_Bus_Test, 点击按钮发布域内事件)
 	release.pointer.button_released[0] = true;
 	ui.frame_begin(release);
 
-	//事件与回调各一次，句柄一致
+	//域内事件一次，句柄一致
 	EXPECT_EQ(events, 1);
 	EXPECT_EQ(event_handle, button);
-	EXPECT_EQ(callbacks, 1);
 }
 
 //点击复选框：发布带选中状态的域内切换事件
@@ -259,4 +256,32 @@ TEST_F(Ui_Local_Bus_Test, 命令激活带网关来源标记)
 	EXPECT_EQ(origin, engine::ui_event::origin_gateway);
 	//命令反查
 	EXPECT_EQ(ui.command_of(button), std::string{ "Open" });
+}
+
+//悬停目标变化：发布域内悬停事件（不翻译为对外焦点事件）
+TEST_F(Ui_Local_Bus_Test, 悬停变化发布域内事件)
+{
+	engine::Ui_Context ui;
+	//记录悬停目标序列
+	std::vector<engine::Ui_Handle> handles{};
+	ui.bus_get().subscribe("观察者", [&handles](const std::string& tag, const nlohmann::json& config)
+		{
+			if (tag != engine::ui_event::hover)
+				return;
+			handles.push_back(config.value(engine::ui_event::field_handle, static_cast<engine::Ui_Handle>(0)));
+		});
+	engine::Ui_Handle button = ui.button_create(ui.root_get(), engine::Ui_Rect{ 10.0f, 10.0f, 120.0f, 30.0f }, "悬停");
+	ASSERT_NE(button, 0u);
+
+	//第一帧：指针进入按钮
+	ui.frame_begin(ui_frame_make(50.0f, 20.0f));
+	//第二帧：指针移出控件
+	ui.frame_begin(ui_frame_make(300.0f, 200.0f));
+
+	ASSERT_EQ(handles.size(), std::size_t{2});
+	EXPECT_EQ(handles[0], button);
+	EXPECT_EQ(handles[1], 0u);
+	//同一目标连续多帧不重复发布
+	ui.frame_begin(ui_frame_make(300.0f, 200.0f));
+	EXPECT_EQ(handles.size(), std::size_t{2});
 }

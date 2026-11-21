@@ -32,12 +32,6 @@ namespace
 		//触发次数
 		uint32_t count = 0;
 	};
-
-	//按钮点击回调
-	void on_click(Ui_Handle, void* user)
-	{
-		static_cast<Action_Counter*>(user)->count += 1;
-	}
 }
 
 //UI 事件桥夹具
@@ -220,12 +214,22 @@ TEST_F(Ui_Event_Bridge_Test, 模态压栈与弹栈)
 //系统语义命令 → 绑定控件激活
 TEST_F(Ui_Event_Bridge_Test, 命令激活控件)
 {
-	//按钮绑定 F→Open 命令
-	Action_Counter counter{};
-	Ui_Handle button = ui.button_create(ui.root_get(), Ui_Rect{ 20.0f, 60.0f, 100.0f, 24.0f },
-		"Open", on_click, &counter);
+	//按钮绑定 F→Open 命令（激活观测走域内总线）
+	Ui_Handle button = ui.button_create(ui.root_get(), Ui_Rect{ 20.0f, 60.0f, 100.0f, 24.0f }, "Open");
 	ASSERT_NE(button, 0u);
 	ui.command_bind("Open", button);
+	//订阅域内点击事件
+	uint32_t clicks = 0;
+	Ui_Handle clicked_handle = 0;
+	std::string origin{};
+	ui.bus_get().subscribe("桥观察者", [&clicks, &clicked_handle, &origin](const std::string& tag, const nlohmann::json& config)
+		{
+			if (tag != ui_event::click)
+				return;
+			++clicks;
+			clicked_handle = config.value(ui_event::field_handle, static_cast<Ui_Handle>(0));
+			origin = config.value(ui_event::field_origin, std::string{});
+		});
 
 	//构造 F 按下帧（Game 为当前主对象）
 	Input_Frame frame = frame_make();
@@ -236,7 +240,9 @@ TEST_F(Ui_Event_Bridge_Test, 命令激活控件)
 	//命令在发布期间同步广播，随后应用
 	bridge.frame_apply(ui);
 
-	EXPECT_EQ(counter.count, 1u) << "系统命令应激活绑定按钮";
+	EXPECT_EQ(clicks, 1u) << "系统命令应激活绑定按钮";
+	EXPECT_EQ(clicked_handle, button);
+	EXPECT_EQ(origin, ui_event::origin_gateway) << "命令激活事件应带网关来源标记";
 	//已绑定命令被 UI 消费，不再留给应用层
 	std::string command{};
 	EXPECT_FALSE(bridge.command_pop(command));

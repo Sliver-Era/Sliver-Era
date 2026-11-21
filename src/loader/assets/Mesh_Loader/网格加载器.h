@@ -26,6 +26,38 @@ namespace engine
     };
 
     /*
+    蒙皮顶点（方向十 · 渲染动画系统；与 Vertex 并存的第二套顶点）
+    position / uv / normal 与 Vertex 完全一致，尾部追加关节索引与权重；步长 48 字节。
+    joint：四个关节下标（u16，指向骨架资产）；weight：四个归一化权重（u16，65535 = 1.0）。
+    默认权重全绑 joint0，配合单位调色板时与静态顶点等价；不启用蒙皮时仍走旧 Vertex 布局。
+    */
+    struct Skinned_Vertex
+    {
+        //位置（三维）
+        float position[3];
+        //纹理坐标（二维）
+        float uv[2];
+        //法线（三维；零向量 = 未提供）
+        float normal[3] = { 0.0f, 0.0f, 0.0f };
+        //关节下标（四个）
+        uint16_t joint[4] = { 0, 0, 0, 0 };
+        //关节权重（四个，归一化前；65535 = 1.0）
+        uint16_t weight[4] = { 65535, 0, 0, 0 };
+    };
+
+    //蒙皮网格数据（方向十；与 Mesh_Data 同构，仅顶点类型不同）
+    struct Skinned_Mesh_Data
+    {
+        //蒙皮顶点集合
+        std::vector<Skinned_Vertex> vertices;
+        //索引集合
+        std::vector<uint32_t> indices;
+    };
+
+    //步长契约（蒙皮管线顶点布局按 48 字节登记）
+    static_assert(sizeof(Skinned_Vertex) == 48, "Skinned_Vertex 步长须为 48 字节");
+
+    /*
     网格分段（物体多材质的子网格级描述）
     first_index 为段在网格索引区内的起始索引（相对索引区起点，uint32 元素计）；
     index_count 为该段索引数（须为 3 的倍数，即完整三角形）；

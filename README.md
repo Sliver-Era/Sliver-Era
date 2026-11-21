@@ -39,7 +39,7 @@
   - `git push sliverera main:Game`
 - `Test` 与 `Doc` 的本地分支名与远端同名，可直接 `git push sliverera Test:Test` / `git push origin Doc:Doc`。
 - 旧小写分支 `engine` / `system` / `test` / `game` / `doc` 已删除或改名为大写：当前活跃开发分支以 `EngineFoundation` / `EngineSystem` / `Test` / `Game` / `Doc` 为准。
-- 渲染层活跃仓库：`https://github.com/Sliver-Era/SilverEra-Renderer`（`main`）。
+- 渲染层活跃仓库：`https://github.com/yuxingyuzhong/SilverEra-Renderer`（`main`）。
 
 ---
 

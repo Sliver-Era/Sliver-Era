@@ -36,6 +36,11 @@ target_sources(TestSystem PRIVATE
     "src/碰撞/碰撞测试.cpp"
     "src/输入/输入焦点测试.cpp"
     "src/输入/输入组合测试.cpp"
+    "src/骨骼/蒙皮求值测试.cpp"
+    "src/骨骼/骨骼姿态测试.cpp"
+    "src/骨骼/骨骼系统测试.cpp"
+    "src/骨骼/骨骼资产测试.cpp"
+    "src/骨骼/骨骼链接测试.cpp"
 )
 
 # 头文件不参与编译，只为让 IDE 建立文件索引；同样经 target_sources 列出，
@@ -43,4 +48,5 @@ target_sources(TestSystem PRIVATE
 target_sources(TestSystem PRIVATE
     "src/ECS/ECS测试组件.h"
     "src/碰撞/碰撞测试辅助.h"
+    "src/骨骼/骨骼测试辅助.h"
 )

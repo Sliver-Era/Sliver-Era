@@ -1,689 +1,367 @@
-//对象池测试：覆盖稳定模式下的对象新建、ID分配、索引复用、查找、卸载，以及排序模式与投影字段定位
+//对象池测试：覆盖带键构建、键写入、键判重、单/批量构建、卸载与索引复用、清空与预分配、哈希/排序两种定位模式
 #include <gtest/gtest.h>
 
 //获取对象池
 #include "Engine/EngineFoundation/src/object/Object_Pool/对象池.h"
 
-//派生测试对象
-class Test_Object : public engine::Object
+//派生测试对象（整数定位键）
+struct Test_Object
 {
-public:
-	//附带字段，供排序投影使用
+	//定位键
+	uint64_t key = 0;
+	//附加字段，供排序投影校验
 	uint64_t payload = 0;
 };
 
-//派生测试对象(附带字符串定位字段)
-class Tagged_Object : public engine::Object
+//派生测试对象（字符串定位键）
+struct Tagged_Object
 {
-public:
-	//字符串定位字段
-	std::string tag;
+	//定位键
+	std::string tag{};
+	//附加字段
+	uint64_t payload = 0;
 };
 
-//定位投影器：以派生字段定位
-//（以对象ID定位由对象池默认投影器 Default_Projector 承担，无需另写）
-struct Payload_Projector
+//整数键投影器
+static std::function<uint64_t&(Test_Object&)> int_key_projector(void)
 {
-	uint64_t operator()(const Test_Object& object) const
-	{
-		return object.payload;
-	}
-};
+	return [](Test_Object& object) -> uint64_t& { return object.key; };
+}
 
-//定位投影器：以字符串字段定位（键为非整数类型）
-struct Tag_Projector
+//字符串键投影器
+static std::function<std::string&(Tagged_Object&)> string_key_projector(void)
 {
-	std::string operator()(const Tagged_Object& object) const
-	{
-		return object.tag;
-	}
-};
+	return [](Tagged_Object& object) -> std::string& { return object.tag; };
+}
 
 //对象池测试夹具
 class Object_Pool_Test : public ::testing::Test
 {
+protected:
+	//整数键对象池
+	engine::Object_Pool<Test_Object> pool{ int_key_projector() };
 };
 
-//对象新建：返回非零ID（零号ID为非法实体预留）
-TEST_F(Object_Pool_Test, 新建对象返回非零ID)
+//构建：键写入对象且可按键查找
+TEST_F(Object_Pool_Test, 构建后键写入且可查找)
 {
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建一个对象
-	const uint64_t ID = pool.build();
-	//ID 不应为零
-	EXPECT_NE(ID, 0u);
-}
-
-//对象新建：新对象可查找且数据可写
-TEST_F(Object_Pool_Test, 新建对象可查找)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建一个对象
-	const uint64_t ID = pool.build();
-	//查找目标对象
-	const auto it = pool.find(ID);
-	//应命中
+	//构建目标对象
+	const uint64_t index = pool.build(42);
+	//槽位索引应从 0 起
+	EXPECT_EQ(index, 0u);
+	//按键查找
+	const auto it = pool.find(42);
 	ASSERT_NE(it, pool.end());
-	//对象ID应与返回ID一致
-	EXPECT_EQ(it->ID(), ID);
-	//派生字段应可写可读
-	it->payload = 42;
-	EXPECT_EQ(pool.find(ID)->payload, 42u);
+	//键应已写入对象
+	EXPECT_EQ(it->key, 42u);
 }
 
-//对象新建：多次新建的ID互不相同
-TEST_F(Object_Pool_Test, 多次新建ID互不相同)
+//构建：键 0 合法可用
+TEST_F(Object_Pool_Test, 键零可用)
 {
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//连续新建三个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	const uint64_t third = pool.build();
-	//三个ID应互不相同
-	EXPECT_NE(first, second);
-	EXPECT_NE(second, third);
-	EXPECT_NE(first, third);
-	//容器规模应为三
+	//编号 0 不再是保留值
+	EXPECT_EQ(pool.build(0), 0u);
+	EXPECT_NE(pool.find(0), pool.end());
+	EXPECT_EQ(pool.size(), 1u);
+}
+
+//构建：重复键被拒绝
+TEST_F(Object_Pool_Test, 重复键被拒绝)
+{
+	//首次构建成功
+	pool.build(7);
+	//重复键返回失败哨兵
+	EXPECT_EQ(pool.build(7), (std::numeric_limits<uint64_t>::max)());
+	//仅保留一个有效对象
+	EXPECT_EQ(pool.size(), 1u);
+}
+
+//构建：外部实参中的旧键被对象池覆写
+TEST_F(Object_Pool_Test, 外部实参旧键被覆写)
+{
+	//外部实参携带错误键
+	Test_Object object{};
+	object.key = 999;
+	object.payload = 5;
+	//以目标键构建
+	pool.build(11, object);
+	//按键查找
+	const auto it = pool.find(11);
+	ASSERT_NE(it, pool.end());
+	//键被覆写为目标键
+	EXPECT_EQ(it->key, 11u);
+	//其余字段保留
+	EXPECT_EQ(it->payload, 5u);
+	//旧键不可查找
+	EXPECT_EQ(pool.find(999), pool.end());
+}
+
+//批量构建：仅提供键
+TEST_F(Object_Pool_Test, 批量构建仅提供键)
+{
+	//批量构建
+	const std::vector<uint64_t> indices = pool.build(std::vector<uint64_t>{ 1, 2, 3 });
+	//返回索引数量应与键数量一致
+	EXPECT_EQ(indices.size(), 3u);
+	//有效对象数量一致
+	EXPECT_EQ(pool.size(), 3u);
+	//逐个键均可查找
+	EXPECT_NE(pool.find(1), pool.end());
+	EXPECT_NE(pool.find(2), pool.end());
+	EXPECT_NE(pool.find(3), pool.end());
+}
+
+//批量构建：键与实参同步提供
+TEST_F(Object_Pool_Test, 批量构建同步提供实参)
+{
+	//两个实参携带错误键与不同负载
+	std::vector<Test_Object> objects(2);
+	objects[0].key = 100;
+	objects[0].payload = 10;
+	objects[1].key = 200;
+	objects[1].payload = 20;
+	//批量构建
+	const std::vector<uint64_t> indices = pool.build(std::vector<uint64_t>{ 5, 6 }, objects);
+	//返回索引数量应与键数量一致
+	EXPECT_EQ(indices.size(), 2u);
+	//键被覆写且负载保留
+	ASSERT_NE(pool.find(5), pool.end());
+	EXPECT_EQ(pool.find(5)->key, 5u);
+	EXPECT_EQ(pool.find(5)->payload, 10u);
+	ASSERT_NE(pool.find(6), pool.end());
+	EXPECT_EQ(pool.find(6)->key, 6u);
+	EXPECT_EQ(pool.find(6)->payload, 20u);
+}
+
+//批量构建：重复键被跳过
+TEST_F(Object_Pool_Test, 批量构建跳过重复键)
+{
+	//批量键含重复
+	const std::vector<uint64_t> indices = pool.build(std::vector<uint64_t>{ 1, 1, 2 });
+	//仅成功构建两个
+	EXPECT_EQ(indices.size(), 2u);
+	EXPECT_EQ(pool.size(), 2u);
+}
+
+//卸载：目标不存在时静默返回
+TEST_F(Object_Pool_Test, 尝试卸载不存在键返回假)
+{
+	//空池尝试卸载
+	EXPECT_FALSE(pool.try_unload(1));
+	//卸载接口不抛异常
+	EXPECT_NO_THROW(pool.unload(1));
+	EXPECT_EQ(pool.size(), 0u);
+}
+
+//卸载：单对象卸载后不可查找
+TEST_F(Object_Pool_Test, 单对象卸载后不可查找)
+{
+	//构建两个对象
+	pool.build(1);
+	pool.build(2);
+	//卸载第一个
+	EXPECT_TRUE(pool.try_unload(1));
+	//已卸载对象不可查找
+	EXPECT_EQ(pool.find(1), pool.end());
+	//其余对象不受影响
+	EXPECT_NE(pool.find(2), pool.end());
+	//有效数量减一
+	EXPECT_EQ(pool.size(), 1u);
+}
+
+//卸载：批量卸载
+TEST_F(Object_Pool_Test, 批量卸载)
+{
+	//构建四个对象
+	pool.build(std::vector<uint64_t>{ 1, 2, 3, 4 });
+	//批量卸载中间两个
+	pool.unload(std::vector<uint64_t>{ 2, 3 });
+	//已卸载对象不可查找
+	EXPECT_EQ(pool.find(2), pool.end());
+	EXPECT_EQ(pool.find(3), pool.end());
+	//其余对象不受影响
+	EXPECT_NE(pool.find(1), pool.end());
+	EXPECT_NE(pool.find(4), pool.end());
+	//有效数量正确
+	EXPECT_EQ(pool.size(), 2u);
+}
+
+//索引复用：卸载后新建复用被回收的槽位
+TEST_F(Object_Pool_Test, 卸载后新建复用索引)
+{
+	//构建两个对象
+	pool.build(1);
+	pool.build(2);
+	//卸载首个对象
+	pool.unload(1);
+	//新建对象应复用被回收的槽位
+	const uint64_t reused = pool.build(3);
+	//复用索引应落在原有槽位范围内
+	EXPECT_LT(reused, 2u);
+	//新对象可查找
+	EXPECT_NE(pool.find(3), pool.end());
+}
+
+//清空：容量与索引分配一并复位
+TEST_F(Object_Pool_Test, 清空后索引从头分配)
+{
+	//构建三个对象
+	pool.build(std::vector<uint64_t>{ 1, 2, 3 });
+	//清空对象池
+	pool.clear();
+	//有效数量与容量归零
+	EXPECT_EQ(pool.size(), 0u);
+	EXPECT_EQ(pool.capacity(), 0u);
+	//清空后首个对象仍从索引 0 开始
+	EXPECT_EQ(pool.build(9), 0u);
+}
+
+//预分配：预留槽位可被后续构建复用
+TEST_F(Object_Pool_Test, 预分配槽位可复用)
+{
+	//预分配八個槽位
+	EXPECT_TRUE(pool.reserve(8));
+	//容量为八，有效数量为零
+	EXPECT_EQ(pool.capacity(), 8u);
+	EXPECT_EQ(pool.size(), 0u);
+	//构建对象应落在预留槽位内
+	const uint64_t index = pool.build(1);
+	EXPECT_LT(index, 8u);
+	//对象可查找
+	EXPECT_NE(pool.find(1), pool.end());
+	//有效数量为一
+	EXPECT_EQ(pool.size(), 1u);
+	//非空时拒绝再次预分配
+	EXPECT_FALSE(pool.reserve(8));
+}
+
+//排序模式：按键升序迭代
+TEST_F(Object_Pool_Test, 排序模式按键升序迭代)
+{
+	//乱序构建
+	pool.build(3);
+	pool.build(1);
+	pool.build(2);
+	//切换排序模式
+	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
+	//有效区应按键升序排列
+	std::vector<uint64_t> keys{};
+	for (const Test_Object& object : pool)
+		keys.push_back(object.key);
+	ASSERT_EQ(keys.size(), 3u);
+	EXPECT_EQ(keys[0], 1u);
+	EXPECT_EQ(keys[1], 2u);
+	EXPECT_EQ(keys[2], 3u);
+}
+
+//排序模式：按键降序迭代
+TEST_F(Object_Pool_Test, 排序模式按键降序迭代)
+{
+	//乱序构建
+	pool.build(3);
+	pool.build(1);
+	pool.build(2);
+	//切换排序模式并指定降序
+	pool.mode_set(engine::Object_Order::Sorted, std::ranges::greater{});
+	//有效区应按键降序排列
+	std::vector<uint64_t> keys{};
+	for (const Test_Object& object : pool)
+		keys.push_back(object.key);
+	ASSERT_EQ(keys.size(), 3u);
+	EXPECT_EQ(keys[0], 3u);
+	EXPECT_EQ(keys[1], 2u);
+	EXPECT_EQ(keys[2], 1u);
+}
+
+//排序模式：查找与新建可用
+TEST_F(Object_Pool_Test, 排序模式查找与新建)
+{
+	//构建两个对象
+	pool.build(2);
+	pool.build(4);
+	//切换排序模式
+	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
+	//原有键可查找
+	EXPECT_NE(pool.find(2), pool.end());
+	//排序模式下新建对象
+	pool.build(3);
+	//新建对象可查找
+	EXPECT_NE(pool.find(3), pool.end());
+	//有效数量正确
 	EXPECT_EQ(pool.size(), 3u);
 }
 
-//对象查找：不存在的ID返回超尾迭代器
-TEST_F(Object_Pool_Test, 查找不存在ID返回超尾)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建一个对象
-	pool.build();
-	//查找一个未分配过的ID
-	EXPECT_EQ(pool.find(9999), pool.end());
-}
-
-//对象卸载：卸载后查找返回超尾
-TEST_F(Object_Pool_Test, 卸载后查找返回超尾)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建两个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	//卸载第一个对象
-	pool.unload(first);
-	//已卸载对象应查不到
-	EXPECT_EQ(pool.find(first), pool.end());
-	//其余对象不受影响
-	EXPECT_NE(pool.find(second), pool.end());
-}
-
-//对象卸载：记录留在容器中，ID 被回收清零
-//引擎语义：unload 回收对象 ID 并置零、清有效标记，记录本身仍留在容器里。
-TEST_F(Object_Pool_Test, 卸载后记录保留但ID清零)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建一个对象
-	const uint64_t ID = pool.build();
-	//卸载该对象
-	pool.unload(ID);
-	//容器规模不变
-	ASSERT_EQ(pool.capacity(), 1u);
-	//新 Object_Pool 不对外暴露无效槽位，故改为按有效区语义断言
-	//ID 已被回收清零
-	EXPECT_EQ(pool.find(ID), pool.end());
-	//有效标记已被清除
-	EXPECT_EQ(pool.size(), 0u);
-}
-
-//对象卸载：卸载不存在的ID只告警不抛异常
-TEST_F(Object_Pool_Test, 卸载不存在ID不抛异常)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建一个对象
-	pool.build();
-	//卸载一个未分配过的ID
-	EXPECT_NO_THROW(pool.unload(8888));
-	//原有对象不受影响
-	EXPECT_EQ(pool.size(), 1u);
-}
-
-//对象尝试卸载：存在返回真、不存在返回假且不告警
-TEST_F(Object_Pool_Test, 尝试卸载返回结果)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建一个对象
-	const uint64_t ID = pool.build();
-	//目标存在时应卸载成功
-	EXPECT_TRUE(pool.try_unload(ID));
-	//卸载后不可再找到
-	EXPECT_EQ(pool.find(ID), pool.end());
-	//再次尝试卸载同一目标应返回假
-	EXPECT_FALSE(pool.try_unload(ID));
-	//对象计数应归零
-	EXPECT_EQ(pool.size(), 0u);
-}
-
-//对象卸载：多对象重载逐个卸载
-TEST_F(Object_Pool_Test, 多对象卸载重载)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建三个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	const uint64_t third = pool.build();
-	//一次性卸载前两个
-	pool.unload(std::vector<uint64_t>{ first, second });
-	//前两个应查不到
-	EXPECT_EQ(pool.find(first), pool.end());
-	EXPECT_EQ(pool.find(second), pool.end());
-	//第三个仍可查找到
-	EXPECT_NE(pool.find(third), pool.end());
-}
-
-//索引复用：卸载后新建会复用被回收的位置，且新对象可正常查找
-//稳定模式下卸载会回收容器下标，新建按下标分配器的后进先出机制复用该位置。
-TEST_F(Object_Pool_Test, 卸载后新建复用索引)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建两个对象
-	const uint64_t first = pool.build();
-	pool.build();
-	//卸载第一个对象
-	pool.unload(first);
-	//再次新建（应复用被回收的索引）
-	uint64_t reused = 0;
-	EXPECT_NO_THROW(reused = pool.build());
-	//新对象应可查找到
-	EXPECT_NE(pool.find(reused), pool.end());
-	//新对象ID不应为零
-	EXPECT_NE(reused, 0u);
-}
-
-//定位字段：定位键由构造时注入的投影器决定，定位映射以投影键为键
-//投影键可为任意可比较类型（见文末字符串定位字段用例）
-
-//排序模式：排列方式由 mode_set(Object_Order::Sorted, 比较器) 设置，比较器与投影器均可在运行期替换
-//比较器作用于投影键，可为任意可调用对象（如 lambda）
-
-//排序模式：设置排序方式后仍可按ID查找
-TEST_F(Object_Pool_Test, 排序模式按ID查找)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建三个对象
-	pool.build();
-	const uint64_t second = pool.build();
-	pool.build();
-	//以ID为投影字段升序排列
-	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
-	//目标对象应可查找到
-	const auto it = pool.find(second);
-	ASSERT_NE(it, pool.end());
-	//命中的对象ID应与查找键一致
-	EXPECT_EQ(it->ID(), second);
-}
-
-//排序模式：降序排列同样可按ID查找
-TEST_F(Object_Pool_Test, 排序模式降序查找)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建三个对象
-	pool.build();
-	const uint64_t second = pool.build();
-	pool.build();
-	//以ID为投影字段降序排列
-	pool.mode_set(engine::Object_Order::Sorted, std::ranges::greater{});
-	//目标对象应可查找到
-	EXPECT_NE(pool.find(second), pool.end());
-}
-
-//排序模式：自定义 lambda 比较器可用（按对象ID降序）
-TEST_F(Object_Pool_Test, 排序模式自定义比较器可用)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建三个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	const uint64_t third = pool.build();
-	//以对象ID降序作为自定义比较器
-	pool.mode_set(engine::Object_Order::Sorted,
-		[](const uint64_t& left, const uint64_t& right) { return left > right; });
-	//有效区首位应为ID最大者
-	EXPECT_EQ(pool.begin()->ID(), third);
-	//按ID仍可查找
-	const auto it = pool.find(second);
-	ASSERT_NE(it, pool.end());
-	EXPECT_EQ(it->ID(), second);
-	//首个对象同样可查找到
-	const auto head = pool.find(first);
-	ASSERT_NE(head, pool.end());
-	EXPECT_EQ(head->ID(), first);
-}
-
-//排序模式：以派生字段为投影字段查找
-TEST_F(Object_Pool_Test, 排序模式按投影字段查找)
-{
-	//以派生字段定位的对象池（构造时注入投影器）
-	engine::Object_Pool<Test_Object> pool(Payload_Projector{});
-	//新建三个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	const uint64_t third = pool.build();
-	//直接写入互不相同的投影值
-	(pool.begin() + 0)->payload = 30;
-	(pool.begin() + 1)->payload = 10;
-	(pool.begin() + 2)->payload = 20;
-	//以投影字段升序排列
-	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
-	//按投影值查找
-	const auto it = pool.find(10);
-	//应命中且落在预期对象上
-	ASSERT_NE(it, pool.end());
-	EXPECT_EQ(it->ID(), second);
-	//按另一个投影值查找
-	const auto other = pool.find(30);
-	ASSERT_NE(other, pool.end());
-	EXPECT_EQ(other->ID(), first);
-	//剩余的投影值同样可定位到对应对象
-	const auto rest = pool.find(20);
-	ASSERT_NE(rest, pool.end());
-	EXPECT_EQ(rest->ID(), third);
-}
-
-//排序模式：卸载后查找返回超尾
+//排序模式：卸载后不可查找
 TEST_F(Object_Pool_Test, 排序模式卸载后不可查找)
 {
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建三个对象
-	pool.build();
-	const uint64_t second = pool.build();
-	const uint64_t third = pool.build();
-	//以ID为投影字段升序排列
+	//构建三个对象
+	pool.build(std::vector<uint64_t>{ 1, 2, 3 });
+	//切换排序模式
 	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
 	//卸载中间对象
-	pool.unload(second);
-	//已卸载对象应查不到
-	EXPECT_EQ(pool.find(second), pool.end());
-	//其余对象仍可查找到
-	EXPECT_NE(pool.find(third), pool.end());
+	pool.unload(2);
+	//已卸载对象不可查找
+	EXPECT_EQ(pool.find(2), pool.end());
+	//其余对象可查找
+	EXPECT_NE(pool.find(1), pool.end());
+	EXPECT_NE(pool.find(3), pool.end());
 }
 
-//排序模式：新建对象后仍应能找到它
-TEST_F(Object_Pool_Test, 排序模式新建后可查找)
+//定位模式：排序切回哈希后仍可查找
+TEST_F(Object_Pool_Test, 排序切回哈希后可查找)
 {
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建两个对象
-	pool.build();
-	pool.build();
-	//以ID为投影字段降序排列
-	pool.mode_set(engine::Object_Order::Sorted, std::ranges::greater{});
-	//排序模式下新建一个对象
-	const uint64_t newest = pool.build();
-	//排序模式下新建后需自行 sort 保持有序，二分查找方有效
-	pool.sort();
-	//新对象应可查找到
-	EXPECT_NE(pool.find(newest), pool.end());
-}
-
-//排序重置：重置后可按ID查找到原有对象
-TEST_F(Object_Pool_Test, 排序重置后原对象可查找)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建两个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	//以ID为投影字段升序排列
+	//构建两个对象
+	pool.build(1);
+	pool.build(2);
+	//切换排序模式
 	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
-	//重置排列方式
+	//切回哈希模式
 	pool.mode_set(engine::Object_Order::Unorder);
-	//两个对象都应可查找到
-	EXPECT_NE(pool.find(first), pool.end());
-	EXPECT_NE(pool.find(second), pool.end());
+	//两个键均可查找
+	EXPECT_NE(pool.find(1), pool.end());
+	EXPECT_NE(pool.find(2), pool.end());
 }
 
-//排列方式重置：已卸载对象不会再被写回定位映射
-//mode_set(Object_Order::Unorder) 重建映射时以有效标记判定记录有效，仅清有效标记的已卸载记录不会被误收录。
-TEST_F(Object_Pool_Test, 重置排序后已卸载对象查不到)
+//字符串键：构建、查找与卸载
+TEST_F(Object_Pool_Test, 字符串键可用)
 {
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建两个对象
-	const uint64_t first = pool.build();
-	pool.build();
-	//以ID为投影字段升序排列
-	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
-	//卸载首个对象
-	pool.unload(first);
-	//重置排列方式
-	pool.mode_set(engine::Object_Order::Unorder);
-	//期望：已卸载对象查不到
-	EXPECT_EQ(pool.find(first), pool.end());
+	//字符串键对象池
+	engine::Object_Pool<Tagged_Object, std::string> tagged_pool{ string_key_projector() };
+	//构建两个对象
+	tagged_pool.build("alpha");
+	tagged_pool.build("beta");
+	//按键查找
+	ASSERT_NE(tagged_pool.find("alpha"), tagged_pool.end());
+	EXPECT_EQ(tagged_pool.find("beta")->tag, "beta");
+	//卸载后不可查找
+	tagged_pool.unload("alpha");
+	EXPECT_EQ(tagged_pool.find("alpha"), tagged_pool.end());
 }
 
-//空池排序：没有记录可排时不应改动对象池
-TEST_F(Object_Pool_Test, 空池设置排序方式)
+//大批量：构建与卸载计数正确
+TEST_F(Object_Pool_Test, 大批量构建卸载计数正确)
 {
-	//默认构造的对象池（不含任何对象）
-	engine::Object_Pool<Test_Object> pool;
-	//设置排序方式
-	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
-	//记录数量应保持不变
-	EXPECT_TRUE(pool.size() == 0);
-}
-
-//对象清除：两个模式下的分支各归其位
-//clear 在稳定模式清空定位映射，在排序模式重置比较方式与有效索引起点。
-
-//对象清除：稳定模式下清空
-TEST_F(Object_Pool_Test, 稳定模式清空对象池)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建两个对象
-	pool.build();
-	pool.build();
-	//清空对象池
-	pool.clear();
-	//容器应为空
-	EXPECT_TRUE(pool.size() == 0);
-}
-
-//对象清除：排序模式下清空
-TEST_F(Object_Pool_Test, 排序模式清空对象池)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建两个对象
-	pool.build();
-	pool.build();
-	//以ID为投影字段升序排列
-	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
-	//清空对象池
-	pool.clear();
-	//容器应为空
-	EXPECT_TRUE(pool.size() == 0);
-}
-
-//空池卸载：对空池卸载任意ID只告警，不崩溃
-TEST_F(Object_Pool_Test, 空池卸载不崩溃)
-{
-	//默认构造的空对象池
-	engine::Object_Pool<Test_Object> pool;
-	//卸载一个从未分配过的ID应不抛异常
-	EXPECT_NO_THROW(pool.unload(1));
-	//池内仍应无任何记录
-	EXPECT_TRUE(pool.size() == 0);
-	//查询该ID应返回超尾
-	EXPECT_EQ(pool.find(1), pool.end());
-}
-
-//重复装载：连续新建不会产生重复ID
-TEST_F(Object_Pool_Test, 重复装载不产生重复ID)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//用于登记已分配ID
-	std::unordered_set<uint64_t> IDs;
-	//连续新建多个对象
-	const int count = 64;
-	for (int i = 0; i < count; i++)
+	//批量键
+	std::vector<uint64_t> keys{};
+	keys.reserve(256);
+	for (uint64_t key = 0; key < 256; key++)
+		keys.push_back(key);
+	//批量构建
+	pool.build(keys);
+	EXPECT_EQ(pool.size(), 256u);
+	//卸载偶数键
+	std::vector<uint64_t> removed{};
+	for (uint64_t key = 0; key < 256; key += 2)
+		removed.push_back(key);
+	pool.unload(removed);
+	//数量正确
+	EXPECT_EQ(pool.size(), 128u);
+	//偶数键不可查找，奇数键仍在
+	for (uint64_t key = 0; key < 256; key++)
 	{
-		//每次新建一个对象
-		const uint64_t ID = pool.build();
-		//返回的ID应成功登记（即此前未出现过）
-		EXPECT_TRUE(IDs.insert(ID).second);
-	}
-	//分配出的ID数量应与新建次数一致
-	EXPECT_EQ(IDs.size(), static_cast<size_t>(count));
-}
-
-//大批量装载卸载：卸载不清除记录，存活对象仍可查找
-TEST_F(Object_Pool_Test, 大批量装载卸载后计数正确)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//记录全部ID
-	std::vector<uint64_t> IDs;
-	//批量新建
-	const int count = 100;
-	for (int i = 0; i < count; i++)
-		IDs.push_back(pool.build());
-	//记录数量应与新建次数一致
-	EXPECT_EQ(pool.size(), static_cast<size_t>(count));
-	//卸载序号为偶数的对象
-	for (int i = 0; i < count; i += 2)
-		pool.unload(IDs[i]);
-	//卸载只清有效标记，容器规模应保持不变
-	EXPECT_EQ(pool.capacity(), static_cast<size_t>(count));
-	//逐一核对存活与已卸载对象
-	for (int i = 0; i < count; i++)
-	{
-		//偶数序号已被卸载，应查不到
-		if (i % 2 == 0)
-			EXPECT_EQ(pool.find(IDs[i]), pool.end());
-		//奇数序号仍在存活，应可查到
+		if (key % 2 == 0)
+			EXPECT_EQ(pool.find(key), pool.end());
 		else
-			EXPECT_NE(pool.find(IDs[i]), pool.end());
+			EXPECT_NE(pool.find(key), pool.end());
 	}
-}
-
-//卸载全部后再装载：清空后仍可新建并查找到对象
-TEST_F(Object_Pool_Test, 卸载全部后再装载)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建三个对象
-	std::vector<uint64_t> IDs;
-	for (int i = 0; i < 3; i++)
-		IDs.push_back(pool.build());
-	//逐个卸载全部对象
-	for (const uint64_t& ID : IDs)
-		pool.unload(ID);
-	//全部对象都应查不到
-	for (const uint64_t& ID : IDs)
-		EXPECT_EQ(pool.find(ID), pool.end());
-	//再次新建对象
-	const uint64_t reused = pool.build();
-	//新对象应可查找到
-	EXPECT_NE(pool.find(reused), pool.end());
-	//新对象ID不应为零
-	EXPECT_NE(reused, 0u);
-}
-
-//非法ID查询：保留的零号ID与未分配ID都返回超尾
-TEST_F(Object_Pool_Test, 非法ID查询返回超尾)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建一个对象
-	pool.build();
-	//为非法实体预留的零号ID应查不到
-	EXPECT_EQ(pool.find(0), pool.end());
-	//从未分配过的较大ID应查不到
-	EXPECT_EQ(pool.find(99999), pool.end());
-}
-
-//查询已卸载对象：卸载后按原ID查找返回超尾
-TEST_F(Object_Pool_Test, 查询已卸载对象返回超尾)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建两个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	//卸载第一个对象
-	pool.unload(first);
-	//已卸载对象应查不到
-	EXPECT_EQ(pool.find(first), pool.end());
-	//未卸载对象应仍可查到
-	EXPECT_NE(pool.find(second), pool.end());
-}
-
-//边界ID：零与64位极大值的查询与卸载都不崩溃
-TEST_F(Object_Pool_Test, 边界ID查询与卸载不崩溃)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建一个对象
-	pool.build();
-	//零号边界ID应查不到
-	EXPECT_EQ(pool.find(0), pool.end());
-	//64位无符号极大值ID应查不到
-	EXPECT_EQ(pool.find(UINT64_MAX), pool.end());
-	//卸载零号ID不应抛异常
-	EXPECT_NO_THROW(pool.unload(0));
-	//卸载极大值ID不应抛异常
-	EXPECT_NO_THROW(pool.unload(UINT64_MAX));
-	//原有对象应不受影响
-	EXPECT_EQ(pool.size(), 1u);
-}
-
-//容量上限附近：大批量新建后首中尾对象均可见
-TEST_F(Object_Pool_Test, 容量上限附近批量装载均可见)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//一次规模较大的批量新建
-	const int count = 1024;
-	//记录全部ID
-	std::vector<uint64_t> IDs;
-	IDs.reserve(count);
-	for (int i = 0; i < count; i++)
-		IDs.push_back(pool.build());
-	//容器规模应与新建次数一致
-	EXPECT_EQ(pool.size(), static_cast<size_t>(count));
-	//抽查首、中、尾三段对象是否均可查到
-	EXPECT_NE(pool.find(IDs.front()), pool.end());
-	EXPECT_NE(pool.find(IDs[count / 2]), pool.end());
-	EXPECT_NE(pool.find(IDs.back()), pool.end());
-}
-
-//ID复用：卸载后新建会复用被回收的ID
-TEST_F(Object_Pool_Test, 多次装载卸载后ID复用)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建三个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	const uint64_t third = pool.build();
-	//卸载中间对象
-	pool.unload(second);
-	//再次新建应复用被回收的ID
-	const uint64_t reused = pool.build();
-	//复用ID应与被卸载ID一致
-	EXPECT_EQ(reused, second);
-	//复用ID对应对象应可查到
-	EXPECT_NE(pool.find(reused), pool.end());
-	//其余原有对象不受影响
-	EXPECT_NE(pool.find(first), pool.end());
-	EXPECT_NE(pool.find(third), pool.end());
-}
-
-//析构：装满对象后对象池析构不应崩溃
-TEST_F(Object_Pool_Test, 装满对象后析构不崩溃)
-{
-	//内层作用域用于触发生命周期结束时的析构
-	{
-		//默认构造的对象池
-		engine::Object_Pool<Test_Object> pool;
-		//装满大量对象
-		for (int i = 0; i < 256; i++)
-			pool.build();
-		//池内应有对应数量的记录
-		EXPECT_EQ(pool.size(), 256u);
-	}
-	//能执行到此说明析构过程未崩溃
-	SUCCEED();
-}
-
-//定位字段：非整数键可用（字符串投影字段）
-TEST_F(Object_Pool_Test, 字符串定位字段可用)
-{
-	//以字符串字段定位的对象池（键类型为字符串，构造时注入投影器）
-	engine::Object_Pool<Tagged_Object, std::string> pool(Tag_Projector{});
-	//新建两个对象
-	pool.build();
-	pool.build();
-	//直接写入互不相同的定位字段
-	(pool.begin() + 0)->tag = "alpha";
-	(pool.begin() + 1)->tag = "beta";
-	//切换为排序模式后按定位字段检索
-	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
-	//按定位字段查找
-	const auto it = pool.find(std::string("beta"));
-	//应命中且落在预期对象上
-	ASSERT_NE(it, pool.end());
-	EXPECT_EQ(it->tag, "beta");
-	//未登记的字符串应查不到
-	EXPECT_EQ(pool.find(std::string("gamma")), pool.end());
-}
-
-//对象清除：清空后ID分配起点恢复
-TEST_F(Object_Pool_Test, 清空后ID起点恢复)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建三个对象使ID游标前进
-	pool.build();
-	pool.build();
-	pool.build();
-	//清空对象池
-	pool.clear();
-	//清空后首个新建对象的ID应回到起点 1
-	const uint64_t ID = pool.build();
-	EXPECT_EQ(ID, 1u);
-	//容器中只应保留新建的一个对象
-	EXPECT_EQ(pool.size(), 1u);
-}
-
-//排列方式重置：稳定模式下调用的无副作用
-TEST_F(Object_Pool_Test, 稳定模式重置排列方式无副作用)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建两个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	//稳定模式下重置排列方式
-	pool.mode_set(engine::Object_Order::Unorder);
-	//两个对象仍可按ID查找到
-	EXPECT_NE(pool.find(first), pool.end());
-	EXPECT_NE(pool.find(second), pool.end());
-}
-
-//排序模式：卸载后新建的对象仍可查找
-TEST_F(Object_Pool_Test, 排序模式卸载后新建可查找)
-{
-	//默认构造的对象池
-	engine::Object_Pool<Test_Object> pool;
-	//新建三个对象
-	const uint64_t first = pool.build();
-	const uint64_t second = pool.build();
-	const uint64_t third = pool.build();
-	//以ID为投影字段升序排列
-	pool.mode_set(engine::Object_Order::Sorted, std::ranges::less{});
-	//卸载中间对象
-	pool.unload(second);
-	//排序模式下新建一个对象（复用被回收的下标）
-	const uint64_t newest = pool.build();
-	//排序模式下新建后需自行 sort 保持有序，二分查找方有效
-	pool.sort();
-	//新对象应可查找到
-	EXPECT_NE(pool.find(newest), pool.end());
-	//其余存活对象仍可查找到
-	EXPECT_NE(pool.find(first), pool.end());
-	EXPECT_NE(pool.find(third), pool.end());
-	//卸载只清有效标记，新建复用被回收下标，容器规模不变
-	EXPECT_EQ(pool.capacity(), 3u);
 }

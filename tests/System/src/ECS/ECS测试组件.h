@@ -6,7 +6,7 @@
 namespace ecs_test
 {
 	//位置组件
-	struct Position : engine::Object
+	struct Position
 	{
 		//归属实体槽位
 		uint32_t owner = 0;
@@ -22,7 +22,7 @@ namespace ecs_test
 	};
 
 	//速度组件
-	struct Velocity : engine::Object
+	struct Velocity
 	{
 		//归属实体槽位
 		uint32_t owner = 0;
@@ -38,7 +38,7 @@ namespace ecs_test
 	};
 
 	//生命组件
-	struct Health : engine::Object
+	struct Health
 	{
 		//归属实体槽位
 		uint32_t owner = 0;

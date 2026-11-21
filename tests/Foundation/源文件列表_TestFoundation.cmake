@@ -43,7 +43,6 @@ target_sources(TestFoundation PRIVATE
     "src/核心/四叉树管理器测试.cpp"
     "src/核心/坐标类型测试.cpp"
     "src/核心/对象池测试.cpp"
-    "src/核心/对象测试.cpp"
     "src/核心/配置加载器测试.cpp"
     "src/注册锚.cpp"
 )

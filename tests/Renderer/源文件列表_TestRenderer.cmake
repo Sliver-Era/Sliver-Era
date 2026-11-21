@@ -63,6 +63,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染动画片段测试.cpp"
     "src/渲染动画绑定测试.cpp"
     "src/渲染动画蒙皮测试.cpp"
+    "src/渲染动画蒙皮资产测试.cpp"
     "src/渲染动画装配测试.cpp"
     "src/渲染动画调色板池测试.cpp"
     "src/渲染动画调色板测试.cpp"

@@ -158,3 +158,54 @@ TEST_F(Renderer_Animation_SkinDraw_Test, 调色板旋转移动蒙皮顶点)
 	renderer.resource().animation_palette_release(offset);
 	renderer.resource().mesh_unload(skinned);
 }
+
+/*
+多演员按偏移选段（方向十 · 收敛轮 863）
+两段调色板分别写入「左移 / 右移」，同一蒙皮网格按不同起始条目绘制；
+若动态偏移未生效（都读首段），两次画面会逐通道一致，本用例即失败。
+*/
+TEST_F(Renderer_Animation_SkinDraw_Test, 蒙皮绘制按调色板偏移选段)
+{
+	//无回读能力则跳过
+	if (!readback_ok())
+		GTEST_SKIP() << "本机交换链图像不具备传输源用法";
+
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config()));
+	renderer.resource().texture_bind_set(0);
+	engine::Mesh_Handle skinned = 0;
+	ASSERT_TRUE(renderer.resource().mesh_load_skinned(skinned, skinned_triangle()));
+	//两段各 2 条：左 0 / 右 2
+	uint32_t left = UINT32_MAX;
+	uint32_t right = UINT32_MAX;
+	ASSERT_TRUE(renderer.resource().animation_palette_allocate(2, left));
+	ASSERT_TRUE(renderer.resource().animation_palette_allocate(2, right));
+	ASSERT_EQ(left, 0u);
+	ASSERT_EQ(right, 2u);
+	//左段平移 -0.45，右段平移 +0.30
+	float matrix[16] = {};
+	identity_16(matrix);
+	matrix[12] = -0.45f;
+	ASSERT_TRUE(renderer.resource().animation_palette_upload(matrix, 1, left));
+	identity_16(matrix);
+	matrix[12] = 0.30f;
+	ASSERT_TRUE(renderer.resource().animation_palette_upload(matrix, 1, right));
+
+	//按左段绘制
+	ASSERT_TRUE(renderer.resource().mesh_draw_skinned(skinned, nullptr, left));
+	std::vector<uint8_t> left_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(left_pixels.data(), static_cast<uint32_t>(left_pixels.size())));
+	//按右段绘制
+	ASSERT_TRUE(renderer.resource().mesh_draw_skinned(skinned, nullptr, right));
+	std::vector<uint8_t> right_pixels(pixel_bytes());
+	ASSERT_TRUE(renderer.frame_render(right_pixels.data(), static_cast<uint32_t>(right_pixels.size())));
+
+	//两段偏移生效：画面明显不同
+	EXPECT_GT(max_channel_diff(left_pixels, right_pixels), 8);
+	//越界条目拒绝
+	EXPECT_FALSE(renderer.resource().mesh_draw_skinned(skinned, nullptr,
+		renderer.resource().animation_palette_capacity()));
+	renderer.resource().animation_palette_release(left);
+	renderer.resource().animation_palette_release(right);
+	renderer.resource().mesh_unload(skinned);
+}

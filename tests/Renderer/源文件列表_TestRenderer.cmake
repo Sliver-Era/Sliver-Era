@@ -46,6 +46,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染UI样式测试.cpp"
     "src/渲染UI滚动条测试.cpp"
     "src/渲染UI滚动测试.cpp"
+    "src/渲染UI滚轮测试.cpp"
     "src/渲染UI裁剪测试.cpp"
     "src/渲染中文字形测试.cpp"
     "src/渲染交换链重建测试.cpp"

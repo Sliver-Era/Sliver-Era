@@ -171,3 +171,97 @@ TEST_F(Renderer_Ui_Style_Test, 不透明度影响像素)
 		};
 	EXPECT_GT(luma(full), luma(half) + 60) << "半透明面板应明显暗于不透明面板";
 }
+
+//圆角半径与描边：默认值、越界夹紧与存取（第八百八十七轮）
+TEST_F(Renderer_Ui_Style_Test, 圆角半径与描边存取)
+{
+	Ui_Context ui;
+	const Ui_Handle panel = ui.panel_create(ui.root_get(), Ui_Rect{ 0.0f, 0.0f, 40.0f, 40.0f }, Ui_Color{});
+	ASSERT_NE(panel, 0u);
+	//默认直角且无描边
+	EXPECT_FLOAT_EQ(ui.corner_radius_get(panel), 0.0f);
+	EXPECT_FLOAT_EQ(ui.border_width_get(panel), 0.0f);
+	//正常写入与读回
+	ASSERT_TRUE(ui.corner_radius_set(panel, 8.0f));
+	EXPECT_FLOAT_EQ(ui.corner_radius_get(panel), 8.0f);
+	//负半径按直角
+	ASSERT_TRUE(ui.corner_radius_set(panel, -5.0f));
+	EXPECT_FLOAT_EQ(ui.corner_radius_get(panel), 0.0f);
+	//描边写入与读回（负宽度按无描边）
+	const Ui_Color border{ 0.9f, 0.1f, 0.1f, 1.0f };
+	ASSERT_TRUE(ui.border_set(panel, 3.0f, border));
+	EXPECT_FLOAT_EQ(ui.border_width_get(panel), 3.0f);
+	expect_color(ui.border_color_get(panel), border);
+	ASSERT_TRUE(ui.border_set(panel, -2.0f, border));
+	EXPECT_FLOAT_EQ(ui.border_width_get(panel), 0.0f);
+	//未知句柄
+	EXPECT_FALSE(ui.corner_radius_set(panel + 100, 4.0f));
+	EXPECT_FLOAT_EQ(ui.corner_radius_get(panel + 100), 0.0f);
+	EXPECT_FALSE(ui.border_set(panel + 100, 2.0f, border));
+	EXPECT_FLOAT_EQ(ui.border_width_get(panel + 100), 0.0f);
+}
+
+//半径为零的圆角绘制与普通直角完全一致（像素等价，保证既有路径不变）
+TEST_F(Renderer_Ui_Style_Test, 半径为零绘制等价直角)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(byjy_render_test::hidden_config(320, 180)));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机不支持像素回读";
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+
+	const Ui_Color gray{ 0.7f, 0.7f, 0.7f, 1.0f };
+	//左：默认直角；右：显式写入半径 0
+	const Ui_Handle plain = ui->panel_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 60.0f, 60.0f }, gray);
+	const Ui_Handle zeroed = ui->panel_create(ui->root_get(), Ui_Rect{ 140.0f, 20.0f, 60.0f, 60.0f }, gray);
+	ASSERT_NE(plain, 0u);
+	ASSERT_NE(zeroed, 0u);
+	ASSERT_TRUE(ui->corner_radius_set(zeroed, 0.0f));
+
+	std::vector<uint8_t> pixels(byjy_render_test::pixel_bytes(320, 180), 0);
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	//四角与中心按相对偏移逐一比对
+	const std::array<std::array<uint32_t, 2>, 5> samples{ {
+		{ 21, 21 }, { 78, 21 }, { 21, 78 }, { 78, 78 }, { 50, 50 } } };
+	for (const std::array<uint32_t, 2>& sample : samples)
+	{
+		const std::array<uint8_t, 4> left = byjy_render_test::pixel_get(pixels, sample[0], sample[1], 320);
+		const std::array<uint8_t, 4> right = byjy_render_test::pixel_get(pixels, sample[0] + 120, sample[1], 320);
+		EXPECT_EQ(left, right) << "半径 0 应与直角绘制一致，偏移 (" << sample[0] << "," << sample[1] << ")";
+	}
+}
+
+//圆角与直角在四角像素不同、中心与边中点保持一致
+TEST_F(Renderer_Ui_Style_Test, 圆角四角差异)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(byjy_render_test::hidden_config(320, 180)));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机不支持像素回读";
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+
+	const Ui_Color bright{ 0.8f, 0.8f, 0.8f, 1.0f };
+	//左：圆角；右：直角
+	const Ui_Handle rounded = ui->panel_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 80.0f, 80.0f }, bright);
+	const Ui_Handle square = ui->panel_create(ui->root_get(), Ui_Rect{ 140.0f, 20.0f, 80.0f, 80.0f }, bright);
+	ASSERT_NE(rounded, 0u);
+	ASSERT_NE(square, 0u);
+	ASSERT_TRUE(ui->corner_radius_set(rounded, 16.0f));
+
+	std::vector<uint8_t> pixels(byjy_render_test::pixel_bytes(320, 180), 0);
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	//左上角：圆角区域被挖空，直角区域为填充色
+	const std::array<uint8_t, 4> rounded_corner = byjy_render_test::pixel_get(pixels, 21, 21, 320);
+	const std::array<uint8_t, 4> square_corner = byjy_render_test::pixel_get(pixels, 141, 21, 320);
+	EXPECT_NE(rounded_corner, square_corner) << "圆角四角应不同于直角四角";
+	//中心像素一致
+	const std::array<uint8_t, 4> rounded_center = byjy_render_test::pixel_get(pixels, 60, 60, 320);
+	const std::array<uint8_t, 4> square_center = byjy_render_test::pixel_get(pixels, 180, 60, 320);
+	EXPECT_EQ(rounded_center, square_center) << "圆角与直角中心应同为填充色";
+	//上边中点一致（圆角不改变直边）
+	const std::array<uint8_t, 4> rounded_top = byjy_render_test::pixel_get(pixels, 60, 21, 320);
+	const std::array<uint8_t, 4> square_top = byjy_render_test::pixel_get(pixels, 180, 21, 320);
+	EXPECT_EQ(rounded_top, square_top) << "圆角不应影响直边中部";
+}

@@ -234,3 +234,66 @@ TEST_F(Renderer_Ui_Stats_Test, 文本几何缓存重建命中)
 	EXPECT_EQ(edited.text_cache_hits, 1u);
 	EXPECT_EQ(edited.text_cache_misses, 1u) << "文本变化项应重新生成几何";
 }
+
+//文本块布局缓存：同帧同文本同宽的第二控件直接命中
+TEST_F(Renderer_Ui_Stats_Test, 文本块布局缓存同帧命中)
+{
+	if (!font_available())
+		GTEST_SKIP() << "系统字体不存在";
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	uint64_t font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ui->font_set(font);
+	const Ui_Handle first = ui->label_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 80.0f, 60.0f }, "ABCDEFGHIJKLMNOP");
+	const Ui_Handle second = ui->label_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 100.0f, 80.0f, 60.0f }, "ABCDEFGHIJKLMNOP");
+	ASSERT_NE(first, 0u);
+	ASSERT_NE(second, 0u);
+	ASSERT_TRUE(ui->text_layout_set(first, true, 0.0f, Ui_Align::Start));
+	ASSERT_TRUE(ui->text_layout_set(second, true, 0.0f, Ui_Align::Start));
+	ASSERT_TRUE(renderer.frame_render());
+
+	const Ui_Render_Stats& stats = renderer.ui().ui_render_stats();
+	EXPECT_EQ(stats.block_cache_misses, 1u);
+	EXPECT_EQ(stats.block_cache_hits, 1u) << "同文本同宽第二控件应复用分行结果";
+}
+
+//文本块布局缓存：区域宽度与换行开关均参与键
+TEST_F(Renderer_Ui_Stats_Test, 文本块布局缓存宽度与换行)
+{
+	if (!font_available())
+		GTEST_SKIP() << "系统字体不存在";
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	uint64_t font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ui->font_set(font);
+	const Ui_Handle first = ui->label_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 80.0f, 60.0f }, "ABCDEFGHIJKLMNOP");
+	const Ui_Handle second = ui->label_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 100.0f, 80.0f, 60.0f }, "ABCDEFGHIJKLMNOP");
+	ASSERT_TRUE(ui->text_layout_set(first, true, 0.0f, Ui_Align::Start));
+	ASSERT_TRUE(ui->text_layout_set(second, true, 0.0f, Ui_Align::Start));
+	ASSERT_TRUE(renderer.frame_render());
+
+	//改宽度：该控件未命中，另一控件仍命中
+	ASSERT_TRUE(ui->rect_set(first, Ui_Rect{ 20.0f, 20.0f, 60.0f, 60.0f }));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& narrowed = renderer.ui().ui_render_stats();
+	EXPECT_EQ(narrowed.block_cache_misses, 1u);
+	EXPECT_EQ(narrowed.block_cache_hits, 1u) << "宽度变化项应重算分行";
+
+	//关闭换行：第二控件未命中（键含换行开关）
+	ASSERT_TRUE(ui->rect_set(first, Ui_Rect{ 20.0f, 20.0f, 80.0f, 60.0f }));
+	ASSERT_TRUE(ui->text_layout_set(first, false, 0.0f, Ui_Align::Start));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& unwrapped = renderer.ui().ui_render_stats();
+	EXPECT_EQ(unwrapped.block_cache_misses, 1u);
+	EXPECT_EQ(unwrapped.block_cache_hits, 1u) << "换行开关变化项应重算分行";
+}

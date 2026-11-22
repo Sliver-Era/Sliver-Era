@@ -46,6 +46,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染UI多行文本测试.cpp"
     "src/渲染UI字号测试.cpp"
     "src/渲染UI布局测试.cpp"
+    "src/渲染UI性能基线测试.cpp"
     "src/渲染UI文本省略测试.cpp"
     "src/渲染UI样式测试.cpp"
     "src/渲染UI滚动条测试.cpp"

@@ -10,6 +10,7 @@
 #include <iostream>
 
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
+#include "Engine/EngineRenderer/src/render/UI/UI渲染器.h"
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
 #include "Engine/EngineRenderer/src/render/Input/输入聚合.h"
 #include "测试辅助/渲染测试辅助.h"
@@ -166,4 +167,84 @@ TEST_F(Renderer_Ui_Image_Test, 内容阶段性能基线)
 
 	renderer.resource().texture_unload(green_texture);
 	renderer.resource().texture_unload(white_texture);
+}
+
+//九宫格切分：四边切分后产生 9 条绘制记录，像素仍铺满图片区域
+TEST_F(Renderer_Ui_Image_Test, 九宫格切分绘制)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const std::vector<uint8_t> texels = byjy_render_test::solid_green();
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	const Ui_Handle image = ui->image_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 100.0f, 60.0f }, texture);
+	ASSERT_NE(image, 0u);
+	ASSERT_TRUE(ui->image_slice_set(image, 0.25f, 0.25f, 0.25f, 0.25f));
+
+	//读取回一致
+	float left = 0.0f;
+	float top = 0.0f;
+	float right = 0.0f;
+	float bottom = 0.0f;
+	ui->image_slice_get(image, left, top, right, bottom);
+	EXPECT_FLOAT_EQ(left, 0.25f);
+	EXPECT_FLOAT_EQ(top, 0.25f);
+	EXPECT_FLOAT_EQ(right, 0.25f);
+	EXPECT_FLOAT_EQ(bottom, 0.25f);
+
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& stats = renderer.ui().ui_render_stats();
+	EXPECT_EQ(stats.draws, 9u) << "九宫格应拆为 9 块";
+	EXPECT_EQ(stats.vertices, 36u);
+	EXPECT_EQ(stats.indices, 54u);
+	EXPECT_EQ(stats.texture_binds, 1u) << "同一纹理只绑定一次描述符";
+
+	//回读：四角与中心均为纹理色
+	if (renderer.compute().readback_supported())
+	{
+		std::vector<uint8_t> pixels(byjy_render_test::pixel_bytes(320, 180), 0);
+		ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+		EXPECT_TRUE(byjy_render_test::pixel_is_green(byjy_render_test::pixel_get(pixels, 70, 50, 320)))
+			<< "中心块应显示纹理";
+		EXPECT_TRUE(byjy_render_test::pixel_is_green(byjy_render_test::pixel_get(pixels, 25, 25, 320)))
+			<< "左上角块应显示纹理";
+	}
+	renderer.resource().texture_unload(texture);
+}
+
+//九宫格切分：全 0 退化为整图，越界参数被钳制，未知句柄返回假
+TEST_F(Renderer_Ui_Image_Test, 九宫格切分退化与钳制)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const std::vector<uint8_t> texels = byjy_render_test::solid_green();
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	const Ui_Handle image = ui->image_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 100.0f, 60.0f }, texture);
+	ASSERT_NE(image, 0u);
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_EQ(renderer.ui().ui_render_stats().draws, 1u) << "切分全 0 应整图拉伸";
+
+	//越界钳制：左右之和不超过 1
+	ASSERT_TRUE(ui->image_slice_set(image, 0.8f, 0.0f, 0.8f, 0.0f));
+	float left = 0.0f;
+	float top = 0.0f;
+	float right = 0.0f;
+	float bottom = 0.0f;
+	ui->image_slice_get(image, left, top, right, bottom);
+	EXPECT_FLOAT_EQ(left, 0.8f);
+	EXPECT_NEAR(left + right, 1.0f, 1e-6f);
+	EXPECT_FLOAT_EQ(top, 0.0f);
+	EXPECT_FLOAT_EQ(bottom, 0.0f);
+
+	//未知句柄
+	EXPECT_FALSE(ui->image_slice_set(image + 100, 0.1f, 0.1f, 0.1f, 0.1f));
+	ui->image_slice_get(image + 100, left, top, right, bottom);
+	EXPECT_FLOAT_EQ(left, 0.0f);
+	EXPECT_FLOAT_EQ(top, 0.0f);
+	renderer.resource().texture_unload(texture);
 }

@@ -6,6 +6,9 @@
 */
 #include <gtest/gtest.h>
 
+#include <chrono>
+#include <iostream>
+
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
 #include "Engine/EngineRenderer/src/render/Input/输入聚合.h"
@@ -199,4 +202,44 @@ TEST_F(Renderer_Ui_Scroll_Test, 内容随偏移移动)
 	const std::array<uint8_t, 4> right_bottom = byjy_render_test::pixel_get(pixels, 180, 70, 320);
 	EXPECT_GT(byjy_render_test::luma_of(left_bottom), byjy_render_test::luma_of(right_bottom) + 40.0f)
 		<< "滚动后内容应离开下部";
+}
+
+//滚动阶段性能基线：64 个子节点逐帧滚动，记录 ms/帧（不设硬阈值）
+TEST_F(Renderer_Ui_Scroll_Test, 滚动阶段性能基线)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+
+	//铺满视口的滚动容器，内容 64 项
+	const Ui_Handle container = ui->panel_create(ui->root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 320.0f, 180.0f }, Ui_Color{ 0.08f, 0.08f, 0.10f, 1.0f });
+	ASSERT_NE(container, 0u);
+	ASSERT_TRUE(ui->clip_children_set(container, true));
+	Ui_Handle last_child = 0;
+	for (int index = 0; index < 64; ++index)
+	{
+		last_child = ui->panel_create(container,
+			Ui_Rect{ 0.0f, static_cast<float>(index) * 30.0f, 300.0f, 24.0f },
+			Ui_Color{ 0.3f, 0.3f, 0.3f, 1.0f });
+		ASSERT_NE(last_child, 0u);
+	}
+
+	//60 帧逐帧推进滚动偏移
+	const auto start = std::chrono::steady_clock::now();
+	for (int frame = 0; frame < 60; ++frame)
+	{
+		ASSERT_TRUE(ui->scroll_set(container, 0.0f, static_cast<float>(frame) * 2.0f));
+		ASSERT_TRUE(renderer.frame_render());
+	}
+	const auto end = std::chrono::steady_clock::now();
+	const double milliseconds = std::chrono::duration<double, std::milli>(end - start).count();
+	std::cout << "[UI 滚动基线] 64 子节点 60 帧：" << (milliseconds / 60.0) << " ms/帧（含绘制）" << std::endl;
+
+	//最后一帧：滚动 118，末项矩形上移 118
+	Ui_Rect last_rect{};
+	ASSERT_TRUE(ui->rect_get(last_child, last_rect));
+	EXPECT_FLOAT_EQ(last_rect.y, 63.0f * 30.0f - 118.0f);
+	EXPECT_GE(milliseconds, 0.0);
 }

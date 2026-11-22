@@ -297,3 +297,36 @@ TEST_F(Renderer_Ui_Stats_Test, 文本块布局缓存宽度与换行)
 	EXPECT_EQ(unwrapped.block_cache_misses, 1u);
 	EXPECT_EQ(unwrapped.block_cache_hits, 1u) << "换行开关变化项应重算分行";
 }
+
+//圆角几何缓冲复用：重复绘制顶点 / 索引数一致（无旧数据残留）
+TEST_F(Renderer_Ui_Stats_Test, 圆角几何缓冲复用)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle panel = ui->panel_create(ui->root_get(),
+		Ui_Rect{ 10.0f, 10.0f, 100.0f, 50.0f }, Ui_Color{ 0.2f, 0.2f, 0.2f, 1.0f });
+	ASSERT_NE(panel, 0u);
+	ASSERT_TRUE(ui->corner_radius_set(panel, 8.0f));
+
+	//单圆角矩形：1 中心 + 4 角 × 9 采样点
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& first = renderer.ui().ui_render_stats();
+	EXPECT_EQ(first.vertices, 37u);
+	EXPECT_EQ(first.indices, 108u);
+
+	//改色触发重建：缓冲复用不残留旧采样点
+	ASSERT_TRUE(ui->color_set(panel, Ui_Color{ 0.5f, 0.3f, 0.3f, 1.0f }));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& second = renderer.ui().ui_render_stats();
+	EXPECT_EQ(second.vertices, 37u);
+	EXPECT_EQ(second.indices, 108u);
+
+	//半径超限（夹紧到短边一半）仍为固定采样数
+	ASSERT_TRUE(ui->corner_radius_set(panel, 100.0f));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& clamped = renderer.ui().ui_render_stats();
+	EXPECT_EQ(clamped.vertices, 37u);
+	EXPECT_EQ(clamped.indices, 108u);
+}

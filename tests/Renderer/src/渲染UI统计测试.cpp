@@ -138,3 +138,36 @@ TEST_F(Renderer_Ui_Stats_Test, 稳定帧缓存命中)
 	const Ui_Render_Stats& third = renderer.ui().ui_render_stats();
 	EXPECT_EQ(third.cache_hits, 0u) << "属性变化后应重建几何";
 }
+
+//稳定帧上传跳过：同一帧槽重复使用且内容不变时不再上传
+TEST_F(Renderer_Ui_Stats_Test, 稳定帧上传跳过)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle panel = ui->panel_create(ui->root_get(),
+		Ui_Rect{ 10.0f, 10.0f, 100.0f, 50.0f }, Ui_Color{ 0.2f, 0.2f, 0.2f, 1.0f });
+	ASSERT_NE(panel, 0u);
+	ASSERT_TRUE(renderer.frame_render());
+
+	//多推进若干帧，等待同一帧槽再次被使用
+	bool skipped = false;
+	for (int frame = 0; frame < 8; ++frame)
+	{
+		ASSERT_TRUE(renderer.frame_render());
+		if (renderer.ui().ui_render_stats().upload_skips == 1)
+		{
+			skipped = true;
+			break;
+		}
+	}
+	EXPECT_TRUE(skipped) << "稳定帧复用同一槽时应跳过缓冲上传";
+
+	//属性变化后恢复上传
+	ASSERT_TRUE(ui->color_set(panel, Ui_Color{ 0.7f, 0.3f, 0.1f, 1.0f }));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& changed = renderer.ui().ui_render_stats();
+	EXPECT_EQ(changed.cache_hits, 0u);
+	EXPECT_EQ(changed.upload_skips, 0u) << "内容变化后应重新上传";
+}

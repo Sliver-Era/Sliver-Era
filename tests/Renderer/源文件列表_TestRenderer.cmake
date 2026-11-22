@@ -43,6 +43,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染PBR逐材质测试.cpp"
     "src/渲染PCSS软阴影测试.cpp"
     "src/渲染UI布局测试.cpp"
+    "src/渲染UI样式测试.cpp"
     "src/渲染中文字形测试.cpp"
     "src/渲染交换链重建测试.cpp"
     "src/渲染像素回读测试.cpp"

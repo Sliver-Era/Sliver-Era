@@ -171,3 +171,66 @@ TEST_F(Renderer_Ui_Stats_Test, 稳定帧上传跳过)
 	EXPECT_EQ(changed.cache_hits, 0u);
 	EXPECT_EQ(changed.upload_skips, 0u) << "内容变化后应重新上传";
 }
+
+//文本几何缓存：同帧同文本的第二个控件直接命中
+TEST_F(Renderer_Ui_Stats_Test, 文本几何缓存同帧命中)
+{
+	if (!font_available())
+		GTEST_SKIP() << "系统字体不存在";
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	uint64_t font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ui->font_set(font);
+	ASSERT_NE(ui->label_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 200.0f, 24.0f }, "AB"), 0u);
+	ASSERT_NE(ui->label_create(ui->root_get(), Ui_Rect{ 20.0f, 60.0f, 200.0f, 24.0f }, "AB"), 0u);
+	ASSERT_TRUE(renderer.frame_render());
+
+	const Ui_Render_Stats& stats = renderer.ui().ui_render_stats();
+	EXPECT_EQ(stats.text_draws, 2u);
+	EXPECT_EQ(stats.text_cache_misses, 1u);
+	EXPECT_EQ(stats.text_cache_hits, 1u) << "同文本第二控件应复用几何";
+	EXPECT_GT(stats.indices, 12u);
+}
+
+//文本几何缓存：整树重建但文本未变时全部命中，改文本后仅该项未命中
+TEST_F(Renderer_Ui_Stats_Test, 文本几何缓存重建命中)
+{
+	if (!font_available())
+		GTEST_SKIP() << "系统字体不存在";
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	uint64_t font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ui->font_set(font);
+	const Ui_Handle panel = ui->panel_create(ui->root_get(),
+		Ui_Rect{ 10.0f, 10.0f, 200.0f, 100.0f }, Ui_Color{ 0.2f, 0.2f, 0.2f, 1.0f });
+	ASSERT_NE(panel, 0u);
+	const Ui_Handle first = ui->label_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 200.0f, 24.0f }, "AB");
+	const Ui_Handle second = ui->label_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 60.0f, 200.0f, 24.0f }, "CD");
+	ASSERT_NE(first, 0u);
+	ASSERT_NE(second, 0u);
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_EQ(renderer.ui().ui_render_stats().text_cache_misses, 2u);
+
+	//改面板颜色触发整树重建，两段文本均命中缓存
+	ASSERT_TRUE(ui->color_set(panel, Ui_Color{ 0.4f, 0.2f, 0.2f, 1.0f }));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& rebuilt = renderer.ui().ui_render_stats();
+	EXPECT_EQ(rebuilt.cache_hits, 0u);
+	EXPECT_EQ(rebuilt.text_cache_hits, 2u);
+	EXPECT_EQ(rebuilt.text_cache_misses, 0u) << "文本未变应全部复用几何";
+
+	//改其中一个标签文本：仅该项未命中
+	ASSERT_TRUE(ui->text_set(first, "EF"));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& edited = renderer.ui().ui_render_stats();
+	EXPECT_EQ(edited.text_cache_hits, 1u);
+	EXPECT_EQ(edited.text_cache_misses, 1u) << "文本变化项应重新生成几何";
+}

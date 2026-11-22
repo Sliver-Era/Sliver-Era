@@ -4,6 +4,9 @@
       嵌套布局的父子传播、rect_set 取消布局。
 纯数据用例不依赖 GPU；集成用例走隐藏窗口渲染器的一帧驱动。
 */
+#include <chrono>
+#include <iostream>
+
 #include <gtest/gtest.h>
 
 //获取渲染器门面（公共头，Vulkan / SDL-free）
@@ -389,4 +392,127 @@ TEST_F(Renderer_Ui_Layout_Test, 命中随布局)
 	input->event_feed(&up);
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_TRUE(ui->clicked_consume(button));
+}
+
+//布局脏标记：无变化不重算，设置 / 创建 / 可见性变化触发一次
+TEST_F(Renderer_Ui_Layout_Test, 布局仅在脏时重算)
+{
+	Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle panel = ui->panel_create(ui->root_get(), Ui_Rect{}, Ui_Color{});
+	ASSERT_NE(panel, 0u);
+	ASSERT_TRUE(ui->layout_set(panel, make_layout(Ui_Anchor::Top_Left, 0.0f, 0.0f, 100.0f, 50.0f)));
+
+	//首帧重算一次
+	ASSERT_TRUE(renderer.frame_render());
+	const uint64_t first = ui->layout_apply_count();
+	EXPECT_EQ(first, 1u);
+	//无变化不重算
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_EQ(ui->layout_apply_count(), first);
+	//矩形写入触发一次
+	ASSERT_TRUE(ui->rect_set(panel, Ui_Rect{ 10.0f, 10.0f, 40.0f, 20.0f }));
+	ASSERT_TRUE(renderer.frame_render());
+	const uint64_t after_rect = ui->layout_apply_count();
+	EXPECT_EQ(after_rect, first + 1);
+	EXPECT_EQ(ui->layout_apply_count(), after_rect);
+	//布局设置触发一次
+	ASSERT_TRUE(ui->layout_set(panel, make_layout(Ui_Anchor::Center, 0.0f, 0.0f, 50.0f, 30.0f)));
+	ASSERT_TRUE(renderer.frame_render());
+	const uint64_t after_layout = ui->layout_apply_count();
+	EXPECT_EQ(after_layout, after_rect + 1);
+	//可见性变化触发一次
+	ASSERT_TRUE(ui->visible_set(panel, false));
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_EQ(ui->layout_apply_count(), after_layout + 1);
+}
+
+//横向排列交叉轴居中：子节点在内容区高度上居中
+TEST_F(Renderer_Ui_Layout_Test, 排列交叉轴居中)
+{
+	Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle panel = ui->panel_create(ui->root_get(), Ui_Rect{ 0.0f, 0.0f, 200.0f, 100.0f }, Ui_Color{});
+	ASSERT_NE(panel, 0u);
+	ASSERT_TRUE(ui->flow_set(panel, Ui_Flow::Horizontal, 5.0f, 10.0f));
+	ASSERT_TRUE(ui->flow_align_set(panel, Ui_Align::Center));
+	const Ui_Handle first = ui->label_create(panel, Ui_Rect{ 0.0f, 0.0f, 40.0f, 20.0f }, "a");
+	ASSERT_TRUE(renderer.frame_render());
+	Ui_Rect rect{};
+	ASSERT_TRUE(ui->rect_get(first, rect));
+	//内容区高 80，子高 20 → 10 + (80 - 20) / 2 = 40
+	EXPECT_FLOAT_EQ(rect.y, 40.0f);
+	EXPECT_FLOAT_EQ(rect.x, 10.0f);
+}
+
+//纵向排列交叉轴末端：子节点贴内容区右边
+TEST_F(Renderer_Ui_Layout_Test, 排列交叉轴末端)
+{
+	Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle panel = ui->panel_create(ui->root_get(), Ui_Rect{ 0.0f, 0.0f, 200.0f, 100.0f }, Ui_Color{});
+	ASSERT_NE(panel, 0u);
+	ASSERT_TRUE(ui->flow_set(panel, Ui_Flow::Vertical, 5.0f, 10.0f));
+	ASSERT_TRUE(ui->flow_align_set(panel, Ui_Align::End));
+	const Ui_Handle first = ui->label_create(panel, Ui_Rect{ 0.0f, 0.0f, 40.0f, 20.0f }, "a");
+	ASSERT_TRUE(renderer.frame_render());
+	Ui_Rect rect{};
+	ASSERT_TRUE(ui->rect_get(first, rect));
+	//内容区宽 180，子宽 40 → 10 + (180 - 40) = 150
+	EXPECT_FLOAT_EQ(rect.x, 150.0f);
+	EXPECT_FLOAT_EQ(rect.y, 10.0f);
+}
+
+//纵向排列交叉轴拉伸：子节点宽度铺满内容区
+TEST_F(Renderer_Ui_Layout_Test, 排列交叉轴拉伸)
+{
+	Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle panel = ui->panel_create(ui->root_get(), Ui_Rect{ 0.0f, 0.0f, 200.0f, 100.0f }, Ui_Color{});
+	ASSERT_NE(panel, 0u);
+	ASSERT_TRUE(ui->flow_set(panel, Ui_Flow::Vertical, 5.0f, 10.0f));
+	ASSERT_TRUE(ui->flow_align_set(panel, Ui_Align::Stretch));
+	const Ui_Handle first = ui->label_create(panel, Ui_Rect{ 0.0f, 0.0f, 40.0f, 20.0f }, "a");
+	ASSERT_TRUE(renderer.frame_render());
+	Ui_Rect rect{};
+	ASSERT_TRUE(ui->rect_get(first, rect));
+	EXPECT_FLOAT_EQ(rect.x, 10.0f);
+	EXPECT_FLOAT_EQ(rect.w, 180.0f);
+}
+
+//布局阶段性能基线：64 个布局节点，稳定帧不重复重算
+TEST_F(Renderer_Ui_Layout_Test, 布局阶段性能基线)
+{
+	Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle panel = ui->panel_create(ui->root_get(), Ui_Rect{ 0.0f, 0.0f, 300.0f, 160.0f }, Ui_Color{});
+	ASSERT_NE(panel, 0u);
+	ASSERT_TRUE(ui->flow_set(panel, Ui_Flow::Vertical, 1.0f, 2.0f));
+	for (uint32_t index = 0; index < 64; ++index)
+	{
+		const Ui_Handle label = ui->label_create(panel, Ui_Rect{ 0.0f, 0.0f, 40.0f, 2.0f }, "x");
+		ASSERT_NE(label, 0u);
+	}
+	ASSERT_TRUE(renderer.frame_render());
+	const uint64_t baseline = ui->layout_apply_count();
+	ASSERT_EQ(baseline, 1u);
+
+	const auto start = std::chrono::steady_clock::now();
+	for (uint32_t frame = 0; frame < 60; ++frame)
+		ASSERT_TRUE(renderer.frame_render());
+	const auto end = std::chrono::steady_clock::now();
+	const double total_ms = std::chrono::duration<double, std::milli>(end - start).count();
+	std::cout << "[UI 布局基线] 64 节点 60 帧：" << (total_ms / 60.0) << " ms/帧（含绘制）" << std::endl;
+	//稳定帧不触发重算
+	EXPECT_EQ(ui->layout_apply_count(), baseline);
 }

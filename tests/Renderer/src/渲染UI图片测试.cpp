@@ -6,6 +6,9 @@
 */
 #include <gtest/gtest.h>
 
+#include <chrono>
+#include <iostream>
+
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
 #include "Engine/EngineRenderer/src/render/Input/输入聚合.h"
@@ -123,4 +126,44 @@ TEST_F(Renderer_Ui_Image_Test, 图片不参与命中)
 	input->event_feed(&motion);
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_FALSE(ui->hovered_get(image)) << "图片不应参与交互命中";
+}
+
+//内容阶段性能基线：64 个图片节点交替两种纹理，60 帧（不设硬阈值）
+TEST_F(Renderer_Ui_Image_Test, 内容阶段性能基线)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+
+	//两张交替使用的纹理
+	const std::vector<uint8_t> green = byjy_render_test::solid_green();
+	const std::vector<uint8_t> white = byjy_render_test::solid_white();
+	uint64_t green_texture = 0;
+	uint64_t white_texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(green_texture, green.data(), 2, 2));
+	ASSERT_TRUE(renderer.resource().texture_load(white_texture, white.data(), 2, 2));
+
+	//64 个图片节点铺成网格
+	for (int index = 0; index < 64; ++index)
+	{
+		const int column = index % 8;
+		const int row = index / 8;
+		const Ui_Rect rect{ static_cast<float>(column) * 40.0f, static_cast<float>(row) * 22.0f, 36.0f, 20.0f };
+		const uint64_t texture = (index % 2 == 0) ? green_texture : white_texture;
+		const Ui_Handle image = ui->image_create(ui->root_get(), rect, texture);
+		ASSERT_NE(image, 0u);
+	}
+
+	//60 帧绘制
+	const auto start = std::chrono::steady_clock::now();
+	for (int frame = 0; frame < 60; ++frame)
+		ASSERT_TRUE(renderer.frame_render());
+	const auto end = std::chrono::steady_clock::now();
+	const double milliseconds = std::chrono::duration<double, std::milli>(end - start).count();
+	std::cout << "[UI 内容基线] 64 图片节点 60 帧：" << (milliseconds / 60.0) << " ms/帧（含绘制）" << std::endl;
+	EXPECT_GE(milliseconds, 0.0);
+
+	renderer.resource().texture_unload(green_texture);
+	renderer.resource().texture_unload(white_texture);
 }

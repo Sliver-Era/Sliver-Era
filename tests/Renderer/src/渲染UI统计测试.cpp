@@ -110,3 +110,31 @@ TEST_F(Renderer_Ui_Stats_Test, 图片绘制统计)
 	EXPECT_EQ(stats.indices, 6u);
 	renderer.resource().texture_unload(texture);
 }
+
+//稳定帧缓存：无变化时第二帧命中，属性变化后重建
+TEST_F(Renderer_Ui_Stats_Test, 稳定帧缓存命中)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle panel = ui->panel_create(ui->root_get(),
+		Ui_Rect{ 10.0f, 10.0f, 100.0f, 50.0f }, Ui_Color{ 0.2f, 0.2f, 0.2f, 1.0f });
+	ASSERT_NE(panel, 0u);
+
+	//首帧重建
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& first = renderer.ui().ui_render_stats();
+	EXPECT_EQ(first.cache_hits, 0u);
+	EXPECT_EQ(first.vertices, 4u);
+	//第二帧无变化：命中缓存
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& second = renderer.ui().ui_render_stats();
+	EXPECT_EQ(second.cache_hits, 1u);
+	EXPECT_EQ(second.vertices, 4u);
+	//修改颜色后重建
+	ASSERT_TRUE(ui->color_set(panel, Ui_Color{ 0.6f, 0.2f, 0.2f, 1.0f }));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& third = renderer.ui().ui_render_stats();
+	EXPECT_EQ(third.cache_hits, 0u) << "属性变化后应重建几何";
+}

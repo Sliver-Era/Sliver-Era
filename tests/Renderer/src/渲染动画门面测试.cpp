@@ -17,9 +17,9 @@ class Renderer_Animation_Facade_Test : public ::testing::Test
 };
 
 //两根骨骼：根绑定 T(1,2,3) / 逆 T(-1,-2,-3)，子绑定 T(0,1,0) / 逆 T(0,-1,0)
-static engine::Animation_Skeleton make_skeleton(void)
+static std::shared_ptr<engine::Animation_Skeleton> make_skeleton(void)
 {
-	engine::Animation_Skeleton skeleton;
+	std::vector<engine::Animation_Bone> bones;
 	engine::Animation_Bone root;
 	root.name = "root";
 	root.parent = -1;
@@ -34,7 +34,10 @@ static engine::Animation_Skeleton make_skeleton(void)
 	child.parent = 0;
 	child.bind_translation[1] = 1.0f;
 	child.inverse_bind[13] = -1.0f;
-	skeleton.bones = { root, child };
+	bones.push_back(root);
+	bones.push_back(child);
+	auto skeleton = std::make_shared<engine::Animation_Skeleton>();
+	engine::Animation_Skeleton::build(bones, *skeleton);
 	return skeleton;
 }
 
@@ -59,7 +62,7 @@ static engine::Animation_Clip make_clip(void)
 //片段应用：中点采样覆盖平移，缺失通道保留绑定值
 TEST_F(Renderer_Animation_Facade_Test, 片段应用生成姿态)
 {
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Clip clip = make_clip();
 	engine::Animation_Pose pose;
 	ASSERT_TRUE(engine::animation_clip_pose_build(clip, skeleton, 0.5f, false, pose));
@@ -85,7 +88,7 @@ TEST_F(Renderer_Animation_Facade_Test, 演员分配与姿态写入)
 	ASSERT_TRUE(renderer.animation().actor_create(2, offset));
 	EXPECT_EQ(offset, 0u);
 
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Pose pose;
 	ASSERT_TRUE(pose.build(skeleton));
 	ASSERT_TRUE(renderer.animation().actor_palette_write(offset, skeleton, pose));
@@ -108,7 +111,7 @@ TEST_F(Renderer_Animation_Facade_Test, 按片段写入调色板)
 	uint32_t offset = UINT32_MAX;
 	ASSERT_TRUE(renderer.animation().actor_create(2, offset));
 
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Clip clip = make_clip();
 	//0.5 秒：根世界平移 5，逆绑定 -1 后调色板平移 4 / -2 / -3
 	ASSERT_TRUE(renderer.animation().actor_clip_write(offset, clip, skeleton, 0.5f, false));
@@ -132,14 +135,16 @@ TEST_F(Renderer_Animation_Facade_Test, 门面非法输入拒绝)
 	//未知偏移写入 / 回收
 	ASSERT_TRUE(renderer.animation().actor_create(2, offset));
 	EXPECT_FALSE(renderer.animation().actor_destroy(offset + 1));
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Pose pose;
 	ASSERT_TRUE(pose.build(skeleton));
 	//骨骼数与登记不符（用另一骨架 1 根）
-	engine::Animation_Skeleton single;
+	std::vector<engine::Animation_Bone> single_bones;
 	engine::Animation_Bone only;
 	only.name = "root";
-	single.bones = { only };
+	single_bones.push_back(only);
+	auto single = std::make_shared<engine::Animation_Skeleton>();
+	ASSERT_TRUE(engine::Animation_Skeleton::build(single_bones, *single));
 	engine::Animation_Pose single_pose;
 	ASSERT_TRUE(single_pose.build(single));
 	EXPECT_FALSE(renderer.animation().actor_palette_write(offset, single, single_pose));

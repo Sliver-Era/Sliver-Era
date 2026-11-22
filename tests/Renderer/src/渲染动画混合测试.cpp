@@ -14,13 +14,15 @@ using namespace byjy_render_test;
 namespace
 {
 	//单骨骼骨架（根绑定为零、逆绑定单位）
-	engine::Animation_Skeleton single_bone_skeleton(void)
+	std::shared_ptr<engine::Animation_Skeleton> single_bone_skeleton(void)
 	{
-		engine::Animation_Skeleton skeleton;
+		std::vector<engine::Animation_Bone> bones;
 		engine::Animation_Bone root;
 		root.name = "root";
 		root.parent = -1;
-		skeleton.bones = { root };
+		bones.push_back(root);
+		auto skeleton = std::make_shared<engine::Animation_Skeleton>();
+		engine::Animation_Skeleton::build(bones, *skeleton);
 		return skeleton;
 	}
 
@@ -68,7 +70,7 @@ class Renderer_Animation_Blend_Test : public ::testing::Test
 //权重 0 / 1 分别退化为两份源姿态
 TEST_F(Renderer_Animation_Blend_Test, 权重端点退化为源姿态)
 {
-	engine::Animation_Skeleton skeleton = single_bone_skeleton();
+	auto skeleton = single_bone_skeleton();
 	const engine::Animation_Clip first = translation_clip(0.0f, 10.0f);
 	const engine::Animation_Clip second = translation_clip(20.0f, 30.0f);
 	engine::Animation_Pose pose;
@@ -86,7 +88,7 @@ TEST_F(Renderer_Animation_Blend_Test, 权重端点退化为源姿态)
 //权重 0.5：平移线性取中，越界权重夹紧
 TEST_F(Renderer_Animation_Blend_Test, 中间权重线性混合与夹紧)
 {
-	engine::Animation_Skeleton skeleton = single_bone_skeleton();
+	auto skeleton = single_bone_skeleton();
 	const engine::Animation_Clip first = translation_clip(0.0f, 10.0f);
 	const engine::Animation_Clip second = translation_clip(20.0f, 30.0f);
 	engine::Animation_Pose pose;
@@ -108,7 +110,7 @@ TEST_F(Renderer_Animation_Blend_Test, 中间权重线性混合与夹紧)
 //旋转混合：单位旋转与 90° 之间取 45°
 TEST_F(Renderer_Animation_Blend_Test, 旋转混合取短弧中点)
 {
-	engine::Animation_Skeleton skeleton = single_bone_skeleton();
+	auto skeleton = single_bone_skeleton();
 	const engine::Animation_Clip still = translation_clip(0.0f, 0.0f);
 	const engine::Animation_Clip turn = rotation_clip();
 	engine::Animation_Pose pose;
@@ -125,7 +127,7 @@ TEST_F(Renderer_Animation_Blend_Test, 旋转混合取短弧中点)
 //非法输入：非有限权重、非法片段、非法骨架
 TEST_F(Renderer_Animation_Blend_Test, 非法输入拒绝)
 {
-	engine::Animation_Skeleton skeleton = single_bone_skeleton();
+	auto skeleton = single_bone_skeleton();
 	const engine::Animation_Clip valid = translation_clip(0.0f, 10.0f);
 	engine::Animation_Clip invalid;
 	engine::Animation_Pose pose;
@@ -135,7 +137,7 @@ TEST_F(Renderer_Animation_Blend_Test, 非法输入拒绝)
 	//非法源片段
 	EXPECT_FALSE(engine::animation_clip_pose_blend(invalid, valid, skeleton, 0.0f, 0.0f, 0.5f, false, false, pose));
 	//空骨架
-	engine::Animation_Skeleton empty;
+	auto empty = std::make_shared<engine::Animation_Skeleton>();
 	EXPECT_FALSE(engine::animation_clip_pose_blend(valid, valid, empty, 0.0f, 0.0f, 0.5f, false, false, pose));
 }
 
@@ -147,7 +149,7 @@ TEST_F(Renderer_Animation_Blend_Test, 门面混合写入调色板)
 	uint32_t offset = UINT32_MAX;
 	ASSERT_TRUE(renderer.animation().actor_create(1, offset));
 
-	engine::Animation_Skeleton skeleton = single_bone_skeleton();
+	auto skeleton = single_bone_skeleton();
 	const engine::Animation_Clip first = translation_clip(0.0f, 10.0f);
 	const engine::Animation_Clip second = translation_clip(20.0f, 30.0f);
 	//权重 0.5：根世界平移 15，逆绑定单位 → 调色板平移 15

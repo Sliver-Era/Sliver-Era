@@ -1,13 +1,15 @@
 /*
-渲染动画姿态测试（方向十 · 阶段 B 第 8 轮）
+渲染动画姿态测试（方向十 · 阶段 B 第 8 轮；收敛轮 874 改为复用系统层）
 覆盖：骨架合法性、绑定姿态求值、父层级平移 / 缩放 / 旋转传播、局部写入与越界拒绝、
-      TRS 合成顺序（先缩放、再旋转、最后平移）。本套件只验证姿态纯数据行为。
+      TRS 合成顺序（先缩放、再旋转、最后平移）。骨架 / 姿态 / 求值均来自 EngineSystem 骨骼系统。
 */
 #include <cmath>
+#include <limits>
 
 #include <gtest/gtest.h>
 
 #include "Engine/EngineRenderer/src/render/Animation/动画姿态.h"
+#include "Engine/EngineSystem/src/world/skeleton/Common/骨骼数学.h"
 
 //渲染动画姿态测试夹具
 class Renderer_Animation_Pose_Test : public ::testing::Test
@@ -15,9 +17,9 @@ class Renderer_Animation_Pose_Test : public ::testing::Test
 };
 
 //构造两根骨骼：根平移 (1,0,0)，子平移 (0,2,0)
-static engine::Animation_Skeleton make_skeleton(void)
+static std::shared_ptr<engine::Animation_Skeleton> make_skeleton(void)
 {
-	engine::Animation_Skeleton skeleton;
+	std::vector<engine::Animation_Bone> bones;
 	engine::Animation_Bone root;
 	root.name = "root";
 	root.parent = -1;
@@ -26,34 +28,62 @@ static engine::Animation_Skeleton make_skeleton(void)
 	child.name = "child";
 	child.parent = 0;
 	child.bind_translation[1] = 2.0f;
-	skeleton.bones = { root, child };
+	bones.push_back(root);
+	bones.push_back(child);
+	auto skeleton = std::make_shared<engine::Animation_Skeleton>();
+	engine::Animation_Skeleton::build(bones, *skeleton);
 	return skeleton;
 }
 
 //骨架合法性：空骨架、父下标越位与正常骨架
 TEST_F(Renderer_Animation_Pose_Test, 骨架合法性)
 {
-	engine::Animation_Skeleton skeleton;
-	EXPECT_FALSE(skeleton.valid());
-	//父下标不得大于等于自身下标
-	skeleton = make_skeleton();
-	skeleton.bones[1].parent = 1;
-	EXPECT_FALSE(skeleton.valid());
+	auto empty = std::make_shared<engine::Animation_Skeleton>();
+	EXPECT_FALSE(empty->valid());
+	//父下标不得大于等于自身下标：构建直接拒绝并留空
+	std::vector<engine::Animation_Bone> bad_bones;
+	engine::Animation_Bone root;
+	root.name = "root";
+	engine::Animation_Bone child;
+	child.name = "child";
+	child.parent = 1;
+	bad_bones.push_back(root);
+	bad_bones.push_back(child);
+	engine::Animation_Skeleton invalid;
+	EXPECT_FALSE(engine::Animation_Skeleton::build(bad_bones, invalid));
+	EXPECT_FALSE(invalid.valid());
 	//正常骨架与按名查找
-	skeleton = make_skeleton();
-	EXPECT_TRUE(skeleton.valid());
-	EXPECT_EQ(skeleton.bone_count(), 2u);
-	EXPECT_EQ(skeleton.bone_seek("child"), 1);
-	EXPECT_EQ(skeleton.bone_seek("missing"), -1);
-	EXPECT_EQ(skeleton.bone_get(2), nullptr);
+	auto skeleton = make_skeleton();
+	ASSERT_TRUE(skeleton->valid());
+	EXPECT_EQ(skeleton->bone_count(), 2u);
+	EXPECT_EQ(skeleton->bone_seek("child"), 1);
+	EXPECT_EQ(skeleton->bone_seek("missing"), -1);
+	EXPECT_EQ(skeleton->bone_get(2), nullptr);
+}
+
+//骨骼表构建：重复骨骼名被拒绝
+TEST_F(Renderer_Animation_Pose_Test, 骨骼表构建拒绝重复名)
+{
+	std::vector<engine::Animation_Bone> bones;
+	engine::Animation_Bone first;
+	first.name = "root";
+	engine::Animation_Bone second;
+	second.name = "root";
+	second.parent = 0;
+	bones.push_back(first);
+	bones.push_back(second);
+	engine::Animation_Skeleton skeleton;
+	EXPECT_FALSE(engine::Animation_Skeleton::build(bones, skeleton));
+	EXPECT_FALSE(skeleton.valid());
 }
 
 //绑定姿态：根与子的世界平移按层级累加
 TEST_F(Renderer_Animation_Pose_Test, 绑定姿态层级平移)
 {
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Pose pose;
 	ASSERT_TRUE(pose.build(skeleton));
+	ASSERT_TRUE(engine::skeleton_pose_world_update(pose));
 	float matrix[16] = {};
 	ASSERT_TRUE(pose.world_get(0, matrix));
 	EXPECT_FLOAT_EQ(matrix[12], 1.0f);
@@ -67,7 +97,7 @@ TEST_F(Renderer_Animation_Pose_Test, 绑定姿态层级平移)
 //父缩放作用于子骨骼的局部平移
 TEST_F(Renderer_Animation_Pose_Test, 父缩放传播)
 {
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Pose pose;
 	ASSERT_TRUE(pose.build(skeleton));
 	//根缩放 2 倍，子平移 (0,2,0) 变为世界 (0,4,0)（根自身无平移外的偏移）
@@ -75,7 +105,7 @@ TEST_F(Renderer_Animation_Pose_Test, 父缩放传播)
 	float identity_translation[3] = { 0.0f, 0.0f, 0.0f };
 	float identity_rotation[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	ASSERT_TRUE(pose.local_set(0, identity_translation, identity_rotation, root_scale));
-	ASSERT_TRUE(pose.world_update(skeleton));
+	ASSERT_TRUE(engine::skeleton_pose_world_update(pose));
 	float matrix[16] = {};
 	ASSERT_TRUE(pose.world_get(1, matrix));
 	EXPECT_FLOAT_EQ(matrix[12], 0.0f);
@@ -85,7 +115,7 @@ TEST_F(Renderer_Animation_Pose_Test, 父缩放传播)
 //父旋转 90° 绕 Z 后，子的局部 (1,0,0) 落到世界 (0,1,0)
 TEST_F(Renderer_Animation_Pose_Test, 父旋转传播)
 {
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Pose pose;
 	ASSERT_TRUE(pose.build(skeleton));
 	float identity_translation[3] = { 0.0f, 0.0f, 0.0f };
@@ -95,7 +125,7 @@ TEST_F(Renderer_Animation_Pose_Test, 父旋转传播)
 	ASSERT_TRUE(pose.local_set(0, identity_translation, rotate_z90, identity_scale));
 	float child_translation[3] = { 1.0f, 0.0f, 0.0f };
 	ASSERT_TRUE(pose.local_set(1, child_translation, identity_rotation, identity_scale));
-	ASSERT_TRUE(pose.world_update(skeleton));
+	ASSERT_TRUE(engine::skeleton_pose_world_update(pose));
 	float matrix[16] = {};
 	ASSERT_TRUE(pose.world_get(1, matrix));
 	EXPECT_NEAR(matrix[12], 0.0f, 1e-5f);
@@ -105,14 +135,14 @@ TEST_F(Renderer_Animation_Pose_Test, 父旋转传播)
 //局部写入：合法写入生效，越界 / 非有限值 / 尺寸不符被拒绝
 TEST_F(Renderer_Animation_Pose_Test, 局部写入与越界拒绝)
 {
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Pose pose;
 	ASSERT_TRUE(pose.build(skeleton));
 	float translation[3] = { 0.0f, 5.0f, 0.0f };
 	float rotation[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float scale[3] = { 1.0f, 1.0f, 1.0f };
 	ASSERT_TRUE(pose.local_set(1, translation, rotation, scale));
-	ASSERT_TRUE(pose.world_update(skeleton));
+	ASSERT_TRUE(engine::skeleton_pose_world_update(pose));
 	float matrix[16] = {};
 	ASSERT_TRUE(pose.world_get(1, matrix));
 	//局部写入替换绑定平移（根的 Y 平移为 0）
@@ -122,9 +152,9 @@ TEST_F(Renderer_Animation_Pose_Test, 局部写入与越界拒绝)
 	//非有限值
 	translation[0] = std::numeric_limits<float>::quiet_NaN();
 	EXPECT_FALSE(pose.local_set(0, translation, rotation, scale));
-	//姿态尺寸与骨架不符
-	pose.translation.pop_back();
-	EXPECT_FALSE(pose.world_update(skeleton));
+	//姿态尺寸与骨骼不符
+	pose.local_translation.pop_back();
+	EXPECT_FALSE(engine::skeleton_pose_world_update(pose));
 }
 
 //TRS 顺序：先缩放、再旋转、最后平移（平移不被旋转带偏）
@@ -134,7 +164,7 @@ TEST_F(Renderer_Animation_Pose_Test, TRS合成顺序)
 	float rotate_z90[4] = { 0.0f, 0.0f, 0.70710678f, 0.70710678f };
 	float scale[3] = { 2.0f, 2.0f, 2.0f };
 	float matrix[16] = {};
-	engine::animation_trs_compose(translation, rotate_z90, scale, matrix);
+	engine::detail::bone_matrix_from_transform(translation, rotate_z90, scale, matrix);
 	//平移分量保持原值
 	EXPECT_NEAR(matrix[12], 1.0f, 1e-5f);
 	EXPECT_NEAR(matrix[13], 0.0f, 1e-5f);

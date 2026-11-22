@@ -233,16 +233,18 @@ TEST_F(Renderer_Animation_ZeroDiff_Test, 性能基线八演员三十二骨骼)
 }
 
 //构造链式骨架（每骨骼父下标为前一根）
-static engine::Animation_Skeleton chain_skeleton(uint32_t count)
+static std::shared_ptr<engine::Animation_Skeleton> chain_skeleton(uint32_t count)
 {
-	engine::Animation_Skeleton skeleton;
+	std::vector<engine::Animation_Bone> bones;
 	for (uint32_t index = 0; index < count; ++index)
 	{
 		engine::Animation_Bone bone;
 		bone.name = "b" + std::to_string(index);
 		bone.parent = index == 0 ? -1 : static_cast<int32_t>(index - 1);
-		skeleton.bones.push_back(bone);
+		bones.push_back(bone);
 	}
+	auto skeleton = std::make_shared<engine::Animation_Skeleton>();
+	engine::Animation_Skeleton::build(bones, *skeleton);
 	return skeleton;
 }
 
@@ -267,7 +269,7 @@ TEST_F(Renderer_Animation_ZeroDiff_Test, 混合端点与单片段等价)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	const engine::Animation_Skeleton skeleton = chain_skeleton(4);
+	const auto skeleton = chain_skeleton(4);
 	const engine::Animation_Clip first = offset_clip(2.0f);
 	const engine::Animation_Clip second = offset_clip(9.0f);
 
@@ -298,7 +300,7 @@ TEST_F(Renderer_Animation_ZeroDiff_Test, 混合路径性能基线)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	const engine::Animation_Skeleton skeleton = chain_skeleton(32);
+	const auto skeleton = chain_skeleton(32);
 	const engine::Animation_Clip first = offset_clip(1.0f);
 	const engine::Animation_Clip second = offset_clip(3.0f);
 	uint32_t offsets[8] = {};

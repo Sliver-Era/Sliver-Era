@@ -15,12 +15,14 @@ using namespace byjy_render_test;
 namespace
 {
 	//单骨骼骨架（绑定为零、逆绑定单位）
-	engine::Animation_Skeleton single_bone(void)
+	std::shared_ptr<engine::Animation_Skeleton> single_bone(void)
 	{
-		engine::Animation_Skeleton skeleton;
+		std::vector<engine::Animation_Bone> bones;
 		engine::Animation_Bone root;
 		root.name = "root";
-		skeleton.bones = { root };
+		bones.push_back(root);
+		auto skeleton = std::make_shared<engine::Animation_Skeleton>();
+		engine::Animation_Skeleton::build(bones, *skeleton);
 		return skeleton;
 	}
 
@@ -83,7 +85,7 @@ TEST_F(Renderer_Animation_Layer_Test, 权重零等价基础片段)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	const engine::Animation_Skeleton skeleton = single_bone();
+	const auto skeleton = single_bone();
 	const engine::Animation_Clip base = translation_clip(6.0f);
 	const engine::Animation_Clip overlay = translation_clip(20.0f);
 
@@ -110,7 +112,7 @@ TEST_F(Renderer_Animation_Layer_Test, 平移叠加按权重)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	const engine::Animation_Skeleton skeleton = single_bone();
+	const auto skeleton = single_bone();
 	const engine::Animation_Clip base = translation_clip(6.0f);
 	const engine::Animation_Clip overlay = translation_clip(20.0f);
 	uint32_t offset = UINT32_MAX;
@@ -131,7 +133,7 @@ TEST_F(Renderer_Animation_Layer_Test, 旋转叠加按权重)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	const engine::Animation_Skeleton skeleton = single_bone();
+	const auto skeleton = single_bone();
 	const engine::Animation_Clip base = rotation_clip();
 	const engine::Animation_Clip overlay = rotation_clip();
 	uint32_t offset = UINT32_MAX;
@@ -150,7 +152,7 @@ TEST_F(Renderer_Animation_Layer_Test, 非法叠加输入拒绝)
 {
 	engine::Renderer renderer;
 	ASSERT_TRUE(renderer.init(hidden_config()));
-	const engine::Animation_Skeleton skeleton = single_bone();
+	const auto skeleton = single_bone();
 	const engine::Animation_Clip base = translation_clip(1.0f);
 	const engine::Animation_Clip overlay = translation_clip(2.0f);
 	engine::Animation_Clip invalid;

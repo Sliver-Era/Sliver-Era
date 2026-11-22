@@ -26,13 +26,13 @@ namespace
 		file << text;
 	}
 
-	//两根骨骼的骨架 JSON：根 T(1,2,3) / 逆 T(-1,-2,-3)，子 T(0,1,0) / 逆 T(0,-1,0)
+	//两根骨骼的骨架 JSON（系统层骨架格式）：根 T(1,2,3) / 逆 T(-1,-2,-3)，子 T(0,1,0) / 逆 T(0,-1,0)
 	std::string skeleton_json(void)
 	{
 		return R"({"bones":[
-			{"name":"root","parent":-1,"bind_translation":[1,2,3],"inverse_bind":[
+			{"name":"root","parent":-1,"translation":[1,2,3],"inverse_bind":[
 				1,0,0,0, 0,1,0,0, 0,0,1,0, -1,-2,-3,1]},
-			{"name":"child","parent":0,"bind_translation":[0,1,0],"inverse_bind":[
+			{"name":"child","parent":0,"translation":[0,1,0],"inverse_bind":[
 				1,0,0,0, 0,1,0,0, 0,0,1,0, 0,-1,0,1]}]})";
 	}
 

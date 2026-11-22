@@ -16,9 +16,9 @@ class Renderer_Animation_Skin_Test : public ::testing::Test
 };
 
 //构造两根骨骼与对应逆绑定：根绑定 T(1,2,3) / 逆 T(-1,-2,-3)，子绑定 T(0,1,0) / 逆 T(0,-1,0)
-static engine::Animation_Skeleton make_skeleton(void)
+static std::shared_ptr<engine::Animation_Skeleton> make_skeleton(void)
 {
-	engine::Animation_Skeleton skeleton;
+	std::vector<engine::Animation_Bone> bones;
 	engine::Animation_Bone root;
 	root.name = "root";
 	root.parent = -1;
@@ -33,18 +33,22 @@ static engine::Animation_Skeleton make_skeleton(void)
 	child.parent = 0;
 	child.bind_translation[1] = 1.0f;
 	child.inverse_bind[13] = -1.0f;
-	skeleton.bones = { root, child };
+	bones.push_back(root);
+	bones.push_back(child);
+	auto skeleton = std::make_shared<engine::Animation_Skeleton>();
+	engine::Animation_Skeleton::build(bones, *skeleton);
 	return skeleton;
 }
 
 //绑定姿态下：根调色板为单位阵，子调色板等于根绑定平移
 TEST_F(Renderer_Animation_Skin_Test, 绑定姿态蒙皮矩阵)
 {
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Pose pose;
 	ASSERT_TRUE(pose.build(skeleton));
-	float palette[32] = {};
-	ASSERT_TRUE(engine::animation_skin_palette_build(skeleton, pose, palette, 2));
+	ASSERT_TRUE(engine::skeleton_pose_world_update(pose));
+	ASSERT_TRUE(engine::skeleton_pose_skin_build(pose));
+	const float* palette = pose.skin_matrix.data();
 	//根：world × 逆绑定 = 单位阵
 	EXPECT_FLOAT_EQ(palette[0], 1.0f);
 	EXPECT_FLOAT_EQ(palette[5], 1.0f);
@@ -59,20 +63,19 @@ TEST_F(Renderer_Animation_Skin_Test, 绑定姿态蒙皮矩阵)
 	EXPECT_FLOAT_EQ(palette[16 + 14], 3.0f);
 }
 
-//参数拒绝：空输出、数量不符、骨架非法
+//参数拒绝：未绑定资产、蒙皮矩阵尺寸不足
 TEST_F(Renderer_Animation_Skin_Test, 蒙皮矩阵参数拒绝)
 {
-	engine::Animation_Skeleton skeleton = make_skeleton();
+	auto skeleton = make_skeleton();
 	engine::Animation_Pose pose;
 	ASSERT_TRUE(pose.build(skeleton));
-	float palette[32] = {};
-	//空输出
-	EXPECT_FALSE(engine::animation_skin_palette_build(skeleton, pose, nullptr, 2));
-	//数量不符
-	EXPECT_FALSE(engine::animation_skin_palette_build(skeleton, pose, palette, 1));
-	//骨架非法（父下标越位）
-	skeleton.bones[1].parent = 1;
-	EXPECT_FALSE(engine::animation_skin_palette_build(skeleton, pose, palette, 2));
+	//未绑定资产的姿态无法求值
+	engine::Animation_Pose unbound;
+	EXPECT_FALSE(engine::skeleton_pose_world_update(unbound));
+	EXPECT_FALSE(engine::skeleton_pose_skin_build(unbound));
+	//蒙皮矩阵尺寸不足
+	pose.skin_matrix.pop_back();
+	EXPECT_FALSE(engine::skeleton_pose_skin_build(pose));
 }
 
 //渲染器调色板初始全为单位矩阵（首条与末条抽查）

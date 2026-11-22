@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <gtest/gtest.h>
 
 //非数参数构造（第二百三十八轮）

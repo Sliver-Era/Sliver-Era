@@ -88,6 +88,62 @@ TEST_F(Renderer_Ui_Text_Box_Test, 删除后一字符)
 	EXPECT_FALSE(ui.text_box_delete(box + 100));
 }
 
+//光标移动：按码点前后移动，越界夹到串首 / 串尾（第九百三十二轮）
+TEST_F(Renderer_Ui_Text_Box_Test, 光标按码点移动)
+{
+	Ui_Context ui;
+	//"中ab" = 3 + 1 + 1 = 5 字节
+	const Ui_Handle box = ui.text_box_create(ui.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "中ab");
+	ASSERT_NE(box, 0u);
+	ASSERT_EQ(ui.caret_get(box), 5u);
+
+	//左移 1：跨到 "a" 前（4）
+	ASSERT_TRUE(ui.caret_move(box, -1));
+	EXPECT_EQ(ui.caret_get(box), 4u);
+	//左移 1 再 1：先到 3，再整体跨过中文到 0
+	ASSERT_TRUE(ui.caret_move(box, -1));
+	EXPECT_EQ(ui.caret_get(box), 3u);
+	ASSERT_TRUE(ui.caret_move(box, -1));
+	EXPECT_EQ(ui.caret_get(box), 0u);
+	//串首继续左移不变化
+	EXPECT_FALSE(ui.caret_move(box, -1));
+
+	//右移 2：中文（3）后到 3，再到 4
+	ASSERT_TRUE(ui.caret_move(box, 2));
+	EXPECT_EQ(ui.caret_get(box), 4u);
+	//右移越界夹到串尾
+	ASSERT_TRUE(ui.caret_move(box, 10));
+	EXPECT_EQ(ui.caret_get(box), 5u);
+	//串尾继续右移不变化
+	EXPECT_FALSE(ui.caret_move(box, 1));
+	//零步不移动
+	EXPECT_FALSE(ui.caret_move(box, 0));
+	//未知句柄
+	EXPECT_FALSE(ui.caret_move(box + 100, 1));
+}
+
+//Home / End：移到串首 / 串尾并返回是否移动
+TEST_F(Renderer_Ui_Text_Box_Test, 光标Home与End)
+{
+	Ui_Context ui;
+	const Ui_Handle box = ui.text_box_create(ui.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "中a");
+	ASSERT_NE(box, 0u);
+
+	//从串尾移到串首
+	EXPECT_TRUE(ui.caret_home(box));
+	EXPECT_EQ(ui.caret_get(box), 0u);
+	EXPECT_FALSE(ui.caret_home(box)) << "已在串首不移动";
+	//移到串尾
+	EXPECT_TRUE(ui.caret_end(box));
+	EXPECT_EQ(ui.caret_get(box), 4u);
+	EXPECT_FALSE(ui.caret_end(box)) << "已在串尾不移动";
+	//未知句柄
+	EXPECT_FALSE(ui.caret_home(box + 100));
+	EXPECT_FALSE(ui.caret_end(box + 100));
+}
+
 //光标落在 UTF-8 续字节时回退到字符头
 TEST_F(Renderer_Ui_Text_Box_Test, 光标字符边界回退)
 {

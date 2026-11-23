@@ -1,4 +1,4 @@
-/*
+﻿/*
 渲染 UI 性能基线测试（第九百零五轮）
 覆盖：文本密集界面的整树重建均值、稳定帧均值与缓存命中计数。
 基线只做宽松上限守卫，数值打印到控制台供进度文档记录。
@@ -106,7 +106,7 @@ TEST_F(Renderer_Ui_Perf_Test, 文本密集整树重建基线)
 	EXPECT_GT(stats.block_cache_hits, 0u);
 	EXPECT_GT(stats.text_draws, 0u);
 	//宽松上限守卫（4 倍余量）
-	EXPECT_LT(average_ms, 20.0);
+	EXPECT_LT(average_ms, 12.0);
 }
 
 //稳定帧基线：不改动控件时整树几何缓存命中，均值应显著低于重建
@@ -142,7 +142,7 @@ TEST_F(Renderer_Ui_Perf_Test, 文本密集稳定帧基线)
 	//稳定帧应全部命中几何缓存
 	EXPECT_TRUE(all_hit) << "稳定帧不应重建几何";
 	//宽松上限守卫
-	EXPECT_LT(average_ms, 15.0);
+	EXPECT_LT(average_ms, 10.0);
 }
 
 //九宫格绘制基线：64 个九宫格面板，合批不应回退为多记录
@@ -186,6 +186,6 @@ TEST_F(Renderer_Ui_Perf_Test, 九宫格稳定帧基线)
 
 	std::cout << "[UI 九宫格基线] 64 面板稳定帧 " << iterations << " 帧：" << average_ms
 		<< " ms/帧（含绘制）" << std::endl;
-	EXPECT_LT(average_ms, 20.0);
+	EXPECT_LT(average_ms, 12.0);
 	renderer.resource().texture_unload(texture);
 }

@@ -60,6 +60,8 @@ TEST_F(Renderer_Ui_Stats_Test, 纯色面板统计)
 	EXPECT_EQ(stats.vertices, 4u);
 	EXPECT_EQ(stats.indices, 6u);
 	EXPECT_EQ(stats.draws, 1u);
+	EXPECT_EQ(stats.solid_draws, 1u);
+	EXPECT_EQ(stats.texture_draws, 0u);
 	EXPECT_EQ(stats.text_draws, 0u);
 	EXPECT_EQ(stats.texture_binds, 0u);
 }
@@ -83,6 +85,7 @@ TEST_F(Renderer_Ui_Stats_Test, 文字绘制统计)
 
 	const Ui_Render_Stats& stats = renderer.ui().ui_render_stats();
 	EXPECT_EQ(stats.text_draws, 1u);
+	EXPECT_EQ(stats.texture_draws, 1u) << "文字记录应计入纹理分类";
 	EXPECT_GE(stats.texture_binds, 1u);
 	EXPECT_GT(stats.indices, 6u) << "文字应产生额外几何";
 }
@@ -105,6 +108,8 @@ TEST_F(Renderer_Ui_Stats_Test, 图片绘制统计)
 	const Ui_Render_Stats& stats = renderer.ui().ui_render_stats();
 	EXPECT_EQ(stats.text_draws, 0u);
 	EXPECT_EQ(stats.draws, 1u);
+	EXPECT_EQ(stats.solid_draws, 0u);
+	EXPECT_EQ(stats.texture_draws, 1u);
 	EXPECT_EQ(stats.texture_binds, 1u);
 	EXPECT_EQ(stats.vertices, 4u);
 	EXPECT_EQ(stats.indices, 6u);

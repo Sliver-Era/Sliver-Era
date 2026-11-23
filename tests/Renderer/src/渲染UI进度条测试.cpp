@@ -1,6 +1,7 @@
 /*
 渲染 UI 进度条测试（第九百一十五轮）
 覆盖：取值 0 / 0.5 / 1 的绘制规模、越界钳制与居中标签。
+第九百二十三轮补充：纵向方向存取与自底向上填充。
 */
 #include <gtest/gtest.h>
 
@@ -146,6 +147,52 @@ TEST_F(Renderer_Ui_Progress_Test, 前景像素覆盖)
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	const std::array<uint8_t, 4> full_right = byjy_render_test::pixel_get(pixels, 180, 32, 320);
 	EXPECT_GT(static_cast<int>(full_right[0]), static_cast<int>(full_right[2])) << "满值右半应为前景色";
+}
+
+//纵向方向：默认横向，可切换；未知句柄返回假
+TEST_F(Renderer_Ui_Progress_Test, 纵向方向存取)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle progress = ui->progress_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 24.0f, 120.0f }, 0.5f);
+	ASSERT_NE(progress, 0u);
+	//默认横向
+	EXPECT_FALSE(ui->progress_vertical_get(progress));
+	//切换为纵向
+	ASSERT_TRUE(ui->progress_vertical_set(progress, true));
+	EXPECT_TRUE(ui->progress_vertical_get(progress));
+	//未知句柄
+	EXPECT_FALSE(ui->progress_vertical_set(999999u, true));
+	EXPECT_FALSE(ui->progress_vertical_get(999999u));
+}
+
+//纵向像素：半值下方为强调色、上方为背景
+TEST_F(Renderer_Ui_Progress_Test, 纵向前景自底向上)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机不支持像素回读";
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	//矩形横跨 20..44，纵向 20..140
+	const Ui_Handle progress = ui->progress_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 24.0f, 120.0f }, 0.5f);
+	ASSERT_NE(progress, 0u);
+	ASSERT_TRUE(ui->progress_vertical_set(progress, true));
+
+	std::vector<uint8_t> pixels(byjy_render_test::pixel_bytes(320, 180), 0);
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	//下方（120）：前景蓝占优
+	const std::array<uint8_t, 4> lower = byjy_render_test::pixel_get(pixels, 32, 120, 320);
+	//上方（40）：背景
+	const std::array<uint8_t, 4> upper = byjy_render_test::pixel_get(pixels, 32, 40, 320);
+	EXPECT_GT(static_cast<int>(lower[0]), static_cast<int>(lower[2])) << "下方应为蓝色前景";
+	EXPECT_GT(byjy_render_test::luma_of(lower), byjy_render_test::luma_of(upper) + 10.0f)
+		<< "下方亮度应明显高于上方";
 }
 
 //主题角色：背景随主题面板色变化，Custom 角色回退节点颜色

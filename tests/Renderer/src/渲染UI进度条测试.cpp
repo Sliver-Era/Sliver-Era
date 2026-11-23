@@ -9,6 +9,7 @@
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
 #include "Engine/EngineRenderer/src/render/UI/UI渲染器.h"
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+#include "测试辅助/渲染测试辅助.h"
 
 //游戏引擎命名空间
 using namespace engine;
@@ -115,4 +116,34 @@ TEST_F(Renderer_Ui_Progress_Test, 居中标签)
 	const Ui_Render_Stats& stats = renderer.ui().ui_render_stats();
 	EXPECT_EQ(stats.text_draws, 1u) << "标签应绘制一条文字记录";
 	EXPECT_EQ(stats.draws, 3u) << "背景 + 前景 + 文字";
+}
+
+//像素：半值左半为强调色、右半为背景，满值右半也被覆盖
+TEST_F(Renderer_Ui_Progress_Test, 前景像素覆盖)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机不支持像素回读";
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	//矩形横跨 20..220，垂直 20..44
+	const Ui_Handle progress = ui->progress_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 200.0f, 24.0f }, 0.5f);
+	ASSERT_NE(progress, 0u);
+
+	std::vector<uint8_t> pixels(byjy_render_test::pixel_bytes(320, 180), 0);
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	//左半（前景）：蓝通道占优且亮度高于背景（回读通道序为 BGRA）
+	const std::array<uint8_t, 4> filled = byjy_render_test::pixel_get(pixels, 60, 32, 320);
+	const std::array<uint8_t, 4> empty = byjy_render_test::pixel_get(pixels, 180, 32, 320);
+	EXPECT_GT(static_cast<int>(filled[0]), static_cast<int>(filled[2])) << "前景应为蓝色强调色";
+	EXPECT_GT(byjy_render_test::luma_of(filled), byjy_render_test::luma_of(empty) + 10.0f)
+		<< "前景亮度应明显高于背景";
+
+	//满值：右半也被前景覆盖
+	ASSERT_TRUE(ui->value_set(progress, 1.0f));
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	const std::array<uint8_t, 4> full_right = byjy_render_test::pixel_get(pixels, 180, 32, 320);
+	EXPECT_GT(static_cast<int>(full_right[0]), static_cast<int>(full_right[2])) << "满值右半应为前景色";
 }

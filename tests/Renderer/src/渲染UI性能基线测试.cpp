@@ -12,6 +12,7 @@
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
 #include "Engine/EngineRenderer/src/render/UI/UI渲染器.h"
 #include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
+#include "测试辅助/渲染测试辅助.h"
 
 //游戏引擎命名空间
 using namespace engine;
@@ -142,4 +143,49 @@ TEST_F(Renderer_Ui_Perf_Test, 文本密集稳定帧基线)
 	EXPECT_TRUE(all_hit) << "稳定帧不应重建几何";
 	//宽松上限守卫
 	EXPECT_LT(average_ms, 15.0);
+}
+
+//九宫格绘制基线：64 个九宫格面板，合批不应回退为多记录
+TEST_F(Renderer_Ui_Perf_Test, 九宫格稳定帧基线)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const std::vector<uint8_t> texels = byjy_render_test::solid_green();
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+
+	//64 个九宫格面板铺成网格
+	for (int index = 0; index < 64; ++index)
+	{
+		const int column = index % 8;
+		const int row = index / 8;
+		const Ui_Rect rect{ static_cast<float>(column) * 40.0f, static_cast<float>(row) * 22.0f, 36.0f, 20.0f };
+		const Ui_Handle panel = ui->panel_create(ui->root_get(), rect,
+			Ui_Color{ 1.0f, 1.0f, 1.0f, 1.0f });
+		ASSERT_NE(panel, 0u);
+		ASSERT_TRUE(ui->panel_texture_set(panel, texture));
+		ASSERT_TRUE(ui->image_slice_set(panel, 0.25f, 0.25f, 0.25f, 0.25f));
+	}
+
+	//几何规模：每面板 1 条记录 / 36 顶点 / 54 索引
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& built = renderer.ui().ui_render_stats();
+	EXPECT_EQ(built.draws, 64u);
+	EXPECT_EQ(built.vertices, 64u * 36u);
+	EXPECT_EQ(built.indices, 64u * 54u);
+
+	const int iterations = 60;
+	const auto start = std::chrono::steady_clock::now();
+	for (int index = 0; index < iterations; ++index)
+		ASSERT_TRUE(renderer.frame_render());
+	const auto end = std::chrono::steady_clock::now();
+	const double total_ms = std::chrono::duration<double, std::milli>(end - start).count();
+	const double average_ms = total_ms / static_cast<double>(iterations);
+
+	std::cout << "[UI 九宫格基线] 64 面板稳定帧 " << iterations << " 帧：" << average_ms
+		<< " ms/帧（含绘制）" << std::endl;
+	EXPECT_LT(average_ms, 20.0);
+	renderer.resource().texture_unload(texture);
 }

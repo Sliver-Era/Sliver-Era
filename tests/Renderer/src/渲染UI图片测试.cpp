@@ -248,3 +248,35 @@ TEST_F(Renderer_Ui_Image_Test, 九宫格切分退化与钳制)
 	EXPECT_FLOAT_EQ(top, 0.0f);
 	renderer.resource().texture_unload(texture);
 }
+
+//九宫格像素边距：按纹理尺寸换算为归一化切分，非法尺寸返回假
+TEST_F(Renderer_Ui_Image_Test, 九宫格像素边距换算)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const Ui_Handle image = ui->image_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 100.0f, 60.0f }, 0);
+	ASSERT_NE(image, 0u);
+
+	//64×32 纹理、四边 16 / 8 像素 → 0.25 四边
+	ASSERT_TRUE(ui->image_slice_pixels_set(image, 64, 32, 16.0f, 8.0f, 16.0f, 8.0f));
+	float left = 0.0f;
+	float top = 0.0f;
+	float right = 0.0f;
+	float bottom = 0.0f;
+	ui->image_slice_get(image, left, top, right, bottom);
+	EXPECT_FLOAT_EQ(left, 0.25f);
+	EXPECT_FLOAT_EQ(top, 0.25f);
+	EXPECT_FLOAT_EQ(right, 0.25f);
+	EXPECT_FLOAT_EQ(bottom, 0.25f);
+
+	//非法纹理尺寸：返回假且不改变现状
+	EXPECT_FALSE(ui->image_slice_pixels_set(image, 0, 32, 8.0f, 8.0f, 8.0f, 8.0f));
+	ui->image_slice_get(image, left, top, right, bottom);
+	EXPECT_FLOAT_EQ(left, 0.25f);
+	EXPECT_FLOAT_EQ(top, 0.25f);
+
+	//未知句柄
+	EXPECT_FALSE(ui->image_slice_pixels_set(image + 100, 64, 32, 8.0f, 8.0f, 8.0f, 8.0f));
+}

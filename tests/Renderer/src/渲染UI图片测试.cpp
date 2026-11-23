@@ -196,10 +196,18 @@ TEST_F(Renderer_Ui_Image_Test, 九宫格切分绘制)
 
 	ASSERT_TRUE(renderer.frame_render());
 	const Ui_Render_Stats& stats = renderer.ui().ui_render_stats();
-	EXPECT_EQ(stats.draws, 9u) << "九宫格应拆为 9 块";
+	EXPECT_EQ(stats.draws, 1u) << "九宫格九块共用一条绘制记录";
 	EXPECT_EQ(stats.vertices, 36u);
 	EXPECT_EQ(stats.indices, 54u);
 	EXPECT_EQ(stats.texture_binds, 1u) << "同一纹理只绑定一次描述符";
+
+	//仅左侧切分：退化为 2 块，仍为单条绘制记录
+	ASSERT_TRUE(ui->image_slice_set(image, 0.5f, 0.0f, 0.0f, 0.0f));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& partial = renderer.ui().ui_render_stats();
+	EXPECT_EQ(partial.draws, 1u);
+	EXPECT_EQ(partial.vertices, 8u) << "零宽 / 零高子块应被跳过";
+	EXPECT_EQ(partial.indices, 12u);
 
 	//回读：四角与中心均为纹理色
 	if (renderer.compute().readback_supported())

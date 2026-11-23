@@ -1,11 +1,16 @@
 /*
 渲染 UI 文本框编辑测试（第九百三十轮）
 覆盖：文本设置与读取、光标钳制、UTF-8 续字节回退、未知句柄行为。
-纯数据用例直接构造 Ui_Context，不依赖 GPU。
+第九百三十一轮起补：退格 / 删除、光标移动、Home / End、选中区间。
+纯数据用例直接构造 Ui_Context；第九百三十四轮增加选中高亮绘制规模用例。
 */
 #include <gtest/gtest.h>
 
+#include <filesystem>
+
 #include "Engine/EngineRenderer/src/render/UI/用户界面.h"
+#include "Engine/EngineRenderer/src/render/UI/UI渲染器.h"
+#include "Engine/EngineRenderer/src/render/Renderer/渲染器.h"
 
 //游戏引擎命名空间
 using namespace engine;
@@ -185,6 +190,40 @@ TEST_F(Renderer_Ui_Text_Box_Test, 选中区间模型)
 	ui.select_get(box + 100, begin, end);
 	EXPECT_EQ(begin, 0u);
 	EXPECT_EQ(end, 0u);
+}
+
+//选中高亮：非空选区增加一条纯色绘制，清空后恢复（第九百三十四轮）
+TEST_F(Renderer_Ui_Text_Box_Test, 选中高亮绘制规模)
+{
+	if (!std::filesystem::exists(std::filesystem::path("C:\\Windows\\Fonts\\consola.ttf")))
+		GTEST_SKIP() << "系统字体不存在";
+	engine::Renderer renderer;
+	Renderer_Config config;
+	config.width = 320;
+	config.height = 180;
+	config.hidden = true;
+	ASSERT_TRUE(renderer.init(config));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	uint64_t font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16));
+	ui->font_set(font);
+
+	const Ui_Handle box = ui->text_box_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 200.0f, 30.0f }, "abcd");
+	ASSERT_NE(box, 0u);
+	ASSERT_TRUE(renderer.frame_render());
+	const uint32_t base_solid = renderer.ui().ui_render_stats().solid_draws;
+
+	//选区 0..2：多一条高亮记录
+	ASSERT_TRUE(ui->select_set(box, 0, 2));
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_EQ(renderer.ui().ui_render_stats().solid_draws, base_solid + 1u);
+
+	//清空选区：高亮消失
+	ASSERT_TRUE(ui->select_clear(box));
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_EQ(renderer.ui().ui_render_stats().solid_draws, base_solid);
 }
 
 //光标落在 UTF-8 续字节时回退到字符头

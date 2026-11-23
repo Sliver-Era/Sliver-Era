@@ -147,3 +147,34 @@ TEST_F(Renderer_Ui_Progress_Test, 前景像素覆盖)
 	const std::array<uint8_t, 4> full_right = byjy_render_test::pixel_get(pixels, 180, 32, 320);
 	EXPECT_GT(static_cast<int>(full_right[0]), static_cast<int>(full_right[2])) << "满值右半应为前景色";
 }
+
+//主题角色：背景随主题面板色变化，Custom 角色回退节点颜色
+TEST_F(Renderer_Ui_Progress_Test, 主题角色背景)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机不支持像素回读";
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	//自定义主题面板为红色
+	Ui_Theme theme = ui->theme_get();
+	theme.panel = Ui_Color{ 0.8f, 0.1f, 0.1f, 1.0f };
+	ui->theme_set(theme);
+	const Ui_Handle progress = ui->progress_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 200.0f, 24.0f }, 0.0f);
+	ASSERT_NE(progress, 0u);
+
+	std::vector<uint8_t> pixels(byjy_render_test::pixel_bytes(320, 180), 0);
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	//零值：背景为主题红（回读 BGRA，红为下标 2）
+	const std::array<uint8_t, 4> themed = byjy_render_test::pixel_get(pixels, 120, 32, 320);
+	EXPECT_GT(static_cast<int>(themed[2]), static_cast<int>(themed[0]) + 40) << "背景应为主题面板红";
+
+	//Custom 角色：回退节点颜色（暗灰）
+	ASSERT_TRUE(ui->role_set(progress, Ui_Role::Custom));
+	ASSERT_TRUE(ui->color_set(progress, Ui_Color{ 0.1f, 0.1f, 0.1f, 1.0f }));
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	const std::array<uint8_t, 4> custom = byjy_render_test::pixel_get(pixels, 120, 32, 320);
+	EXPECT_LT(static_cast<int>(custom[2]), 120) << "Custom 角色应使用节点暗色";
+}

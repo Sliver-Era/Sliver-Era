@@ -44,6 +44,50 @@ TEST_F(Renderer_Ui_Text_Box_Test, 文本设置与光标钳制)
 	EXPECT_EQ(ui.caret_get(box + 100), 0u);
 }
 
+//退格：按字符删除光标前一字符并前移光标（第九百三十一轮）
+TEST_F(Renderer_Ui_Text_Box_Test, 退格按字符删除)
+{
+	Ui_Context ui;
+	//"中a" = 4 字节，光标在末尾
+	const Ui_Handle box = ui.text_box_create(ui.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "中a");
+	ASSERT_NE(box, 0u);
+	ASSERT_EQ(ui.caret_get(box), 4u);
+
+	//退格删除 ASCII 末字符
+	ASSERT_TRUE(ui.text_box_backspace(box));
+	EXPECT_EQ(ui.text_box_text_get(box), "中");
+	EXPECT_EQ(ui.caret_get(box), 3u);
+	//退格删除整个中文字符
+	ASSERT_TRUE(ui.text_box_backspace(box));
+	EXPECT_EQ(ui.text_box_text_get(box), "");
+	EXPECT_EQ(ui.caret_get(box), 0u);
+	//串首无可删内容
+	EXPECT_FALSE(ui.text_box_backspace(box));
+	//未知句柄
+	EXPECT_FALSE(ui.text_box_backspace(box + 100));
+}
+
+//删除：删除光标后一字符且光标不动
+TEST_F(Renderer_Ui_Text_Box_Test, 删除后一字符)
+{
+	Ui_Context ui;
+	const Ui_Handle box = ui.text_box_create(ui.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "中a");
+	ASSERT_NE(box, 0u);
+
+	//光标移到串首后删除：中文整体移除，光标保持 0
+	ASSERT_TRUE(ui.caret_set(box, 0));
+	ASSERT_TRUE(ui.text_box_delete(box));
+	EXPECT_EQ(ui.text_box_text_get(box), "a");
+	EXPECT_EQ(ui.caret_get(box), 0u);
+	//串尾无可删内容
+	ASSERT_TRUE(ui.caret_set(box, 1));
+	EXPECT_FALSE(ui.text_box_delete(box));
+	//未知句柄
+	EXPECT_FALSE(ui.text_box_delete(box + 100));
+}
+
 //光标落在 UTF-8 续字节时回退到字符头
 TEST_F(Renderer_Ui_Text_Box_Test, 光标字符边界回退)
 {

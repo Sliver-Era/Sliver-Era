@@ -49,8 +49,9 @@ TEST_F(Renderer_Ui_Style_Test, 角色常态色)
 	expect_color(ui_theme_color(theme, Ui_Role::Panel, Ui_Visual_State::Normal), theme.panel);
 	expect_color(ui_theme_color(theme, Ui_Role::Text_Box, Ui_Visual_State::Normal), theme.text_box);
 	expect_color(ui_theme_color(theme, Ui_Role::Label, Ui_Visual_State::Normal), theme.text);
-	expect_color(ui_theme_color(theme, Ui_Role::Checkbox, Ui_Visual_State::Normal), theme.accent);
-	expect_color(ui_theme_color(theme, Ui_Role::Slider, Ui_Visual_State::Normal), theme.accent);
+	//复选框 / 滑动条取控件底色（第九百二十八轮），选中 / 滑块前景另用强调色
+	expect_color(ui_theme_color(theme, Ui_Role::Checkbox, Ui_Visual_State::Normal), theme.text_box);
+	expect_color(ui_theme_color(theme, Ui_Role::Slider, Ui_Visual_State::Normal), theme.text_box);
 }
 
 //禁用：标签用次级文本色，其余用禁用背景
@@ -120,6 +121,50 @@ TEST_F(Renderer_Ui_Style_Test, 角色色与显式色像素等价)
 	const std::array<uint8_t, 4> left = byjy_render_test::pixel_get(pixels, 60, 35, 320);
 	const std::array<uint8_t, 4> right = byjy_render_test::pixel_get(pixels, 180, 35, 320);
 	EXPECT_EQ(left, right) << "样式角色按钮应与显式同色按钮像素一致";
+}
+
+//控件默认角色：复选框 / 滑动条跟随主题底色，Custom 仍可覆盖（第九百二十八轮）
+TEST_F(Renderer_Ui_Style_Test, 控件默认角色与主题跟随)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(byjy_render_test::hidden_config(320, 180)));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机不支持像素回读";
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+
+	//复选框与滑动条默认引用各自角色
+	const Ui_Handle check = ui->checkbox_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 24.0f, 24.0f }, "");
+	const Ui_Handle bar = ui->slider_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 80.0f, 160.0f, 20.0f }, 0.0f);
+	ASSERT_NE(check, 0u);
+	ASSERT_NE(bar, 0u);
+	EXPECT_EQ(ui->role_get(check), Ui_Role::Checkbox);
+	EXPECT_EQ(ui->role_get(bar), Ui_Role::Slider);
+
+	//主题文本框底色改为红色：两者底面随之变红
+	Ui_Theme theme = ui->theme_get();
+	theme.text_box = Ui_Color{ 0.8f, 0.1f, 0.1f, 1.0f };
+	ui->theme_set(theme);
+
+	std::vector<uint8_t> pixels(byjy_render_test::pixel_bytes(320, 180), 0);
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	//欠选中的方框中心（回读 BGRA，红为下标 2）
+	const std::array<uint8_t, 4> box_pixel = byjy_render_test::pixel_get(pixels, 32, 32, 320);
+	//滑动条轨道中点（纵坐标对齐轨道）
+	const std::array<uint8_t, 4> track_pixel = byjy_render_test::pixel_get(pixels, 120, 90, 320);
+	EXPECT_GT(static_cast<int>(box_pixel[2]), static_cast<int>(box_pixel[0]) + 40)
+		<< "复选框底面应跟随主题红";
+	EXPECT_GT(static_cast<int>(track_pixel[2]), static_cast<int>(track_pixel[0]) + 40)
+		<< "滑动条轨道应跟随主题红";
+
+	//显式回退 Custom：改为暗灰后不再跟随主题
+	ASSERT_TRUE(ui->role_set(check, Ui_Role::Custom));
+	ASSERT_TRUE(ui->color_set(check, Ui_Color{ 0.1f, 0.1f, 0.1f, 1.0f }));
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	const std::array<uint8_t, 4> custom_pixel = byjy_render_test::pixel_get(pixels, 32, 32, 320);
+	EXPECT_LT(static_cast<int>(custom_pixel[2]), 120) << "Custom 角色应使用节点颜色";
 }
 
 //不透明度：越界夹紧、存取与未知句柄

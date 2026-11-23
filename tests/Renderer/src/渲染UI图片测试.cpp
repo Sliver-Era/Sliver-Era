@@ -288,3 +288,50 @@ TEST_F(Renderer_Ui_Image_Test, 九宫格像素边距换算)
 	//未知句柄
 	EXPECT_FALSE(ui->image_slice_pixels_set(image + 100, 64, 32, 8.0f, 8.0f, 8.0f, 8.0f));
 }
+
+//面板纹理背景：整图 / 九宫格绘制，纹理为 0 时回到纯色
+TEST_F(Renderer_Ui_Image_Test, 面板纹理背景)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	const std::vector<uint8_t> texels = byjy_render_test::solid_green();
+	uint64_t texture = 0;
+	ASSERT_TRUE(renderer.resource().texture_load(texture, texels.data(), 2, 2));
+	//白色着色以按原样采样纹理
+	const Ui_Handle panel = ui->panel_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 100.0f, 60.0f }, Ui_Color{ 1.0f, 1.0f, 1.0f, 1.0f });
+	ASSERT_NE(panel, 0u);
+	ASSERT_TRUE(ui->panel_texture_set(panel, texture));
+	EXPECT_EQ(ui->panel_texture_get(panel), texture);
+
+	//整图：4 顶点 / 1 记录
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& whole = renderer.ui().ui_render_stats();
+	EXPECT_EQ(whole.draws, 1u);
+	EXPECT_EQ(whole.vertices, 4u);
+	EXPECT_EQ(whole.texture_binds, 1u);
+
+	//九宫格：36 顶点 / 1 记录
+	ASSERT_TRUE(ui->image_slice_set(panel, 0.25f, 0.25f, 0.25f, 0.25f));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& sliced = renderer.ui().ui_render_stats();
+	EXPECT_EQ(sliced.draws, 1u);
+	EXPECT_EQ(sliced.vertices, 36u);
+	EXPECT_EQ(sliced.indices, 54u);
+
+	//纹理置 0：回到纯色路径
+	ASSERT_TRUE(ui->panel_texture_set(panel, 0));
+	EXPECT_EQ(ui->panel_texture_get(panel), 0u);
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& solid = renderer.ui().ui_render_stats();
+	EXPECT_EQ(solid.draws, 1u);
+	EXPECT_EQ(solid.vertices, 4u);
+	EXPECT_EQ(solid.texture_binds, 0u) << "纯色路径不绑定纹理";
+
+	//未知句柄
+	EXPECT_FALSE(ui->panel_texture_set(panel + 100, texture));
+	EXPECT_EQ(ui->panel_texture_get(panel + 100), 0u);
+	renderer.resource().texture_unload(texture);
+}

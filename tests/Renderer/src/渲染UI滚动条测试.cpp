@@ -197,4 +197,8 @@ TEST_F(Renderer_Ui_Scroll_Bar_Test, 内容适配不滚动)
 	float scroll_y = 0.0f;
 	ASSERT_TRUE(ui->scroll_get(container, scroll_x, scroll_y));
 	EXPECT_FLOAT_EQ(scroll_y, 0.0f) << "内容不超过视口时不应产生滚动";
+	//滚动条取值也被归零（视觉上滑块停在起点）
+	float bar_value = 1.0f;
+	ASSERT_TRUE(ui->value_get(bar, bar_value));
+	EXPECT_FLOAT_EQ(bar_value, 0.0f) << "内容不足一屏时滚动条取值应归零";
 }

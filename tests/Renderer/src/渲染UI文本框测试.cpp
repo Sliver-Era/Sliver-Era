@@ -249,3 +249,109 @@ TEST_F(Renderer_Ui_Text_Box_Test, 光标字符边界回退)
 	ASSERT_TRUE(ui.caret_set(box, 100));
 	EXPECT_EQ(ui.caret_get(box), 4u);
 }
+
+//剪贴板桩：全局存取（第九百三十五轮）
+namespace
+{
+	//桩剪贴板内容
+	std::string g_clipboard_text{};
+
+	//桩读取
+	std::string clipboard_stub_get(void* user)
+	{
+		(void)user;
+		return g_clipboard_text;
+	}
+
+	//桩写入
+	void clipboard_stub_set(const std::string& text, void* user)
+	{
+		(void)user;
+		g_clipboard_text = text;
+	}
+}
+
+//复制：有选区复制选区，无选区复制全文，空文本不写（第九百三十五轮）
+TEST_F(Renderer_Ui_Text_Box_Test, 复制选区与全文)
+{
+	Ui_Context ui;
+	g_clipboard_text = "旧内容";
+	ui.clipboard_handlers_set(clipboard_stub_get, clipboard_stub_set, nullptr);
+	const Ui_Handle box = ui.text_box_create(ui.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "abcd");
+	ASSERT_NE(box, 0u);
+
+	//有选区：只复制区间
+	ASSERT_TRUE(ui.select_set(box, 1, 3));
+	ASSERT_TRUE(ui.text_box_copy(box));
+	EXPECT_EQ(g_clipboard_text, "bc") << "应复制选区文本";
+	EXPECT_EQ(ui.caret_get(box), 4u) << "复制不应改变光标";
+
+	//无选区：复制全文
+	ASSERT_TRUE(ui.select_clear(box));
+	ASSERT_TRUE(ui.text_box_copy(box));
+	EXPECT_EQ(g_clipboard_text, "abcd") << "无选区应复制全文";
+
+	//空文本不写剪贴板
+	ASSERT_TRUE(ui.text_box_text_set(box, ""));
+	EXPECT_FALSE(ui.text_box_copy(box));
+	EXPECT_EQ(g_clipboard_text, "abcd") << "空文本不应覆盖剪贴板";
+
+	//未注册回调
+	Ui_Context bare;
+	const Ui_Handle bare_box = bare.text_box_create(bare.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "x");
+	EXPECT_FALSE(bare.text_box_copy(bare_box)) << "未注册写入回调应返回假";
+	EXPECT_FALSE(ui.text_box_copy(box + 100)) << "未知句柄应返回假";
+}
+
+//粘贴：替换选区并清空选区，光标落到插入末尾（第九百三十五轮）
+TEST_F(Renderer_Ui_Text_Box_Test, 粘贴替换选区)
+{
+	Ui_Context ui;
+	g_clipboard_text = "XY";
+	ui.clipboard_handlers_set(clipboard_stub_get, clipboard_stub_set, nullptr);
+	const Ui_Handle box = ui.text_box_create(ui.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "abcd");
+	ASSERT_NE(box, 0u);
+
+	//选中 1..3 后粘贴：区间被替换
+	ASSERT_TRUE(ui.select_set(box, 1, 3));
+	ASSERT_TRUE(ui.text_box_paste(box));
+	EXPECT_EQ(ui.text_box_text_get(box), "aXYd");
+	EXPECT_EQ(ui.caret_get(box), 3u) << "光标应落在插入末尾";
+	std::size_t begin = 1;
+	std::size_t end = 1;
+	ui.select_get(box, begin, end);
+	EXPECT_EQ(begin, 0u);
+	EXPECT_EQ(end, 0u);
+}
+
+//粘贴：无选区插入光标处，空剪贴板与未注册回调不改动（第九百三十五轮）
+TEST_F(Renderer_Ui_Text_Box_Test, 粘贴插入光标处)
+{
+	Ui_Context ui;
+	g_clipboard_text = "中";
+	ui.clipboard_handlers_set(clipboard_stub_get, clipboard_stub_set, nullptr);
+	const Ui_Handle box = ui.text_box_create(ui.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "abc");
+	ASSERT_NE(box, 0u);
+
+	//光标在 1：插入单字（3 字节）
+	ASSERT_TRUE(ui.caret_set(box, 1));
+	ASSERT_TRUE(ui.text_box_paste(box));
+	EXPECT_EQ(ui.text_box_text_get(box), "a中bc");
+	EXPECT_EQ(ui.caret_get(box), 4u);
+
+	//空剪贴板不改动
+	g_clipboard_text = "";
+	EXPECT_FALSE(ui.text_box_paste(box));
+	EXPECT_EQ(ui.text_box_text_get(box), "a中bc");
+
+	//未注册回调
+	Ui_Context bare;
+	const Ui_Handle bare_box = bare.text_box_create(bare.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "x");
+	EXPECT_FALSE(bare.text_box_paste(bare_box)) << "未注册读取回调应返回假";
+	EXPECT_FALSE(ui.text_box_paste(box + 100)) << "未知句柄应返回假";
+}

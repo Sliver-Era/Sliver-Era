@@ -330,3 +330,39 @@ TEST_F(Renderer_Ui_Stats_Test, 圆角几何缓冲复用)
 	EXPECT_EQ(clamped.vertices, 37u);
 	EXPECT_EQ(clamped.indices, 108u);
 }
+
+//文本缓存容量：自定义上限触发最久未使用淘汰
+TEST_F(Renderer_Ui_Stats_Test, 文本缓存容量淘汰)
+{
+	if (!font_available())
+		GTEST_SKIP() << "系统字体不存在";
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	uint64_t font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ui->font_set(font);
+	//文本几何上限 2、块布局上限 4
+	renderer.ui().ui_text_cache_limits_set(2, 4);
+	const Ui_Handle first = ui->label_create(ui->root_get(), Ui_Rect{ 20.0f, 20.0f, 180.0f, 20.0f }, "A1");
+	const Ui_Handle second = ui->label_create(ui->root_get(), Ui_Rect{ 20.0f, 50.0f, 180.0f, 20.0f }, "B2");
+	ASSERT_NE(first, 0u);
+	ASSERT_NE(second, 0u);
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_EQ(renderer.ui().ui_render_stats().text_cache_misses, 2u);
+
+	//改第二段文本：A1 命中、新文本未命中（旧 B2 被淘汰）
+	ASSERT_TRUE(ui->text_set(second, "C3"));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& changed = renderer.ui().ui_render_stats();
+	EXPECT_EQ(changed.text_cache_hits, 1u);
+	EXPECT_EQ(changed.text_cache_misses, 1u) << "旧条目应被淘汰后重算";
+
+	//改回：B2 未命中、A1 仍命中（C3 被淘汰）
+	ASSERT_TRUE(ui->text_set(second, "B2"));
+	ASSERT_TRUE(renderer.frame_render());
+	const Ui_Render_Stats& restored = renderer.ui().ui_render_stats();
+	EXPECT_EQ(restored.text_cache_hits, 1u);
+	EXPECT_EQ(restored.text_cache_misses, 1u);
+}

@@ -113,6 +113,47 @@ TEST_F(Renderer_Ui_Slider_Test, 步进量化与回调)
 	ASSERT_TRUE(renderer.frame_render());
 }
 
+//纵向滑动条：自下而上取值，点击下部得小值、上部得大值
+TEST_F(Renderer_Ui_Slider_Test, 纵向自下而上取值)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	Input_Aggregator* input = renderer.ui().input_aggregator();
+	ASSERT_NE(ui, nullptr);
+	ASSERT_NE(input, nullptr);
+
+	//纵向滑块横跨 20..180（高 160）
+	const Ui_Handle slider = ui->slider_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 20.0f, 160.0f }, 0.0f);
+	ASSERT_NE(slider, 0u);
+	//默认横向
+	EXPECT_FALSE(ui->slider_vertical_get(slider));
+	ASSERT_TRUE(ui->slider_vertical_set(slider, true));
+	EXPECT_TRUE(ui->slider_vertical_get(slider));
+	ASSERT_TRUE(renderer.frame_render());
+
+	//点击 80% 高度处（y = 148）：自下而上应为 0.2
+	SDL_Event down = mouse_button(true, 30.0f, 148.0f);
+	input->event_feed(&down);
+	ASSERT_TRUE(renderer.frame_render());
+	float value = -1.0f;
+	ASSERT_TRUE(ui->value_get(slider, value));
+	EXPECT_NEAR(value, 0.2f, 0.01f);
+
+	//拖到 10% 高度处（y = 36）：自下而上应为 0.9
+	SDL_Event motion = mouse_motion(30.0f, 36.0f);
+	input->event_feed(&motion);
+	ASSERT_TRUE(renderer.frame_render());
+	ASSERT_TRUE(ui->value_get(slider, value));
+	EXPECT_NEAR(value, 0.9f, 0.01f);
+
+	//抬起结束拖拽
+	SDL_Event up = mouse_button(false, 30.0f, 36.0f);
+	input->event_feed(&up);
+	ASSERT_TRUE(renderer.frame_render());
+}
+
 //步进存取：默认连续、负值按 0、未知句柄；程序赋值不受步进约束
 TEST_F(Renderer_Ui_Slider_Test, 步进存取与程序赋值)
 {

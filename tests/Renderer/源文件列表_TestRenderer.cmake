@@ -51,6 +51,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染UI性能基线测试.cpp"
     "src/渲染UI控件查询测试.cpp"
     "src/渲染UI文本对齐测试.cpp"
+    "src/渲染UI文本框测试.cpp"
     "src/渲染UI文本省略测试.cpp"
     "src/渲染UI样式测试.cpp"
     "src/渲染UI滑动条测试.cpp"

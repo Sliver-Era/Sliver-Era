@@ -144,6 +144,49 @@ TEST_F(Renderer_Ui_Text_Box_Test, 光标Home与End)
 	EXPECT_FALSE(ui.caret_end(box + 100));
 }
 
+//选中区间：反向选区归一化、边界回退与清空（第九百三十三轮）
+TEST_F(Renderer_Ui_Text_Box_Test, 选中区间模型)
+{
+	Ui_Context ui;
+	//"中ab" = 5 字节
+	const Ui_Handle box = ui.text_box_create(ui.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "中ab");
+	ASSERT_NE(box, 0u);
+
+	//反向选区（4 → 1）：归一化为 0..4（1 回退到中文字符头）
+	std::size_t begin = 99;
+	std::size_t end = 99;
+	ASSERT_TRUE(ui.select_set(box, 4, 1));
+	ui.select_get(box, begin, end);
+	EXPECT_EQ(begin, 0u);
+	EXPECT_EQ(end, 4u);
+
+	//正向选区（3 → 5）
+	ASSERT_TRUE(ui.select_set(box, 3, 5));
+	ui.select_get(box, begin, end);
+	EXPECT_EQ(begin, 3u);
+	EXPECT_EQ(end, 5u);
+
+	//越界夹紧
+	ASSERT_TRUE(ui.select_set(box, 100, 0));
+	ui.select_get(box, begin, end);
+	EXPECT_EQ(begin, 0u);
+	EXPECT_EQ(end, 5u);
+
+	//清空
+	ASSERT_TRUE(ui.select_clear(box));
+	ui.select_get(box, begin, end);
+	EXPECT_EQ(begin, 0u);
+	EXPECT_EQ(end, 0u);
+
+	//未知句柄
+	EXPECT_FALSE(ui.select_set(box + 100, 0, 1));
+	EXPECT_FALSE(ui.select_clear(box + 100));
+	ui.select_get(box + 100, begin, end);
+	EXPECT_EQ(begin, 0u);
+	EXPECT_EQ(end, 0u);
+}
+
 //光标落在 UTF-8 续字节时回退到字符头
 TEST_F(Renderer_Ui_Text_Box_Test, 光标字符边界回退)
 {

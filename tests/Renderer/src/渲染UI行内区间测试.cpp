@@ -53,6 +53,21 @@ namespace
 		}
 		return count;
 	}
+
+	//扫描区域内最下方亮像素纵坐标（无亮像素返回 -1）
+	int bottommost_lit_row(const std::vector<uint8_t>& pixels, uint32_t x0, uint32_t x1,
+		uint32_t y0, uint32_t y1, float threshold)
+	{
+		for (uint32_t y = y1; y > y0; --y)
+		{
+			for (uint32_t x = x0; x < x1; ++x)
+			{
+				if (byjy_render_test::luma_of(byjy_render_test::pixel_get(pixels, x, y - 1, 320)) >= threshold)
+					return static_cast<int>(y - 1);
+			}
+		}
+		return -1;
+	}
 }
 
 //渲染 UI 行内区间测试夹具
@@ -135,4 +150,44 @@ TEST_F(Renderer_Ui_Text_Span_Test, 区间切分与后者优先)
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	EXPECT_EQ(renderer.ui().ui_render_stats().text_draws, base_draws);
 	EXPECT_GT(bright_count(pixels, 20, 20, 39, 42, 120.0f), 0u);
+}
+
+//区间字号：大字号区间像素更高、行高随之增大（第九百四十二轮）
+TEST_F(Renderer_Ui_Text_Span_Test, 区间字号与行高)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机不支持像素回读";
+	if (!font_available())
+		GTEST_SKIP() << "系统字体不存在";
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	//加载小 / 大两种字号
+	uint64_t small_font = 0;
+	uint64_t large_font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(small_font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ASSERT_TRUE(renderer.ui().font_load_file(large_font, FONT_PATH, 32));
+	ui->font_set(small_font);
+
+	const Ui_Handle label = ui->label_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 200.0f, 140.0f }, "AA\nBB", Ui_Color{ 1.0f, 1.0f, 1.0f, 1.0f });
+	ASSERT_NE(label, 0u);
+	ASSERT_TRUE(ui->text_layout_set(label, false, 0.0f, Ui_Align::Start));
+
+	std::vector<uint8_t> pixels(byjy_render_test::pixel_bytes(320, 180), 0);
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	const int base_bottom = bottommost_lit_row(pixels, 20, 60, 20, 120, 120.0f);
+	ASSERT_GT(base_bottom, 20) << "基线两行应有可见墨迹";
+
+	//首行区间改用大字号：字更高、行高增大，整块底部下移
+	ASSERT_TRUE(ui->text_span_add(label, 0, 2, Ui_Color{ 1.0f, 1.0f, 1.0f, 1.0f }, large_font));
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	const int large_bottom = bottommost_lit_row(pixels, 20, 60, 20, 140, 120.0f);
+	EXPECT_GT(large_bottom, base_bottom + 8) << "大字号区间应撑高行高并下推后续行";
+
+	//清空区间：底部恢复
+	ASSERT_TRUE(ui->text_span_clear(label));
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	EXPECT_EQ(bottommost_lit_row(pixels, 20, 60, 20, 120, 120.0f), base_bottom);
 }

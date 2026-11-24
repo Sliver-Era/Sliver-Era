@@ -88,6 +88,8 @@ target_sources(TestRenderer PRIVATE
     "src/渲染UI纹理合批测试.cpp"
     "src/渲染UI统计测试.cpp"
     "src/渲染UI缩放测试.cpp"
+    "src/渲染UI网格布局测试.cpp"
+    "src/渲染UI自适应尺寸测试.cpp"
     "src/渲染UI行内区间测试.cpp"
     "src/渲染UI裁剪测试.cpp"
     "src/渲染UI进度条测试.cpp"

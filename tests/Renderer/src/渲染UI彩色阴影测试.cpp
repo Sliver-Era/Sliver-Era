@@ -77,10 +77,10 @@ TEST_F(Renderer_Ui_Shadow_Color_Test, 阴影继承区间色)
 	ASSERT_TRUE(renderer.frame_render());
 	EXPECT_EQ(renderer.ui().ui_render_stats().text_draws, base_draws + 3u) << "阴影应按区间色分两段绘制";
 
-	//清空区间：阴影与正文各回一条记录
+	//清空区间：阴影与正文同色同图集，合批为一条记录
 	ASSERT_TRUE(ui->text_span_clear(label));
 	ASSERT_TRUE(renderer.frame_render());
-	EXPECT_EQ(renderer.ui().ui_render_stats().text_draws, base_draws + 1u) << "无区间时阴影整行一条记录";
+	EXPECT_EQ(renderer.ui().ui_render_stats().text_draws, base_draws) << "无区间时阴影与正文合批为一条";
 
 	//关闭阴影：回到单条记录
 	ASSERT_TRUE(ui->text_shadow_set(label, Ui_Text_Shadow{}));

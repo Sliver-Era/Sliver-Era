@@ -139,10 +139,10 @@ TEST_F(Renderer_Ui_Text_Span_Test, 区间切分与后者优先)
 	EXPECT_EQ(bright_count(pixels, 20, 20, 39, 42, 120.0f), 0u) << "左半应被黑色区间覆盖";
 	EXPECT_GT(bright_count(pixels, 40, 20, 62, 42, 120.0f), 0u) << "右半应保留正文色";
 
-	//后添加白色区间覆盖同一范围：后者优先
+	//后添加白色区间覆盖同一范围：后者优先（整行同色，相邻文字记录合批为 1 条）
 	ASSERT_TRUE(ui->text_span_add(label, 0, 2, Ui_Color{ 1.0f, 1.0f, 1.0f, 1.0f }));
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
-	EXPECT_EQ(renderer.ui().ui_render_stats().text_draws, base_draws + 1u);
+	EXPECT_EQ(renderer.ui().ui_render_stats().text_draws, base_draws);
 	EXPECT_GT(bright_count(pixels, 20, 20, 39, 42, 120.0f), 0u) << "后添加区间应覆盖前者";
 
 	//清空区间：恢复整行单条记录

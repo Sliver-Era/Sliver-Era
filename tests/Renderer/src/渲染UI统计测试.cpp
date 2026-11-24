@@ -194,7 +194,8 @@ TEST_F(Renderer_Ui_Stats_Test, 文本几何缓存同帧命中)
 	ASSERT_TRUE(renderer.frame_render());
 
 	const Ui_Render_Stats& stats = renderer.ui().ui_render_stats();
-	EXPECT_EQ(stats.text_draws, 2u);
+	//同文本同色相邻：文字记录合批为 1 条
+	EXPECT_EQ(stats.text_draws, 1u);
 	EXPECT_EQ(stats.text_cache_misses, 1u);
 	EXPECT_EQ(stats.text_cache_hits, 1u) << "同文本第二控件应复用几何";
 	EXPECT_GT(stats.indices, 12u);

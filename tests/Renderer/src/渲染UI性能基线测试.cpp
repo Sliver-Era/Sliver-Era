@@ -169,10 +169,10 @@ TEST_F(Renderer_Ui_Perf_Test, 九宫格稳定帧基线)
 		ASSERT_TRUE(ui->image_slice_set(panel, 0.25f, 0.25f, 0.25f, 0.25f));
 	}
 
-	//几何规模：每面板 1 条记录 / 36 顶点 / 54 索引
+	//几何规模：每面板 36 顶点 / 54 索引；同纹理同色相邻合并为 1 条绘制
 	ASSERT_TRUE(renderer.frame_render());
 	const Ui_Render_Stats& built = renderer.ui().ui_render_stats();
-	EXPECT_EQ(built.draws, 64u);
+	EXPECT_EQ(built.draws, 1u);
 	EXPECT_EQ(built.vertices, 64u * 36u);
 	EXPECT_EQ(built.indices, 64u * 54u);
 

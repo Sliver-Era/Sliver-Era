@@ -191,3 +191,35 @@ TEST_F(Renderer_Ui_Text_Span_Test, 区间字号与行高)
 	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
 	EXPECT_EQ(bottommost_lit_row(pixels, 20, 60, 20, 120, 120.0f), base_bottom);
 }
+
+//富文本布局缓存：区间不变命中、改区间失效（第九百四十三轮）
+TEST_F(Renderer_Ui_Text_Span_Test, 富文本布局缓存命中与失效)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	uint64_t font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ui->font_set(font);
+
+	const Ui_Handle label = ui->label_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 200.0f, 40.0f }, "AA", Ui_Color{ 1.0f, 1.0f, 1.0f, 1.0f });
+	ASSERT_NE(label, 0u);
+	ASSERT_TRUE(ui->text_layout_set(label, false, 20.0f, Ui_Align::Start));
+
+	//首帧：布局未缓存，必有未命中
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_GE(renderer.ui().ui_render_stats().block_cache_misses, 1u);
+
+	//只改背景色（不影响布局与区间）：应命中布局缓存
+	ASSERT_TRUE(ui->color_set(label, Ui_Color{ 0.2f, 0.3f, 0.4f, 1.0f }));
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_GE(renderer.ui().ui_render_stats().block_cache_hits, 1u) << "区间与布局未变应命中";
+	EXPECT_EQ(renderer.ui().ui_render_stats().block_cache_misses, 0u);
+
+	//新增区间：键变化，应失效一次
+	ASSERT_TRUE(ui->text_span_add(label, 0, 1, Ui_Color{ 1.0f, 0.0f, 0.0f, 1.0f }));
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_GE(renderer.ui().ui_render_stats().block_cache_misses, 1u) << "区间变化应使布局缓存失效";
+}

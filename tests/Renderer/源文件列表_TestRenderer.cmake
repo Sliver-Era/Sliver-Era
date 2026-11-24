@@ -53,6 +53,7 @@ target_sources(TestRenderer PRIVATE
     "src/渲染UI文本对齐测试.cpp"
     "src/渲染UI文本框测试.cpp"
     "src/渲染UI文本省略测试.cpp"
+    "src/渲染UI文本阴影测试.cpp"
     "src/渲染UI样式测试.cpp"
     "src/渲染UI滑动条测试.cpp"
     "src/渲染UI滚动条测试.cpp"

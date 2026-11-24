@@ -1,7 +1,7 @@
 /*
 渲染 UI 多行文本测试（第八百九十四轮）
 覆盖：多行布局参数存取与默认值、显式换行按行高分行绘制、
-      自动换行在区域宽度内折行绘制。
+      自动换行在区域宽度内折行绘制；第九百三十九轮补首行缩进存取与绘制。
 像素用例按回读能力门控。
 */
 #include <gtest/gtest.h>
@@ -52,6 +52,22 @@ namespace
 			}
 		}
 		return count;
+	}
+
+	//扫描区域内最左侧亮像素横坐标（无亮像素返回 -1）
+	int leftmost_lit(const std::vector<uint8_t>& pixels, uint32_t x0, uint32_t x1,
+		uint32_t y0, uint32_t y1, float threshold)
+	{
+		for (uint32_t x = x0; x < x1; ++x)
+		{
+			for (uint32_t y = y0; y < y1; ++y)
+			{
+				//亮度达到阈值的像素视为文本墨迹
+				if (byjy_render_test::luma_of(byjy_render_test::pixel_get(pixels, x, y, 320)) >= threshold)
+					return static_cast<int>(x);
+			}
+		}
+		return -1;
 	}
 }
 
@@ -152,4 +168,71 @@ TEST_F(Renderer_Ui_Text_Block_Test, 自动换行绘制)
 	const uint32_t second_line = bright_count(pixels, 20, 40, 60, 60, 320, 120.0f);
 	EXPECT_GT(first_line, 0u) << "第一行应绘制文本";
 	EXPECT_GT(second_line, 0u) << "窄区域应触发生成第二行";
+}
+
+//首行缩进：默认 0、读写负值、未知句柄（第九百三十九轮）
+TEST_F(Renderer_Ui_Text_Block_Test, 首行缩进存取)
+{
+	Ui_Context ui;
+	const Ui_Handle label = ui.label_create(ui.root_get(), Ui_Rect{ 0.0f, 0.0f, 100.0f, 60.0f }, "文本");
+	ASSERT_NE(label, 0u);
+	EXPECT_FLOAT_EQ(ui.text_indent_get(label), 0.0f);
+
+	//正值右移、负值外突
+	ASSERT_TRUE(ui.text_indent_set(label, 12.0f));
+	EXPECT_FLOAT_EQ(ui.text_indent_get(label), 12.0f);
+	ASSERT_TRUE(ui.text_indent_set(label, -4.0f));
+	EXPECT_FLOAT_EQ(ui.text_indent_get(label), -4.0f);
+
+	//未知句柄
+	EXPECT_FALSE(ui.text_indent_set(label + 100, 8.0f));
+	EXPECT_FLOAT_EQ(ui.text_indent_get(label + 100), 0.0f);
+}
+
+//首行缩进：首行起点右移、第二行不动，End 对齐同样叠加（第九百三十九轮）
+TEST_F(Renderer_Ui_Text_Block_Test, 首行缩进绘制)
+{
+	engine::Renderer renderer;
+	ASSERT_TRUE(renderer.init(hidden_config(320, 180)));
+	if (!renderer.compute().readback_supported())
+		GTEST_SKIP() << "本机不支持像素回读";
+	if (!font_available())
+		GTEST_SKIP() << "系统字体不存在";
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	//加载并绑定测试字体
+	uint64_t font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(font, FONT_PATH, FONT_PIXEL_HEIGHT));
+	ui->font_set(font);
+
+	const Ui_Handle label = ui->label_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 200.0f, 100.0f }, "HH\nHH");
+	ASSERT_NE(label, 0u);
+	ASSERT_TRUE(ui->text_layout_set(label, false, 24.0f, Ui_Align::Start));
+
+	std::vector<uint8_t> pixels(byjy_render_test::pixel_bytes(320, 180), 0);
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	const int base_first = leftmost_lit(pixels, 20, 220, 20, 44, 120.0f);
+	const int base_second = leftmost_lit(pixels, 20, 220, 44, 68, 120.0f);
+	ASSERT_GE(base_first, 20);
+	EXPECT_EQ(base_second, base_first) << "未缩进时两行同起点";
+
+	//缩进 12：仅首行右移
+	ASSERT_TRUE(ui->text_indent_set(label, 12.0f));
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	const int indented_first = leftmost_lit(pixels, 20, 220, 20, 44, 120.0f);
+	const int indented_second = leftmost_lit(pixels, 20, 220, 44, 68, 120.0f);
+	EXPECT_EQ(indented_first, base_first + 12) << "首行应右移缩进量";
+	EXPECT_EQ(indented_second, base_second) << "第二行不受缩进影响";
+
+	//End 对齐：先取无缩进基线，再加缩进应同样右移 12
+	ASSERT_TRUE(ui->text_indent_set(label, 0.0f));
+	ASSERT_TRUE(ui->text_halign_set(label, Ui_Align::End));
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	const int end_first = leftmost_lit(pixels, 20, 220, 20, 44, 120.0f);
+	const int end_second = leftmost_lit(pixels, 20, 220, 44, 68, 120.0f);
+	ASSERT_TRUE(ui->text_indent_set(label, 12.0f));
+	ASSERT_TRUE(renderer.frame_render(pixels.data(), static_cast<uint32_t>(pixels.size())));
+	EXPECT_EQ(leftmost_lit(pixels, 20, 220, 20, 44, 120.0f), end_first + 12) << "End 对齐首行应再右移缩进量";
+	EXPECT_EQ(leftmost_lit(pixels, 20, 220, 44, 68, 120.0f), end_second) << "End 对齐第二行不受缩进影响";
 }

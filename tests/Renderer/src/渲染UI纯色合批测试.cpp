@@ -49,6 +49,7 @@ TEST_F(Renderer_Ui_Solid_Batch_Test, 相邻同色合并)
 	EXPECT_EQ(merged.solid_draws, 1u) << "同色相邻矩形应合批";
 	EXPECT_EQ(merged.draws, 1u);
 	EXPECT_EQ(merged.indices, 12u) << "合批不得减少几何";
+	EXPECT_EQ(merged.batch_merges, 1u) << "合批次数应计数";
 
 	//改变后一个面板颜色：不得合并
 	ASSERT_TRUE(ui->color_set(right, Ui_Color{ 0.60f, 0.20f, 0.20f, 1.0f }));
@@ -56,4 +57,5 @@ TEST_F(Renderer_Ui_Solid_Batch_Test, 相邻同色合并)
 	const Ui_Render_Stats& split = renderer.ui().ui_render_stats();
 	EXPECT_EQ(split.solid_draws, 2u) << "颜色不同不应合批";
 	EXPECT_EQ(split.indices, 12u);
+	EXPECT_EQ(split.batch_merges, 0u) << "未合批时计数应为 0";
 }

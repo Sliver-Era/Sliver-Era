@@ -355,3 +355,60 @@ TEST_F(Renderer_Ui_Text_Box_Test, 粘贴插入光标处)
 	EXPECT_FALSE(bare.text_box_paste(bare_box)) << "未注册读取回调应返回假";
 	EXPECT_FALSE(ui.text_box_paste(box + 100)) << "未知句柄应返回假";
 }
+
+//组合文本：设置与读取、置空退出、未知句柄（第九百三十六轮）
+TEST_F(Renderer_Ui_Text_Box_Test, 组合文本设置与读取)
+{
+	Ui_Context ui;
+	const Ui_Handle box = ui.text_box_create(ui.root_get(),
+		Ui_Rect{ 0.0f, 0.0f, 200.0f, 24.0f }, "ab");
+	ASSERT_NE(box, 0u);
+
+	//进入组合态：正文与光标不变
+	ASSERT_TRUE(ui.text_box_preedit_set(box, "ni"));
+	EXPECT_EQ(ui.text_box_preedit_get(box), "ni");
+	EXPECT_EQ(ui.text_box_text_get(box), "ab") << "组合文本不应计入正文";
+	EXPECT_EQ(ui.caret_get(box), 2u);
+
+	//置空退出组合态
+	ASSERT_TRUE(ui.text_box_preedit_set(box, ""));
+	EXPECT_EQ(ui.text_box_preedit_get(box), "");
+
+	//未知句柄
+	EXPECT_FALSE(ui.text_box_preedit_set(box + 100, "x"));
+	EXPECT_EQ(ui.text_box_preedit_get(box + 100), "");
+}
+
+//组合文本：绘制时多一条文本记录，清空后恢复（第九百三十六轮）
+TEST_F(Renderer_Ui_Text_Box_Test, 组合文本绘制规模)
+{
+	if (!std::filesystem::exists(std::filesystem::path("C:\\Windows\\Fonts\\consola.ttf")))
+		GTEST_SKIP() << "系统字体不存在";
+	engine::Renderer renderer;
+	Renderer_Config config;
+	config.width = 320;
+	config.height = 180;
+	config.hidden = true;
+	ASSERT_TRUE(renderer.init(config));
+	Ui_Context* ui = renderer.ui().ui_context();
+	ASSERT_NE(ui, nullptr);
+	uint64_t font = 0;
+	ASSERT_TRUE(renderer.ui().font_load_file(font, "C:\\Windows\\Fonts\\consola.ttf", 16));
+	ui->font_set(font);
+
+	const Ui_Handle box = ui->text_box_create(ui->root_get(),
+		Ui_Rect{ 20.0f, 20.0f, 200.0f, 30.0f }, "ab");
+	ASSERT_NE(box, 0u);
+	ASSERT_TRUE(renderer.frame_render());
+	const uint32_t base_text = renderer.ui().ui_render_stats().text_draws;
+
+	//组合文本：多一条文本记录
+	ASSERT_TRUE(ui->text_box_preedit_set(box, "ni"));
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_EQ(renderer.ui().ui_render_stats().text_draws, base_text + 1u);
+
+	//清空组合文本：恢复
+	ASSERT_TRUE(ui->text_box_preedit_set(box, ""));
+	ASSERT_TRUE(renderer.frame_render());
+	EXPECT_EQ(renderer.ui().ui_render_stats().text_draws, base_text);
+}
